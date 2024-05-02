@@ -4,26 +4,21 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext, window } from 'vscode';
+import { workspace, ExtensionContext } from 'vscode';
 
 import {
 	LanguageClient,
 	LanguageClientOptions,
-	RevealOutputChannelOn,
 	ServerOptions,
-	TransportKind,
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 
-const prefix = '/Users/didrikm-mac/projects/kth/exjobb';
-
 export function activate(context: ExtensionContext) {
 	const rpcScriptModule = context.asAbsolutePath(path.join('..', 'rpclsp.sh'));
-	const currentDirectory = context.asAbsolutePath('.');
 
 	const serverOptions: ServerOptions = {
-		command: `${rpcScriptModule} ${currentDirectory}`
+		command: rpcScriptModule
 	};
 
 	// Options to control the language client
@@ -38,8 +33,8 @@ export function activate(context: ExtensionContext) {
 
 	// Create the language client and start the client.
 	client = new LanguageClient(
-		'languageServerExample',
-		'Language Server Example',
+		'mikingLanguageServerExample',
+		'Miking LSP Example',
 		serverOptions,
 		clientOptions
 	);

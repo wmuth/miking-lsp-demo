@@ -1,6 +1,8 @@
 # Miking LSP PoC
 
-![](my_video.mov)
+<video controls>
+  <source src="demovideo.mov" type="video/mov">
+</video>
 
 ## Requirements
 

@@ -1,0 +1,69 @@
+language Calc
+
+start File
+
+type File
+
+type Expr {
+  grouping = "(" ")",
+}
+
+prod File: File = e:Expr
+
+prod Num: Expr = val:Float
+prod Add: Expr = left:Expr "+" right:Expr
+prod Sub: Expr = left:Expr "-" right:Expr
+prod Mul: Expr = left:Expr "*" right:Expr
+prod Div: Expr = left:Expr "/" right:Expr
+
+precedence {
+  Mul Div;
+  Add Sub;
+}
+
+-------------------------------------------------------------------
+
+-- Tokens. These will not be covered in the tutorial, but if you're
+-- curious the language fragments defining each of these tokens
+-- can be found here:
+-- https://github.com/miking-lang/miking/blob/develop/stdlib/parser/lexer.mc
+
+-- Basic tokens
+token String {
+  repr = StringRepr {},
+  constructor = StringTok,
+  fragment = StringTokenParser,
+}
+token Integer {
+  repr = UIntRepr {},
+  constructor = UIntTok,
+  fragment = UIntTokenParser,
+}
+token Float {
+  repr = FloatRepr {},
+  constructor = FloatTok,
+  fragment = UFloatTokenParser,
+}
+token LIdent {
+  repr = LIdentRepr {},
+  constructor = LIdentTok,
+  fragment = LIdentTokenParser,
+  ty = String,
+}
+token UIdent {
+  repr = UIdentRepr {},
+  constructor = UIdentTok,
+  fragment = UIdentTokenParser,
+  ty = String,
+}
+
+-- Token types only used through literals
+token {fragment = OperatorTokenParser,}
+token {fragment = CommaTokenParser,}
+token {fragment = SemiTokenParser,}
+token {fragment = BracketTokenParser,}
+
+-- Whitespace and comments
+token {fragment = LineCommentParser,}
+token {fragment = MultilineCommentParser,}
+token {fragment = WhitespaceParser,}

@@ -106,34 +106,37 @@ let println: String -> () = lam s.
 let rpcprint = lam s.
   println s
 
-let initialResponse = JsonObject (
-  mapFromSeq cmpString [
-    ("jsonrpc", JsonString "2.0"),
-    ("id", JsonInt 0),
-    ("result", JsonObject (
-      mapFromSeq cmpString [
-        ("capabilities", JsonObject (
-          mapFromSeq cmpString [
-            ("diagnosticProvider", JsonObject (
-              mapFromSeq cmpString [
-                ("interFileDependencies", JsonBool false),
-                ("workspaceDiagnostics", JsonBool false)
-              ]
-            )),
-            ("hoverProvider", JsonBool true),
-            ("textDocumentSync", JsonInt 1)
-          ]
-        )),
-        ("serverInfo", JsonObject (
-          mapFromSeq cmpString [
-            ("name", JsonString "miking-lsp-server"),
-            ("version", JsonString "0.1.0")
-          ]
-        ))
-      ]
-    ))
-  ]
-)
+let jsonKeyObject: [(String, JsonValue)] -> JsonValue = lam content.
+  JsonObject (
+    mapFromSeq cmpString content
+  )
+
+-- Magic number for completion insertTextMode
+let completionAdjustIndentation = 2
+
+let initialResponse = jsonKeyObject [
+  ("jsonrpc", JsonString "2.0"),
+  ("id", JsonInt 0),
+  ("result", jsonKeyObject [
+    ("capabilities", jsonKeyObject [
+      ("diagnosticProvider", jsonKeyObject [
+        ("interFileDependencies", JsonBool false),
+        ("workspaceDiagnostics", JsonBool false)
+      ]),
+      ("hoverProvider", JsonBool true),
+      ("textDocumentSync", JsonInt 1),
+      ("completionProvider", jsonKeyObject [
+        ("triggerCharacters", JsonArray [
+          JsonString "."
+        ])
+      ])
+    ]),
+    ("serverInfo", jsonKeyObject [
+      ("name", JsonString "miking-lsp-server"),
+      ("version", JsonString "0.1.0")
+    ])
+  ])
+]
 
 let getFileInfo = lam fi.
   match fi with NoInfo () then
@@ -146,27 +149,77 @@ let getFileInfo = lam fi.
     never
 
 let getPublishDiagnostic = lam uri. lam version. lam diagnostics.
-  JsonObject (
-    mapFromSeq cmpString [
-      ("jsonrpc", JsonString "2.0"),
-      ("method", JsonString "textDocument/publishDiagnostics"),
-      ("params", JsonObject (
-        mapFromSeq cmpString [
-          ("uri", JsonString uri),
-          ("version", JsonInt version),
-          ("diagnostics", JsonArray diagnostics)
-        ]
-      ))
-    ]
-  )
+  jsonKeyObject [
+    ("jsonrpc", JsonString "2.0"),
+    ("method", JsonString "textDocument/publishDiagnostics"),
+    ("params", jsonKeyObject [
+      ("uri", JsonString uri),
+      ("version", JsonInt version),
+      ("diagnostics", JsonArray diagnostics)
+    ])
+  ]
 
-let handleDidChange = lam request.
+let getId = lam request.
+  match request with JsonObject m in
+  match mapLookup "id" m with Some JsonInt id in
+  id
+
+let getParams = lam request.
   match request with JsonObject request in
   match mapLookup "params" request with Some JsonObject params in
+  params
+
+let handleCompletion = lam request.
+  let requestId = getId request in
+  let params = getParams request in
+
+  match mapLookup "textDocument" params with Some JsonObject textDocument in
+  match mapLookup "uri" textDocument with Some JsonString uri in
+
+  let response = jsonKeyObject [
+    ("jsonrpc", JsonString "2.0"),
+    ("id", JsonInt requestId),
+    ("result", jsonKeyObject [
+      ("isIncomplete", JsonBool true),
+      ("items", JsonArray [
+        jsonKeyObject [
+          ("label", JsonString "add"),
+          ("kind", JsonInt 1),
+          ("insertText", JsonString "+"),
+          ("insertTextFormat", JsonInt completionAdjustIndentation)
+        ],
+        jsonKeyObject [
+          ("label", JsonString "sub"),
+          ("kind", JsonInt 1),
+          ("insertText", JsonString "-"),
+          ("insertTextFormat", JsonInt completionAdjustIndentation)
+        ],
+        jsonKeyObject [
+          ("label", JsonString "mul"),
+          ("kind", JsonInt 1),
+          ("insertText", JsonString "*"),
+          ("insertTextFormat", JsonInt completionAdjustIndentation)
+        ],
+        jsonKeyObject [
+          ("label", JsonString "div"),
+          ("kind", JsonInt 1),
+          ("insertText", JsonString "/"),
+          ("insertTextFormat", JsonInt completionAdjustIndentation)
+        ]
+      ])
+    ])
+  ] in
+
+  let responseString = json2string response in
+  rpcprint responseString
+
+let handleDidChange = lam request.
+  let params = getParams request in
   match mapLookup "textDocument" params with Some JsonObject textDocument in
   match mapLookup "uri" textDocument with Some JsonString uri in
   match mapLookup "version" textDocument with Some JsonInt version in
   match mapLookup "contentChanges" params with Some JsonArray changes in
+  
   -- Note: We take the first element of changes since
   -- we are requesting the whole document on didChange events
   match head changes with JsonObject contentChange in
@@ -183,29 +236,21 @@ let handleDidChange = lam request.
       let uri = fileInfo.0 in
 
       let response = getPublishDiagnostic uri version [
-        JsonObject (
-          mapFromSeq cmpString [
-            ("message", JsonString msg),
-            ("severity", JsonInt 1),
-            ("source", JsonString "miking-lsp"),
-            ("range", JsonObject (
-              mapFromSeq cmpString [
-                ("start", JsonObject (
-                  mapFromSeq cmpString [
-                    ("line", JsonInt (subi fileInfo.1 1)),
-                    ("character", JsonInt fileInfo.2)
-                  ]
-                )),
-                ("end", JsonObject (
-                  mapFromSeq cmpString [
-                    ("line", JsonInt (subi fileInfo.3 1)),
-                    ("character", JsonInt fileInfo.4)
-                  ]
-                ))
-              ]
-            ))
-          ]
-        )
+        jsonKeyObject [
+          ("message", JsonString msg),
+          ("severity", JsonInt 1),
+          ("source", JsonString "miking-lsp"),
+          ("range", jsonKeyObject [
+            ("start", jsonKeyObject [
+                ("line", JsonInt (subi fileInfo.1 1)),
+                ("character", JsonInt fileInfo.2)
+            ]),
+            ("end", jsonKeyObject [
+                ("line", JsonInt (subi fileInfo.3 1)),
+                ("character", JsonInt fileInfo.4)
+            ])
+          ])
+        ]
       ] in
 
       let responseString = json2string response in
@@ -228,6 +273,8 @@ let handleRequest = lam request.
           rpcprint (json2string initialResponse)
         case "textDocument/didChange" then
           handleDidChange request
+        case "textDocument/completion" then
+          handleCompletion request
         case _ then
           eprintln "... [Unknown method]"
       end

@@ -4,11 +4,22 @@ https://github.com/didrikmunther/miking-lsp-demo/assets/5240046/3fb31104-b3fc-44
 
 ## Requirements
 
+### Programs
+
 1. VS Code
 2. Make
 3. Node
 4. NPM
 5. Rust/Cargo
+
+### Miking
+
+To be able to run this, two changes to the Miking codebase is needed:
+
+* Remove custom colored output for Miking errors.
+* Remove printing of dots when utests pass.
+
+[You can use this branch of Miking](https://github.com/didrikmunther/miking/tree/didrik/miking-lsp-demo-changes)
 
 ## Usage
 
@@ -30,3 +41,7 @@ https://github.com/didrikmunther/miking-lsp-demo/assets/5240046/3fb31104-b3fc-44
 7. The LSP client forwards the message to VS Code, which displays the diagnostics.
 
 *The RPC header consists of the line `Content-Length: <n>`, describing the length of the JSON body. We can't handle this in the Miking LSP server, so we strip it in the RPC Wrapper.
+
+## Limitations
+
+- The Miking LSP server doesn't support all LSP features, only the ones needed for this demo.

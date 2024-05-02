@@ -7,10 +7,10 @@
 			"request": "launch",
 			"name": "Launch Client",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}/lsp-sample"],
+			"args": ["--extensionDevelopmentPath=${workspaceRoot}/lsp-client"],
 			"outFiles": [
-				"${workspaceRoot}/lsp-sample/client/out/**/*.js",
-				"${workspaceRoot}/lsp-sample/server/out/**/*.js"
+				"${workspaceRoot}/lsp-client/client/out/**/*.js",
+				"${workspaceRoot}/lsp-client/server/out/**/*.js"
 			],
 			"autoAttachChildProcesses": true,
 			"preLaunchTask": {
@@ -24,11 +24,11 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}/lsp-sample",
-				"--extensionTestsPath=${workspaceRoot}/lsp-sample/client/out/test/index",
-				"${workspaceRoot}/lsp-sample/client/testFixture"
+				"--extensionDevelopmentPath=${workspaceRoot}/lsp-client",
+				"--extensionTestsPath=${workspaceRoot}/lsp-client/client/out/test/index",
+				"${workspaceRoot}/lsp-client/client/testFixture"
 			],
-			"outFiles": ["${workspaceRoot}/lsp-sample/client/out/test/**/*.js"]
+			"outFiles": ["${workspaceRoot}/lsp-client/client/out/test/**/*.js"]
 		}
 	]
 }

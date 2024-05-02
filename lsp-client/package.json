@@ -1,5 +1,5 @@
 {
-  "name": "lsp-sample",
+  "name": "lsp-client",
   "description": "A language server example",
   "author": "Microsoft Corporation",
   "license": "MIT",

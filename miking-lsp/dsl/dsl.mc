@@ -151,11 +151,6 @@ let handleDidChange = lam request.
       let error = head errors in
       match error with (info, msg) in
       let fileInfo = getFileInfo info in
-      -- (for_ errors (
-      --   lam error.
-      --     match error with (info, msg) in
-      --       eprintln (infoErrorString info msg)
-      -- ));
       eprintln "[Compile Failed]";
 
       let uri = fileInfo.0 in

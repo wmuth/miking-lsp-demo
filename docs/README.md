@@ -1,8 +1,6 @@
 # Miking LSP PoC
 
-<video controls>
-  <source src="demovideo.mov" type="video/mov">
-</video>
+https://github.com/didrikmunther/miking-lsp-demo/assets/5240046/3fb31104-b3fc-44c9-8262-ad91f5245114
 
 ## Requirements
 

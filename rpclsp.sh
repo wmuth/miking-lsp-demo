@@ -9,6 +9,6 @@
 DIR=$(dirname "$0")
 echo $DIR 1>&2;
 
-.$DIR/rust-server/target/debug/rust-server --stdin \
+.$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin \
 	| .$DIR/miking-lsp/dsl/dsl \
-	| .$DIR/rust-server/target/debug/rust-server --stdout
+	| .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout

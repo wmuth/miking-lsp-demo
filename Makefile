@@ -1,19 +1,19 @@
 
 .PHONY: all clean
 
-all: miking-lsp/dsl/dsl rust-server/target/debug/rust-server lsp-sample/client/out/extension.js
+all: miking-lsp/dsl/dsl rpc-wrapper/target/debug/rpc-wrapper lsp-sample/client/out/extension.js
 
 clean:
 	rm -f miking-lsp/dsl/dsl
 	rm -f miking-lsp/dsl/ast-gen.mc
-	rm -f rust-server/target/debug/rust-server
+	rm -f rpc-wrapper/target/debug/rpc-wrapper
 	cd lsp-sample && npm run clean
 
 lsp-sample/client/out/extension.js: lsp-sample/client/src/extension.ts
 	cd lsp-sample && npm install && npm run compile
 
-rust-server/target/debug/rust-server: rust-server/src/main.rs rust-server/Cargo.toml rust-server/Cargo.lock
-	cd rust-server && cargo build
+rpc-wrapper/target/debug/rpc-wrapper: rpc-wrapper/src/main.rs rpc-wrapper/Cargo.toml rpc-wrapper/Cargo.lock
+	cd rpc-wrapper && cargo build
 
 # Generating the parser and AST from the '.syn' file
 miking-lsp/dsl/ast-gen.mc: miking-lsp/dsl/ast.syn

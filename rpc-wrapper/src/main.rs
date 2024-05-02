@@ -73,7 +73,7 @@ fn rust_server() -> io::Result<()> {
                             },
                         }),
                         server_info: Some(response::ServerInfo {
-                            name: "rust-server".to_string(),
+                            name: "rpc-wrapper".to_string(),
                             version: Some("0.1.0".to_string()),
                         }),
                     }),
@@ -138,7 +138,7 @@ fn main() -> io::Result<()> {
     let arg = &args[1];
 
     if arg == "--stdin" {
-        eprintln!("Starting rust-server with stdin");
+        eprintln!("Starting rpc-wrapper with stdin");
 
         loop {
             let content = match get_raw_request() {
@@ -152,7 +152,7 @@ fn main() -> io::Result<()> {
             println!("{content}");
         }
     } else if arg == "--stdout" {
-        eprintln!("Starting rust-server with stdout");
+        eprintln!("Starting rpc-wrapper with stdout");
 
         loop {
             let mut content = String::new();

@@ -106,7 +106,34 @@ let println: String -> () = lam s.
 let rpcprint = lam s.
   println s
 
-let initialResponse = "{\"jsonrpc\":\"2.0\",\"id\":0,\"result\":{\"capabilities\":{\"diagnosticProvider\":{\"interFileDependencies\":false,\"workspaceDiagnostics\":false},\"hoverProvider\":true,\"textDocumentSync\":1},\"serverInfo\":{\"name\":\"miking-lsp-server\",\"version\":\"0.1.0\"}}}"
+let initialResponse = JsonObject (
+  mapFromSeq cmpString [
+    ("jsonrpc", JsonString "2.0"),
+    ("id", JsonInt 0),
+    ("result", JsonObject (
+      mapFromSeq cmpString [
+        ("capabilities", JsonObject (
+          mapFromSeq cmpString [
+            ("diagnosticProvider", JsonObject (
+              mapFromSeq cmpString [
+                ("interFileDependencies", JsonBool false),
+                ("workspaceDiagnostics", JsonBool false)
+              ]
+            )),
+            ("hoverProvider", JsonBool true),
+            ("textDocumentSync", JsonInt 1)
+          ]
+        )),
+        ("serverInfo", JsonObject (
+          mapFromSeq cmpString [
+            ("name", JsonString "miking-lsp-server"),
+            ("version", JsonString "0.1.0")
+          ]
+        ))
+      ]
+    ))
+  ]
+)
 
 let getFileInfo = lam fi.
   match fi with NoInfo () then
@@ -198,7 +225,7 @@ let handleRequest = lam request.
       eprintln (join ["[New request] { method=", method, " }"]);
       switch method
         case "initialize" then
-          rpcprint initialResponse
+          rpcprint (json2string initialResponse)
         case "textDocument/didChange" then
           handleDidChange request
         case _ then
@@ -229,13 +256,3 @@ in
 eprintln "LSP started";
 readJsonRPC ();
 eprintln "LSP ended"
-
--- parseCalcExn "example" "5 + 2. * 2.0"
-
--- switch parseCalc "example" "1.0 + 42.0 * 5.0"
---   case Left errors then
---     (for_ errors printErrors);
---     exit 1
---   case Right file then
---     printLn (toString (fileToExpr file))
--- end

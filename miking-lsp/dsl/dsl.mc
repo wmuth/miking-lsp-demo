@@ -184,25 +184,31 @@ let handleCompletion = lam request.
       ("items", JsonArray [
         jsonKeyObject [
           ("label", JsonString "add"),
-          ("kind", JsonInt 1),
+          -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItemKind
+          ("kind", JsonInt 3),
           ("insertText", JsonString "+"),
-          ("insertTextFormat", JsonInt completionAdjustIndentation)
+          ("insertTextFormat", JsonInt completionAdjustIndentation),
+          ("documentation", jsonKeyObject [
+            ("kind", JsonString "markdown"),
+            ("value", JsonString "Addition operation `markdown test`")
+          ]),
+          ("deprecated", JsonBool true)
         ],
         jsonKeyObject [
           ("label", JsonString "sub"),
-          ("kind", JsonInt 1),
+          ("kind", JsonInt 4),
           ("insertText", JsonString "-"),
           ("insertTextFormat", JsonInt completionAdjustIndentation)
         ],
         jsonKeyObject [
           ("label", JsonString "mul"),
-          ("kind", JsonInt 1),
+          ("kind", JsonInt 5),
           ("insertText", JsonString "*"),
           ("insertTextFormat", JsonInt completionAdjustIndentation)
         ],
         jsonKeyObject [
           ("label", JsonString "div"),
-          ("kind", JsonInt 1),
+          ("kind", JsonInt 7),
           ("insertText", JsonString "/"),
           ("insertTextFormat", JsonInt completionAdjustIndentation)
         ]
@@ -219,7 +225,7 @@ let handleDidChange = lam request.
   match mapLookup "uri" textDocument with Some JsonString uri in
   match mapLookup "version" textDocument with Some JsonInt version in
   match mapLookup "contentChanges" params with Some JsonArray changes in
-  
+
   -- Note: We take the first element of changes since
   -- we are requesting the whole document on didChange events
   match head changes with JsonObject contentChange in

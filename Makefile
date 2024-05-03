@@ -1,7 +1,7 @@
 
 .PHONY: all clean
 
-all: miking-lsp/dsl/lsp-server rpc-wrapper/target/debug/rpc-wrapper lsp-client/client/out/extension.js
+all: miking-lsp/dsl/ast-gen.mc miking-lsp/dsl/lsp-server rpc-wrapper/target/debug/rpc-wrapper lsp-client/client/out/extension.js
 
 clean:
 	rm -f miking-lsp/dsl/lsp-server
@@ -12,7 +12,7 @@ clean:
 lsp-client/client/out/extension.js: lsp-client/client/src/extension.ts
 	cd lsp-client && npm install && npm run compile
 
-rpc-wrapper/target/debug/rpc-wrapper: rpc-wrapper/src/main.rs rpc-wrapper/Cargo.toml rpc-wrapper/Cargo.lock
+rpc-wrapper/target/debug/rpc-wrapper: rpc-wrapper/src/**/*.rs rpc-wrapper/Cargo.toml rpc-wrapper/Cargo.lock
 	cd rpc-wrapper && cargo build
 
 # Generating the parser and AST from the '.syn' file

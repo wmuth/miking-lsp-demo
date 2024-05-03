@@ -159,7 +159,7 @@ pub fn get_raw_request() -> Result<String, io::Error> {
 
     let content = String::from_utf8(buffer).unwrap();
 
-    eprintln!("[Content]: {}", content);
+    eprintln!("{content}");
 
     Ok(content)
 }

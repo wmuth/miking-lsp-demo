@@ -7,7 +7,7 @@ use request::{get_raw_request, get_request, Params, Request};
 use response::{NotificationMessage, RPCResponseResult, ResponseMessage};
 
 fn respond_raw(content: String) {
-    eprintln!("Content-Length: {}\r\n\r\n{}", content.len(), content);
+    eprintln!("{content}");
     print!("Content-Length: {}\r\n\r\n{}", content.len(), content);
     io::stdout().flush().unwrap();
 }
@@ -144,7 +144,7 @@ fn main() -> io::Result<()> {
     let quit_after_one_request = flags.contains(&"--quit-after-one-request");
 
     if flags.contains(&"--stdin") {
-        eprintln!("Starting rpc-wrapper with stdin");
+        // eprintln!("Starting rpc-wrapper with stdin");
 
         loop {
             let content = match get_raw_request() {
@@ -162,7 +162,7 @@ fn main() -> io::Result<()> {
             }
         }
     } else if flags.contains(&"--stdout"){
-        eprintln!("Starting rpc-wrapper with stdout");
+        // eprintln!("Starting rpc-wrapper with stdout");
 
         loop {
             let mut content = String::new();

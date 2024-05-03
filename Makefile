@@ -1,10 +1,10 @@
 
 .PHONY: all clean
 
-all: miking-lsp/dsl/dsl rpc-wrapper/target/debug/rpc-wrapper lsp-client/client/out/extension.js
+all: miking-lsp/dsl/lsp-server rpc-wrapper/target/debug/rpc-wrapper lsp-client/client/out/extension.js
 
 clean:
-	rm -f miking-lsp/dsl/dsl
+	rm -f miking-lsp/dsl/lsp-server
 	rm -f miking-lsp/dsl/ast-gen.mc
 	rm -f rpc-wrapper/target/debug/rpc-wrapper
 	cd lsp-client && npm run clean
@@ -19,5 +19,5 @@ rpc-wrapper/target/debug/rpc-wrapper: rpc-wrapper/src/main.rs rpc-wrapper/Cargo.
 miking-lsp/dsl/ast-gen.mc: miking-lsp/dsl/ast.syn
 	mi syn miking-lsp/dsl/ast.syn miking-lsp/dsl/ast-gen.mc
 
-miking-lsp/dsl/dsl: miking-lsp/dsl/ast-gen.mc miking-lsp/dsl/dsl.mc
-	mi compile miking-lsp/dsl/dsl.mc --output miking-lsp/dsl/dsl
+miking-lsp/dsl/lsp-server: miking-lsp/dsl/*.mc
+	mi compile miking-lsp/dsl/lsp-server.mc --output miking-lsp/dsl/lsp-server

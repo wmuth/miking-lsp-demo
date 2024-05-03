@@ -135,9 +135,15 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
-    let arg = &args[1];
+    let flags = args
+        .iter()
+        .skip(1)
+        .map(|s| s.as_str())
+        .collect::<Vec<&str>>();
 
-    if arg == "--stdin" {
+    let quit_after_one_request = flags.contains(&"--quit-after-one-request");
+
+    if flags.contains(&"--stdin") {
         eprintln!("Starting rpc-wrapper with stdin");
 
         loop {
@@ -150,8 +156,12 @@ fn main() -> io::Result<()> {
             };
 
             println!("{content}");
+
+            if quit_after_one_request {
+                return Ok(());
+            }
         }
-    } else if arg == "--stdout" {
+    } else if flags.contains(&"--stdout"){
         eprintln!("Starting rpc-wrapper with stdout");
 
         loop {
@@ -170,6 +180,10 @@ fn main() -> io::Result<()> {
             }
 
             respond_raw(content);
+
+            if quit_after_one_request {
+                return Ok(());
+            }
         }
     } else {
         eprintln!("Error: Invalid argument, use either --stdin or --stdout");

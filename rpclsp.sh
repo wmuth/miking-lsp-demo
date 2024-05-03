@@ -7,8 +7,20 @@
 # We have an intermittent server, handling extracting RPC packets to the Miking LSP server.
 
 DIR=$(dirname "$0")
-echo $DIR 1>&2;
 
-.$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin \
+# If we are in dev mode, we continually run the new dsl binary,
+# so that we don't constantly need to restart the extension host.
+# In non-dev mode, we let the dsl binary run continuously for performance.
+# Change this flag in serverOptions in `lsp-client/client/src/extension.ts`
+if [ "$1" == "--dev" ]; then
+	while true
+	do
+		.$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin --quit-after-one-request \
+		| .$DIR/miking-lsp/dsl/dsl \
+		| .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout --quit-after-one-request
+	done	
+else
+	.$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin \
 	| .$DIR/miking-lsp/dsl/dsl \
 	| .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout
+fi

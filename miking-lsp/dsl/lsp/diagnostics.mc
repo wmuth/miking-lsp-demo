@@ -3,6 +3,27 @@ include "json.mc"
 include "../utils.mc"
 include "./root.mc"
 
+let getFileInfo = lam fi.
+	match fi with NoInfo () then
+		("", 0, 0, 0, 0)
+	else match fi with Info (r & {row1 = 0}) then
+		(r.filename, 0, 0, 0, 0)
+	else match fi with Info r then
+		(r.filename, r.row1, r.col1, r.row2, r.col2)
+	else
+		never
+
+let getPublishDiagnostic = lam uri. lam version. lam diagnostics.
+	jsonKeyObject [
+		("jsonrpc", JsonString "2.0"),
+		("method", JsonString "textDocument/publishDiagnostics"),
+		("params", jsonKeyObject [
+		("uri", JsonString uri),
+		("version", JsonInt version),
+		("diagnostics", JsonArray diagnostics)
+		])
+	]
+
 lang LSPDiagnostics = LSPRoot
 	syn Params =
 	| DidChange {
@@ -19,6 +40,7 @@ lang LSPDiagnostics = LSPRoot
 		match mapLookup "uri" textDocument with Some JsonString uri in
 		match mapLookup "version" textDocument with Some JsonInt version in
 		match mapLookup "contentChanges" request.params with Some JsonArray changes in
+		-- only take first change, since we are requesting non-partial file changes
 		match head changes with JsonObject contentChange in
 		match mapLookup "text" contentChange with Some JsonString text in
 
@@ -32,28 +54,6 @@ lang LSPDiagnostics = LSPRoot
 
 	sem execute context =
 	| DidChange {textDocument = {uri = uri, version = version}, text = text} ->
-		let getFileInfo = lam fi.
-			match fi with NoInfo () then
-				("", 0, 0, 0, 0)
-			else match fi with Info (r & {row1 = 0}) then
-				(r.filename, 0, 0, 0, 0)
-			else match fi with Info r then
-				(r.filename, r.row1, r.col1, r.row2, r.col2)
-			else
-				never
-			in
-
-		let getPublishDiagnostic = lam uri. lam version. lam diagnostics.
-			jsonKeyObject [
-				("jsonrpc", JsonString "2.0"),
-				("method", JsonString "textDocument/publishDiagnostics"),
-				("params", jsonKeyObject [
-				("uri", JsonString uri),
-				("version", JsonInt version),
-				("diagnostics", JsonArray diagnostics)
-				])
-			] in
-
 		switch context.parseFunc uri text
 			case Left errors then
 				let error = head errors in

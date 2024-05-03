@@ -19,5 +19,5 @@ rpc-wrapper/target/debug/rpc-wrapper: rpc-wrapper/src/main.rs rpc-wrapper/Cargo.
 miking-lsp/dsl/ast-gen.mc: miking-lsp/dsl/ast.syn
 	mi syn miking-lsp/dsl/ast.syn miking-lsp/dsl/ast-gen.mc
 
-miking-lsp/dsl/lsp-server: miking-lsp/dsl/*.mc
+miking-lsp/dsl/lsp-server: miking-lsp/dsl/**/*.mc
 	mi compile miking-lsp/dsl/lsp-server.mc --output miking-lsp/dsl/lsp-server

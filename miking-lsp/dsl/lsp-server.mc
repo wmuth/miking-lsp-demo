@@ -2,7 +2,7 @@ include "json.mc"
 
 include "./dsl.mc"
 include "./json-rpc.mc"
-include "./lsp.mc"
+include "./lsp/lsp.mc"
 
 let handleRequest = lam request.
   let request = getRPCRequest request in

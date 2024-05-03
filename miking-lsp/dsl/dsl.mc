@@ -4,6 +4,7 @@ include "string.mc"
 include "ext/file-ext.mc"
 
 include "./ast-gen.mc"
+include "./utils.mc"
 
 -- Helpers to convert between floats and Exprs
 
@@ -82,3 +83,12 @@ lang Complete = CalcAst + Eval + ToString
   sem fileToExpr =
   | File1 record -> record.e
 end
+
+mexpr
+use Complete in
+
+let emptyEnv = mapEmpty cmpString in
+
+let example = parseCalcExn "example" "1.0 + 2.0" in
+eprintln (toString (eval emptyEnv example));
+()

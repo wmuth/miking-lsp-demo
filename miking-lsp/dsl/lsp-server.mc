@@ -34,8 +34,6 @@ end
 mexpr
 use Complete in
 
-let emptyEnv = mapEmpty cmpString in
-
 eprintln "Miking LSP started";
 readJsonRPC ();
 eprintln "Miking LSP ended"

@@ -57,13 +57,11 @@ lang LSPHover = LSPRoot
 						sfold_Expr_Expr (lam acc. lam e.
 							let info = getFileInfo (get_Expr_info e) in
 							if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
-								eprintln "Collision";
 								match getChildExpr e line character with Some eChild then
 									Some eChild
 								else 
 									Some e
 							) else
-								eprintln "No collision";
 								acc
 						) (Some expr) expr
 				in

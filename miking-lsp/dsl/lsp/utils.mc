@@ -1,3 +1,5 @@
+include "mexpr/info.mc"
+
 type TextDocumentPositionParams = {
   uri: String,
   line: Int,
@@ -15,3 +17,39 @@ let getTextDocumentPositionParams: Map String JsonValue -> TextDocumentPositionP
     line = line,
     character = character
   }
+
+type ProdPosition = {
+  filename: String,
+  lineStart: Int,
+  colStart: Int,
+  lineEnd: Int,
+  colEnd: Int
+}
+
+let getFileInfo: Info -> ProdPosition = lam fi.
+  match fi with NoInfo () then
+    {
+      filename = "",
+      lineStart = 0,
+      colStart = 0,
+      lineEnd = 0,
+      colEnd = 0
+    }
+  else match fi with Info (r & {row1 = 0}) then
+    {
+      filename = r.filename,
+      lineStart = 0,
+      colStart = 0,
+      lineEnd = 0,
+      colEnd = 0
+    }
+  else match fi with Info r then
+    {
+      filename = r.filename,
+      lineStart = r.row1,
+      colStart = r.col1,
+      lineEnd = r.row2,
+      colEnd = r.col2
+    }
+  else
+    never

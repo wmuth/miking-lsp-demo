@@ -1,5 +1,5 @@
 
-.PHONY: all clean
+.PHONY: all clean playground
 
 all: miking-lsp/dsl/ast-gen.mc miking-lsp/dsl/lsp-server rpc-wrapper/target/debug/rpc-wrapper lsp-client/client/out/extension.js
 
@@ -21,3 +21,9 @@ miking-lsp/dsl/ast-gen.mc: miking-lsp/dsl/ast.syn
 
 miking-lsp/dsl/lsp-server: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc
 	mi compile miking-lsp/dsl/lsp-server.mc --output miking-lsp/dsl/lsp-server
+
+miking-lsp/dsl/playground: miking-lsp/dsl/playground.mc
+	mi compile miking-lsp/dsl/playground.mc --output miking-lsp/dsl/playground
+
+playground: miking-lsp/dsl/playground
+	./miking-lsp/dsl/playground

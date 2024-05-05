@@ -1,17 +1,8 @@
 include "json.mc"
 
 include "../utils.mc"
+include "./utils.mc"
 include "./root.mc"
-
-let getFileInfo = lam fi.
-	match fi with NoInfo () then
-		("", 0, 0, 0, 0)
-	else match fi with Info (r & {row1 = 0}) then
-		(r.filename, 0, 0, 0, 0)
-	else match fi with Info r then
-		(r.filename, r.row1, r.col1, r.row2, r.col2)
-	else
-		never
 
 let getPublishDiagnostic = lam uri. lam version. lam diagnostics.
 	jsonKeyObject [
@@ -62,7 +53,7 @@ lang LSPDiagnostics = LSPRoot
 				let fileInfo = getFileInfo info in
 				eprintln "[Compile Failed]";
 			
-				let uri = fileInfo.0 in
+				let uri = fileInfo.filename in
 			
 				let response = getPublishDiagnostic uri version [
 					jsonKeyObject [
@@ -71,12 +62,12 @@ lang LSPDiagnostics = LSPRoot
 						("source", JsonString "miking-lsp"),
 						("range", jsonKeyObject [
 							("start", jsonKeyObject [
-								("line", JsonInt (subi fileInfo.1 1)),
-								("character", JsonInt fileInfo.2)
+								("line", JsonInt (subi fileInfo.lineStart 1)),
+								("character", JsonInt fileInfo.colStart)
 							]),
 							("end", jsonKeyObject [
-								("line", JsonInt (subi fileInfo.3 1)),
-								("character", JsonInt fileInfo.4)
+								("line", JsonInt (subi fileInfo.lineEnd 1)),
+								("character", JsonInt fileInfo.colEnd)
 							])
 						])
 					]

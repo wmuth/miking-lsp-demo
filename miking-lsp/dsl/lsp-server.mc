@@ -12,9 +12,7 @@ let handleRequest = lam request.
   match params with UnknownMethod {} then
     eprintln (join ["[Unknown method] ", method])
   else
-    let executionContext = {
-      parseFunc = parseCalc
-    } in
+    let executionContext = {} in
     let response = execute executionContext params in
     match response with Some response then
       rpcprint (json2string response)
@@ -32,7 +30,6 @@ recursive let readJsonRPC = lam.
 end
 
 mexpr
-use Complete in
 
 eprintln "Miking LSP started";
 readJsonRPC ();

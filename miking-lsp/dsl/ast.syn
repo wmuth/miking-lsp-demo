@@ -3,19 +3,19 @@ language Calc
 start File
 
 type File
--- type Statement
+type DSLStatement
 type DSLExpr {
   grouping = "(" ")",
 }
 
--- prod File: File = (s:Statement ";")*
-prod File: File = e:DSLExpr
+prod File: File = (s:DSLStatement ";")*
+-- prod File: File = e:DSLExpr
 
--- prod Assignment: Statement = "let" ident:LIdent "=" val:DSLExpr
--- prod PrintStatement: Statement = "print" "(" val:DSLExpr ")"
+prod Assignment: DSLStatement = "let" ident:LIdent "=" val:DSLExpr
+-- prod Print: DSLStatement = "print" "(" val:DSLExpr ")"
 
 prod Num: DSLExpr = val:Float
--- prod Variable: DSLExpr = ident:LIdent
+prod Variable: DSLExpr = ident:LIdent
 prod Add: DSLExpr = left:DSLExpr "+" right:DSLExpr
 prod Sub: DSLExpr = left:DSLExpr "-" right:DSLExpr
 prod Mul: DSLExpr = left:DSLExpr "*" right:DSLExpr

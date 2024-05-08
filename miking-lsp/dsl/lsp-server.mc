@@ -38,7 +38,7 @@ let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] Exp
     use Complete in
     switch parseCalc uri code
       case Right file then
-        Right (compileToMexpr (fileToExpr file))
+        Right (compileStatementsToMexpr (fileToStatements file))
       case Left errors then
         Left errors
     end

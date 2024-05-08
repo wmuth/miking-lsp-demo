@@ -45,8 +45,7 @@ lang LSPDiagnostics = LSPRoot
 
 	sem execute context =
 	| DidChange {textDocument = {uri = uri, version = version}, text = text} ->
-		-- switch context.parseFunc uri text
-		switch parseCalc uri text
+		switch context.compileFunc uri text
 			case Left errors then
 				let error = head errors in
 				match error with (info, msg) in

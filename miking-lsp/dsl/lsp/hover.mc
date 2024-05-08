@@ -5,6 +5,24 @@ include "./utils.mc"
 
 include "./root.mc"
 
+let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
+	and (geqi element target.0) (leqi element target.1)
+
+recursive let getChildExpr: use MExprAst in Expr -> Int -> Int -> Option Expr =
+	lam expr. lam line. lam character.
+		use MExprAst in
+		sfold_Expr_Expr (lam acc. lam e.
+			let info = getFileInfo (infoTm e) in
+			if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
+				match getChildExpr e line character with Some eChild then
+					Some eChild
+				else 
+					Some e
+			) else
+				acc
+		) (Some expr) expr
+end
+
 lang LSPHover = LSPRoot
 	syn Params =
 	| Hover {
@@ -26,8 +44,6 @@ lang LSPHover = LSPRoot
 			line = line,
 			character = character
 		} } -> 
-			use Complete in
-
 			-- Add 1 to incoming line and character to match the 1-based indexing of LSP
 			let line = addi line 1 in
 
@@ -38,28 +54,7 @@ lang LSPHover = LSPRoot
 			let strippedUri = stripUriProtocol uri in
 			let content = readFile strippedUri in
 
-			match parseCalc strippedUri content with Right file then
-				let rootExpr = fileToExpr file in
-				let mexprAst = compileToMexpr rootExpr in
-
-				let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
-					and (geqi element target.0) (leqi element target.1)
-				in
-
-				recursive let getChildExpr
-					: Expr -> Int -> Int -> Option Expr = lam expr. lam line. lam character.
-						sfold_Expr_Expr (lam acc. lam e.
-							let info = getFileInfo (infoTm e) in
-							if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
-								match getChildExpr e line character with Some eChild then
-									Some eChild
-								else 
-									Some e
-							) else
-								acc
-						) (Some expr) expr
-				in
-
+			match context.compileFunc strippedUri content with Right mexprAst then
 				let debugText = join [
 					"Uri: ", uri, ", Line: ", int2string line, ", Character: ", int2string character, "\n\n"
 				] in

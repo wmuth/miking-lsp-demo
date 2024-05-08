@@ -3,11 +3,10 @@ include "mexpr/ast.mc"
 
 include "../utils.mc"
 
--- type ParseFunc = String -> String -> Either [(Info, String)] [(Info, String)]
--- type CompileFunc = String -> Expr
+type CompileFunc = use MExprAst in String -> String -> Either [(Info, String)] Expr
 
 type LSPExecutionContext = {
-	-- compileFunc: CompileFunc
+	compileFunc: CompileFunc
 }
 
 lang LSPRoot

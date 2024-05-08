@@ -5,6 +5,10 @@ include "./utils.mc"
 
 include "./root.mc"
 
+let stripUriProtocol = lam uri. match uri
+	with "file://" ++ rest then rest
+	else uri
+
 let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
 	and (geqi element target.0) (leqi element target.1)
 
@@ -46,11 +50,6 @@ lang LSPHover = LSPRoot
 		} } -> 
 			-- Add 1 to incoming line and character to match the 1-based indexing of LSP
 			let line = addi line 1 in
-
-			let stripUriProtocol = lam uri. match uri
-				with "file://" ++ rest then rest
-				else uri
-			in
 			let strippedUri = stripUriProtocol uri in
 			let content = readFile strippedUri in
 
@@ -65,7 +64,9 @@ lang LSPHover = LSPRoot
 					jsonKeyObject [
 						("contents", JsonString (join [
 							debugText,
-							expr2str expr
+							expr2str expr,
+							"\n\n",
+							"Type: ", type2str (tyTm expr)
 						])),
 						("range", jsonKeyObject [
 							("start", jsonKeyObject [

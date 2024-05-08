@@ -16,6 +16,10 @@ lang CalcCompileBase = CalcAst + MExprAst
   sem _tyuk : Info -> Type
   sem _tyuk =
   | info -> TyUnknown {info = info}
+
+  sem _tyfloat : Info -> Type
+  sem _tyfloat =
+  | info -> TyFloat {info = info}
 end
 
 lang NumCompile = CalcCompileBase + NumDSLExprAst
@@ -24,48 +28,50 @@ lang NumCompile = CalcCompileBase + NumDSLExprAst
 		val = CFloat {
       val = x.val.v
     },
-		ty = TyUnknown {info = NoInfo ()},
-		info = NoInfo ()
+		ty = _tyfloat x.info,
+		info = x.info
 	}
 end
 
-lang BinaryCompile = CalcCompileBase
+lang BinaryCompile
+= CalcCompileBase
++ MulDSLExprAst + DivDSLExprAst
++ AddDSLExprAst + SubDSLExprAst
   sem getBinaryAST l r info = 
   | op -> 
-    let l = compileToMexpr l in
-    let r = compileToMexpr r in
+    let lc = compileToMexpr l in
+    let rc = compileToMexpr r in
+    let linfo = get_DSLExpr_info l in
+    let rinfo = get_DSLExpr_info r in
+
+    -- use mergeInfo maybe?
+
     TmApp {
       lhs = TmApp {
         lhs = TmConst {
           val = op,
-          ty = _tyuk info,
+          ty = _tyfloat info,
           info = info
         },
-        rhs = l,
-        ty = _tyuk info,
+        rhs = lc,
+        ty = _tyfloat linfo,
         info = info
       },
-      rhs = r,
-      ty = _tyuk info,
+      rhs = rc,
+      ty = _tyfloat rinfo,
       info = info
     }
-end
 
-lang FactorCompile = CalcCompileBase + BinaryCompile + MulDSLExprAst + DivDSLExprAst
   sem compileToMexpr =
   | MulDSLExpr x -> getBinaryAST x.left x.right x.info (CMulf ())
   | DivDSLExpr x -> getBinaryAST x.left x.right x.info (CDivf ())
-end
-
-lang TermCompile = CalcCompileBase + BinaryCompile + AddDSLExprAst + SubDSLExprAst
-  sem compileToMexpr =
   | AddDSLExpr x -> getBinaryAST x.left x.right x.info (CAddf ())
   | SubDSLExpr x -> getBinaryAST x.left x.right x.info (CSubf ())
 end
 
 -- Composed languages
 
-lang Complete = CalcAst + TermCompile + FactorCompile + NumCompile
+lang Complete = CalcAst + BinaryCompile + NumCompile
   sem fileToExpr: File -> DSLExpr
   sem fileToExpr =
   | File1 record -> record.e
@@ -79,5 +85,8 @@ let emptyEnv = mapEmpty cmpString in
 let example = parseCalcExn "example" "2.0 / 4.0" in
 let evaluated = evalExpr (compileToMexpr (fileToExpr example)) in
 use MExprPrettyPrint in
-eprintln (expr2str evaluated);
+dprint evaluated;
 ()
+
+-- to get better dprint
+-- boot eval miking-lsp/dsl/dsl.mc

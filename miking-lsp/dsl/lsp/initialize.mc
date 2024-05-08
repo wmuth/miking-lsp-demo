@@ -28,6 +28,8 @@ lang LSPInitialize = LSPRoot
 					]),
 					("hoverProvider", JsonBool true),
 					("textDocumentSync", JsonInt 1),
+					("definitionProvider", JsonBool true),
+					("typeDefinitionProvider", JsonBool true),
 					("completionProvider", jsonKeyObject [
 						("triggerCharacters", JsonArray [
 							JsonString "."

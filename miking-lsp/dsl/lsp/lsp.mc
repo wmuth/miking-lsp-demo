@@ -3,6 +3,7 @@ include "./initialize.mc"
 include "./diagnostics.mc"
 include "./completion.mc"
 include "./hover.mc"
+include "./definition.mc"
 
 lang LSP =
 LSPInitialize
@@ -10,4 +11,5 @@ LSPInitialize
 + LSPCompletion
 + LSPHover
 + LSPUnknownMethod
++ LSPGotoDefinition
 end

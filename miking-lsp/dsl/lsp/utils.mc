@@ -53,3 +53,25 @@ let getFileInfo: Info -> ProdPosition = lam fi.
     }
   else
     never
+
+let stripUriProtocol = lam uri. match uri
+	with "file://" ++ rest then rest
+	else uri
+
+let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
+	and (geqi element target.0) (leqi element target.1)
+
+recursive let getChildExpr: use MExprAst in Expr -> Int -> Int -> Option Expr =
+	lam expr. lam line. lam character.
+		use MExprAst in
+		sfold_Expr_Expr (lam acc. lam e.
+			let info = getFileInfo (infoTm e) in
+			if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
+				match getChildExpr e line character with Some eChild then
+					Some eChild
+				else 
+					Some e
+			) else
+				acc
+		) (Some expr) expr
+end

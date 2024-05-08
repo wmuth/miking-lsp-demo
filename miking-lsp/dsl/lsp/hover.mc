@@ -39,23 +39,17 @@ lang LSPHover = LSPRoot
 			let content = readFile strippedUri in
 
 			match parseCalc strippedUri content with Right file then
-				let expr = fileToExpr file in
-				let emptyEnv = mapEmpty cmpString in
-				let exprInfo = get_Expr_info expr in
+				let rootExpr = fileToExpr file in
+				let mexprAst = compileToMexpr rootExpr in
 
 				let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
 					and (geqi element target.0) (leqi element target.1)
 				in
 
-				recursive let countExprs
-					: Expr -> Int = lam expr.
-						sfold_Expr_Expr (lam count. lam e. addi count (countExprs e)) 1 expr
-				in
-
 				recursive let getChildExpr
 					: Expr -> Int -> Int -> Option Expr = lam expr. lam line. lam character.
 						sfold_Expr_Expr (lam acc. lam e.
-							let info = getFileInfo (get_Expr_info e) in
+							let info = getFileInfo (infoTm e) in
 							if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
 								match getChildExpr e line character with Some eChild then
 									Some eChild
@@ -66,29 +60,42 @@ lang LSPHover = LSPRoot
 						) (Some expr) expr
 				in
 
-				let exprs = countExprs expr in
-				let expr = match getChildExpr expr line character with Some childExpr then
-					toString childExpr
-				else
-					"[nothing found]"
-				in
-
 				let debugText = join [
-					"Uri: ", uri, ", Line: ", int2string line, ", Character: ", int2string character
+					"Uri: ", uri, ", Line: ", int2string line, ", Character: ", int2string character, "\n\n"
 				] in
 
-				let text = join [
-					debugText, "\n\n",
-					"Expression: ", expr, "\n\n",
-					"len exprs: ", int2string exprs
-				] in
+				let result = match getChildExpr mexprAst line character with Some expr then
+					use MExprPrettyPrint in
+					let info = getFileInfo (infoTm expr) in
+					jsonKeyObject [
+						("contents", JsonString (join [
+							debugText,
+							expr2str expr
+						])),
+						("range", jsonKeyObject [
+							("start", jsonKeyObject [
+								("line", JsonInt (subi info.lineStart 1)),
+								("character", JsonInt info.colStart)
+							]),
+							("end", jsonKeyObject [
+								("line", JsonInt (subi info.lineEnd 1)),
+								("character", JsonInt info.colEnd)
+							])
+						])
+					]
+				else
+					jsonKeyObject [
+						("contents", JsonString (join [
+							debugText,
+							"[nothing found]"
+						]))
+					]
+				in
 
 				Some(jsonKeyObject [
 					("jsonrpc", JsonString "2.0"),
 					("id", JsonInt id),
-					("result", jsonKeyObject [
-						("contents", JsonString text)
-					])
+					("result", result)
 				])
 			else
 				eprintln "Error parsing file";

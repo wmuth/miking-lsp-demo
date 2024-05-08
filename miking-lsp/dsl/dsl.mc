@@ -1,85 +1,72 @@
 include "common.mc"
 include "mexpr/info.mc"
+include "mexpr/mexpr.mc"
+include "mexpr/pprint.mc"
 include "string.mc"
 include "ext/file-ext.mc"
 
 include "./ast-gen.mc"
 include "./utils.mc"
 
--- Helpers to convert between floats and Exprs
+-- Language fragment implementing 'compileToMexpr'
 
-let exprToFloat = use NumExprAst in
-  lam e. match e with NumExpr x in x.val.v
-let floatToExpr = use NumExprAst in
-  lam f. NumExpr {info = NoInfo (), val = {v = f, i = NoInfo()}}
+lang CalcCompileBase = CalcAst + MExprAst
+  sem compileToMexpr : DSLExpr -> Expr
 
-
--- Language fragments implementing 'eval'
-
-lang EvalBase = CalcBaseAst
-  sem eval : Map String Expr -> Expr -> Expr
+  sem _tyuk : Info -> Type
+  sem _tyuk =
+  | info -> TyUnknown {info = info}
 end
 
-lang NumExprEval = EvalBase + NumExprAst
-  sem eval env =
-  | e & NumExpr _ -> e
+lang NumCompile = CalcCompileBase + NumDSLExprAst
+  sem compileToMexpr =
+  | NumDSLExpr x -> TmConst {
+		val = CFloat {
+      val = x.val.v
+    },
+		ty = TyUnknown {info = NoInfo ()},
+		info = NoInfo ()
+	}
 end
 
-lang TermEval = EvalBase + AddExprAst + SubExprAst
-  sem eval env =
-  | AddExpr x ->
-    let l = exprToFloat (eval env x.left) in
-    let r = exprToFloat (eval env x.right) in
-    floatToExpr (addf l r)
-  | SubExpr x ->
-    let l = exprToFloat (eval env x.left) in
-    let r = exprToFloat (eval env x.right) in
-    floatToExpr (subf l r)
+lang BinaryCompile = CalcCompileBase
+  sem getBinaryAST l r info = 
+  | op -> 
+    let l = compileToMexpr l in
+    let r = compileToMexpr r in
+    TmApp {
+      lhs = TmApp {
+        lhs = TmConst {
+          val = op,
+          ty = _tyuk info,
+          info = info
+        },
+        rhs = l,
+        ty = _tyuk info,
+        info = info
+      },
+      rhs = r,
+      ty = _tyuk info,
+      info = info
+    }
 end
 
-lang FactorEval = EvalBase + MulExprAst + DivExprAst
-  sem eval env =
-  | MulExpr x ->
-    let l = exprToFloat (eval env x.left) in
-    let r = exprToFloat (eval env x.right) in
-    floatToExpr (mulf l r)
-  | DivExpr x ->
-    let l = exprToFloat (eval env x.left) in
-    let r = exprToFloat (eval env x.right) in
-    floatToExpr (divf l r)
+lang FactorCompile = CalcCompileBase + BinaryCompile + MulDSLExprAst + DivDSLExprAst
+  sem compileToMexpr =
+  | MulDSLExpr x -> getBinaryAST x.left x.right x.info (CMulf ())
+  | DivDSLExpr x -> getBinaryAST x.left x.right x.info (CDivf ())
 end
 
-
--- Language fragments implementing 'toString'
-
-lang ToStringBase
-  sem toString : Expr -> String
-end
-
-lang NumToString = ToStringBase + NumExprAst
-  sem toString =
-  | NumExpr x -> float2string x.val.v
-end
-
-lang TermToString = ToStringBase + AddExprAst + SubExprAst
-  sem toString =
-  | AddExpr x -> join ["(", toString x.left, " + ", toString x.right, ")"]
-  | SubExpr x -> join ["(", toString x.left, " - ", toString x.right, ")"]
-end
-
-lang FactorToString = ToStringBase + MulExprAst + DivExprAst
-  sem toString =
-  | MulExpr x -> join ["(", toString x.left, " * ", toString x.right, ")"]
-  | DivExpr x -> join ["(", toString x.left, " / ", toString x.right, ")"]
+lang TermCompile = CalcCompileBase + BinaryCompile + AddDSLExprAst + SubDSLExprAst
+  sem compileToMexpr =
+  | AddDSLExpr x -> getBinaryAST x.left x.right x.info (CAddf ())
+  | SubDSLExpr x -> getBinaryAST x.left x.right x.info (CSubf ())
 end
 
 -- Composed languages
 
-lang Eval = TermEval + NumExprEval + FactorEval end
-lang ToString = NumToString + TermToString + FactorToString end
-
-lang Complete = CalcAst + Eval + ToString
-  sem fileToExpr: File -> Expr
+lang Complete = CalcAst + TermCompile + FactorCompile + NumCompile
+  sem fileToExpr: File -> DSLExpr
   sem fileToExpr =
   | File1 record -> record.e
 end
@@ -89,6 +76,8 @@ use Complete in
 
 let emptyEnv = mapEmpty cmpString in
 
-let example = parseCalcExn "example" "1.0 + 2.0" in
-eprintln (toString (eval emptyEnv example));
+let example = parseCalcExn "example" "2.0 / 4.0" in
+let evaluated = evalExpr (compileToMexpr (fileToExpr example)) in
+use MExprPrettyPrint in
+eprintln (expr2str evaluated);
 ()

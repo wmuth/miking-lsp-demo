@@ -1,13 +1,13 @@
 include "json.mc"
+include "mexpr/ast.mc"
 
 include "../utils.mc"
 
 -- type ParseFunc = String -> String -> Either [(Info, String)] [(Info, String)]
-type ParseFunc
+-- type CompileFunc = String -> Expr
 
 type LSPExecutionContext = {
-	-- Currently does not work, as the parse function is dynamically generated
-	-- parseFunc: ParseFunc
+	-- compileFunc: CompileFunc
 }
 
 lang LSPRoot

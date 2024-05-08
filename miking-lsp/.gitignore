@@ -1,3 +1,4 @@
 dsl/lsp-server
 dsl/ast-gen.mc
 dsl/playground
+dsl/dsl

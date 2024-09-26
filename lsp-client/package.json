@@ -21,6 +21,24 @@
   ],
   "main": "./client/out/extension",
   "contributes": {
+    "languages": [
+      {
+        "id": "mikingdsl",
+        "aliases": [
+          "mdsl"
+        ],
+        "extensions": [
+          ".mdsl"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mikingdsl",
+        "scopeName": "source.mikingdsl",
+        "path": "./syntaxes/mikingdsl.tmLanguage.json"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Example configuration",

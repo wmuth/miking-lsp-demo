@@ -15,12 +15,14 @@ DIR=$(dirname "$0")
 if [ "$1" == "--dev" ]; then
 	while true
 	do
-		.$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin --quit-after-one-request \
-		| .$DIR/miking-lsp/dsl/lsp-server \
-		| .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout --quit-after-one-request
+		# .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin --quit-after-one-request \
+		.$DIR/miking-lsp/dsl/lsp-server \
+		# | .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout --quit-after-one-request
+
+		# .$DIR/miking-lsp/dsl/lsp-server
 	done	
 else
-	.$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin \
-	| .$DIR/miking-lsp/dsl/lsp-server \
-	| .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout
+	# .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin \
+	.$DIR/miking-lsp/dsl/lsp-server \
+	# | .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout
 fi

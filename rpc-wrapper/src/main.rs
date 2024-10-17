@@ -7,7 +7,7 @@ use request::{get_raw_request, get_request, Params, Request};
 use response::{NotificationMessage, RPCResponseResult, ResponseMessage};
 
 fn respond_raw(content: String) {
-    eprintln!("{content}");
+    eprint!("Content-Length: {}\r\n\r\n{}", content.len(), content);
     print!("Content-Length: {}\r\n\r\n{}", content.len(), content);
     io::stdout().flush().unwrap();
 }

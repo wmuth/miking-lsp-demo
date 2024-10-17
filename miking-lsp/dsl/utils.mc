@@ -18,7 +18,10 @@ let println: String -> () = lam s.
   flushStdout()
 
 let rpcprint = lam s.
-  println s
+  let len = addi 1 (length s) in
+  println (join ["Content-Length: ", int2string len, "\r\n\r\n", s]);
+  -- eprintln (join ["Content-Length: ", int2string len, "\r\n\r\n", s]);
+  ()
 
 let jsonKeyObject: [(String, JsonValue)] -> JsonValue = lam content.
   JsonObject (

@@ -7,6 +7,7 @@ include "./lsp/lsp.mc"
 let handleRequest = lam compileFunc. lam request.
   let request = getRPCRequest request in
   let method = request.method in
+  eprintln method;
   use LSP in
   let params = getParams request request.method in
   match params with UnknownMethod {} then
@@ -21,13 +22,23 @@ let handleRequest = lam compileFunc. lam request.
     else
       eprintln ""
 
+let getContentLength: String -> Int = lam header.
+  match header with "Content-Length: " ++ len ++ "\n" then
+    string2int len
+  else
+    error "Content-Length not found"
+
 recursive let readJsonRPC = lam compileFunc.
-  switch readLine stdin
+  switch readLine stdin  
     case None _ then {}
-    case Some s then
-      let json = jsonParseExn s in
-      handleRequest compileFunc json;
-      readJsonRPC compileFunc
+    case Some header then
+      switch readBytesBuffered stdin (addi (getContentLength header) 2) -- We add 2 to the content length to account for the newline characters
+        case None _ then {}
+        case Some body then
+          let json = jsonParseExn body in
+          handleRequest compileFunc json;
+          readJsonRPC compileFunc
+      end
   end
 end
 

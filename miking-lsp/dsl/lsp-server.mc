@@ -32,7 +32,7 @@ recursive let readJsonRPC = lam compileFunc.
   switch readLine stdin  
     case None _ then {}
     case Some header then
-      switch readBytesBuffered stdin (addi (getContentLength header) 2) -- We add 2 to the content length to account for the newline characters
+      switch readBytesBuffered stdin (addi (getContentLength header) 1) -- We add 1 to the content length to account for the newline characters
         case None _ then {}
         case Some body then
           let json = jsonParseExn body in
@@ -44,16 +44,36 @@ end
 
 mexpr
 
-let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] Expr =
+let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations) =
   lam uri. lam code.
     use Complete in
     switch parseCalc uri code
       case Right file then
-        Right (compileStatementsToMexpr (fileToStatements file))
+        let context = {} in
+        let lspResult = (stmtToLSP context (fileToStatements file)) in
+        let implementations = foldl (
+          lam acc. lam x.
+            {
+              hover=join [acc.hover, x.hover]
+            }
+        ) lsp lspResult in
+        let expr = compileStatementsToMexpr (fileToStatements file) in
+        Right (expr, implementations)
       case Left errors then
         Left errors
     end
 in
+
+-- let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] Expr =
+--   lam uri. lam code.
+--     use Complete in
+--     switch parseCalc uri code
+--       case Right file then
+--         Right (compileStatementsToMexpr (fileToStatements file))
+--       case Left errors then
+--         Left errors
+--     end
+-- in
 
 eprintln "Miking LSP started";
 readJsonRPC compileFunc;

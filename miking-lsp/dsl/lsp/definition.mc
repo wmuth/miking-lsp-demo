@@ -4,6 +4,7 @@ include "../utils.mc"
 include "./utils.mc"
 
 include "./root.mc"
+include "../mexpr.mc"
 
 lang LSPGotoDefinition = LSPRoot
 	syn Params =
@@ -31,22 +32,52 @@ lang LSPGotoDefinition = LSPRoot
 			let strippedUri = stripUriProtocol uri in
 			let content = readFile strippedUri in
 
-			Some(jsonKeyObject [
-				("jsonrpc", JsonString "2.0"),
-				("id", JsonInt id),
-				("result", jsonKeyObject [
-					("uri", JsonString strippedUri),
-					("range", jsonKeyObject [
-						("start", jsonKeyObject [
-							("line", JsonInt 0),
-							("character", JsonInt 0)
-						]),
-						("end", jsonKeyObject [
-							("line", JsonInt 0),
-							("character", JsonInt 0)
-						])
-					])
-				])
-			])
+			match context.compileFunc strippedUri content with Right (expr, implementations) then
+				use MExprLSP in
+				let definitionTree = buildDefinitionTree expr in
+
+				match getChildExpr expr line character with Some exprNode then
+					use MExprPrettyPrint in
+					eprintln (join ["Found exprNode:", expr2str exprNode]);
+
+					match exprNode with TmVar { ident=ident } then
+						match (mapLookup ident.0 definitionTree) with Some info then
+							eprintln (join ["Found a:", info2str info]);
+							let info = getFileInfo info in
+	
+							Some(jsonKeyObject [
+								("jsonrpc", JsonString "2.0"),
+								("id", JsonInt id),
+								("result", jsonKeyObject [
+									("uri", JsonString strippedUri),
+									("range", jsonKeyObject [
+										("start", jsonKeyObject [
+											("line", JsonInt (subi info.lineStart 1)),
+											("character", JsonInt info.colStart)
+										]),
+										("end", jsonKeyObject [
+											("line", JsonInt (subi info.lineEnd 1)),
+											("character", JsonInt info.colEnd)
+										])
+										-- ("start", jsonKeyObject [
+										-- 	("line", JsonInt 0),
+										-- 	("character", JsonInt 0)
+										-- ]),
+										-- ("end", jsonKeyObject [
+										-- 	("line", JsonInt 0),
+										-- 	("character", JsonInt 0)
+										-- ])
+									])
+								])
+							])
+						else 
+							None ()
+					else
+						None ()
+				else 
+					None ()
+			else
+				eprintln "Error parsing file";
+				None ()
 
 end

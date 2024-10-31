@@ -31,12 +31,36 @@ lang LSPHover = LSPRoot
 			let strippedUri = stripUriProtocol uri in
 			let content = readFile strippedUri in
 
-			match context.compileFunc strippedUri content with Right mexprAst then
+			match context.compileFunc strippedUri content with Right (expr, implementations) then
 				let debugText = join [
 					"Uri: ", uri, ", Line: ", int2string line, ", Character: ", int2string character, "\n\n"
 				] in
 
-				let result = match getChildExpr mexprAst line character with Some expr then
+				let hoverInformation = (
+					strJoin ", " (map 
+						(lam x.
+							let info = getFileInfo x.info in
+							join [
+								"<",
+								x.content,
+								" @ ",
+								int2string (subi info.lineStart 1),
+								":",
+								int2string info.colStart,
+								"-",
+								int2string (subi info.lineEnd 1),
+								":",
+								int2string info.colEnd,
+								">"
+							]
+						) implementations.hover
+					)
+				) in
+
+				-- eprintln hoverInformation;
+				-- None ()
+
+				let result = match getChildExpr expr line character with Some expr then
 					use MExprPrettyPrint in
 					let info = getFileInfo (infoTm expr) in
 					jsonKeyObject [

@@ -1,5 +1,6 @@
 include "mexpr/info.mc"
 include "mexpr/mexpr.mc"
+include "mexpr/symbolize.mc"
 include "mexpr/pprint.mc"
 
 include "name.mc"
@@ -203,35 +204,35 @@ let emptyEnv = mapEmpty cmpString in
 let example = parseCalcExn "example" "let a = 2.0 + 4.0; let b = 2.0 + 4.0; let a = a + b; let result = (a + 1.0) + b;" in
 -- dprint example;
 let context = {} in
-let lsp = stmtToLSP context (fileToStatements example) in
+-- let lsp = stmtToLSP context (fileToStatements example) in
 
-let implementations = foldl (
-  lam acc. lam x.
-    let rest = foldl (
-      lam acc. lam x.
-        join [acc, [x]]
-    ) [] x.hover in
-    join [acc, rest]
-) [] lsp in
+-- let implementations = foldl (
+--   lam acc. lam x.
+--     let rest = foldl (
+--       lam acc. lam x.
+--         join [acc, [x]]
+--     ) [] x.hover in
+--     join [acc, rest]
+-- ) [] lsp in
 
-eprintln (
-  strJoin ", " (map (lam x.
-    let info = getFileInfo x.info in
-    join [
-      "<",
-      x.content,
-      " @ ",
-      int2string info.colStart,
-      ":",
-      int2string info.lineStart,
-      "-",
-      int2string info.colEnd,
-      ":",
-      int2string info.lineEnd,
-      ">"
-    ]) implementations
-  )
-);
+-- eprintln (
+--   strJoin ", " (map (lam x.
+--     let info = getFileInfo x.info in
+--     join [
+--       "<",
+--       x.content,
+--       " @ ",
+--       int2string info.colStart,
+--       ":",
+--       int2string info.lineStart,
+--       "-",
+--       int2string info.colEnd,
+--       ":",
+--       int2string info.lineEnd,
+--       ">"
+--     ]) implementations
+--   )
+-- );
 
 -- eprintln implementations;
 
@@ -269,10 +270,14 @@ let definitionTree = buildDefinitionTree mexprAst in
     else eprintln "Not found"
 );
 
+eprintln "Symbolized:";
+let symbolized = use MExpr in symbolize mexprAst in
+eprintln (use MExprPrettyPrint in expr2str symbolized);
+
+eprintln "Evaluated:";
 let evaluated = evalExpr mexprAst in
 use MExprPrettyPrint in
-eprintln (expr2str mexprAst);
--- eprintln (expr2str evaluated);
+eprintln (expr2str evaluated);
 -- dprint evaluated;
 ()
 

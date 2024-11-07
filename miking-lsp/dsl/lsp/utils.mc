@@ -61,17 +61,31 @@ let stripUriProtocol = lam uri. match uri
 let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
 	and (geqi element target.0) (leqi element target.1)
 
+let infoCollision: Info -> Int -> Int -> Bool = lam info1. lam line. lam character.
+  match info1 with Info r1 then
+    and (collision (r1.row1, r1.row2) line) (collision (r1.col1, r1.col2) character)
+  else
+    false
+
+-- Try to do it binary search, but it's not working
 recursive let getChildExpr: use MExprAst in Expr -> Int -> Int -> Option Expr =
 	lam expr. lam line. lam character.
+    eprintln (join ["Looking for line: ", int2string line, ", character: ", int2string character, "\n"]);
+    eprintln (join ["Starting at:\n--------\n", use MExprPrettyPrint in expr2str expr, "\n-------\n"]);
+
 		use MExprAst in
 		sfold_Expr_Expr (lam acc. lam e.
 			let info = getFileInfo (infoTm e) in
+      -- eprintln (join ["Looking at: line:", int2string info.lineStart, ", character:", int2string info.colStart, " to line:", int2string info.lineEnd, ", character:", int2string info.colEnd ,"\n--------\n", use MExprPrettyPrint in expr2str e, "\n-------\n"]);
 			if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
 				match getChildExpr e line character with Some eChild then
+          -- eprintln (join ["Found:\n---------\n", use MExprPrettyPrint in expr2str eChild, "\n-------\n"]);
 					Some eChild
 				else 
+          -- eprintln "No child found\n";
 					Some e
 			) else
+        -- eprintln "No collision\n";
 				acc
 		) (Some expr) expr
 end

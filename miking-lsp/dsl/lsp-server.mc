@@ -32,10 +32,11 @@ recursive let readJsonRPC = lam compileFunc.
   switch readLine stdin  
     case None _ then {}
     case Some header then
-      switch readBytesBuffered stdin (addi (getContentLength header) 1) -- We add 1 to the content length to account for the newline characters
+      switch readBytesBuffered stdin (addi (getContentLength header) 2) -- We add 2 to the content length to account for the newline characters
         case None _ then {}
         case Some body then
-          let json = jsonParseExn body in
+          let asciiBody = map int2char body in
+          let json = jsonParseExn asciiBody in
           handleRequest compileFunc json;
           readJsonRPC compileFunc
       end

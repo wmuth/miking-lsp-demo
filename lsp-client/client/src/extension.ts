@@ -15,8 +15,8 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-  // const rpcScriptModule = context.asAbsolutePath(path.join("..", "rpclsp.sh"));
-  const rpcScriptModule = context.asAbsolutePath(path.join("..", "/miking-lsp/dsl/lsp-server"));
+  const rpcScriptModule = context.asAbsolutePath(path.join("..", "rpclsp.sh"));
+  // const rpcScriptModule = context.asAbsolutePath(path.join("..", "/miking-lsp/dsl/lsp-server"));
 
   const serverOptions: ServerOptions = {
     command: rpcScriptModule,

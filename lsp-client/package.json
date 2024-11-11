@@ -25,10 +25,12 @@
       {
         "id": "mikingdsl",
         "aliases": [
-          "mdsl"
+          "mdsl",
+          "rpl"
         ],
         "extensions": [
-          ".mdsl"
+          ".mdsl",
+          ".rpl"
         ]
       }
     ],

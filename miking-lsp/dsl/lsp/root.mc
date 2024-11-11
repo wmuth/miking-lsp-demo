@@ -7,12 +7,27 @@ include "../json-rpc.mc"
 
 type CompileFunc = use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations)
 
+type LSPEnvironment = {
+	findVariable: String -> Int -> Int -> Option ((Info, Name, use MExprAst in Type)),
+	findDefinition: Name -> Option (Info)
+}
+
 type LSPExecutionContext = {
-	compileFunc: CompileFunc
+	compileFunc: CompileFunc,
+	environment: LSPEnvironment
+}
+
+type LSPResult = {
+	response: Option JsonValue,
+	environment: LSPEnvironment
 }
 
 lang LSPRoot
 	syn Params =
+
+	-- Translate RPC message to LSP Params object, to be used in `execute`
 	sem getParams: RPCRequest -> String -> Params
-	sem execute: LSPExecutionContext -> Params -> Option JsonValue -- todo: return abstracted LSP response
+
+	 -- todo: return abstracted LSP response
+	sem execute: LSPExecutionContext -> Params -> LSPResult
 end

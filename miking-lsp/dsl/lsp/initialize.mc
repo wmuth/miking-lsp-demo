@@ -15,32 +15,38 @@ lang LSPInitialize = LSPRoot
 		Initialize {}
 
 	sem execute context =
-	| Initialized {} -> None ()
-	| Initialize {} -> Some (
-		jsonKeyObject [
-			("jsonrpc", JsonString "2.0"),
-			("id", JsonInt 0),
-			("result", jsonKeyObject [
-				("capabilities", jsonKeyObject [
-					("diagnosticProvider", jsonKeyObject [
-						("interFileDependencies", JsonBool false),
-						("workspaceDiagnostics", JsonBool false)
-					]),
-					("hoverProvider", JsonBool true),
-					("textDocumentSync", JsonInt 1),
-					("definitionProvider", JsonBool true),
-					("typeDefinitionProvider", JsonBool true),
-					("completionProvider", jsonKeyObject [
-						("triggerCharacters", JsonArray [
-							JsonString "."
+	| Initialized {} -> {
+		environment = context.environment,
+		response = None ()
+	}
+	| Initialize {} -> {
+		environment = context.environment,
+		response = Some (
+			jsonKeyObject [
+				("jsonrpc", JsonString "2.0"),
+				("id", JsonInt 0),
+				("result", jsonKeyObject [
+					("capabilities", jsonKeyObject [
+						("diagnosticProvider", jsonKeyObject [
+							("interFileDependencies", JsonBool false),
+							("workspaceDiagnostics", JsonBool false)
+						]),
+						("hoverProvider", JsonBool true),
+						("textDocumentSync", JsonInt 1),
+						("definitionProvider", JsonBool true),
+						("typeDefinitionProvider", JsonBool true),
+						("completionProvider", jsonKeyObject [
+							("triggerCharacters", JsonArray [
+								JsonString "."
+							])
 						])
+					]),
+					("serverInfo", jsonKeyObject [
+						("name", JsonString "miking-lsp-server"),
+						("version", JsonString "0.1.0")
 					])
-				]),
-				("serverInfo", jsonKeyObject [
-					("name", JsonString "miking-lsp-server"),
-					("version", JsonString "0.1.0")
 				])
-			])
-		]
-	)
+			]
+		)
+	}
 end

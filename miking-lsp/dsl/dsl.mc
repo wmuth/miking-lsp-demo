@@ -2,6 +2,7 @@ include "mexpr/info.mc"
 include "mexpr/mexpr.mc"
 include "mexpr/symbolize.mc"
 include "mexpr/pprint.mc"
+include "ocaml/pprint.mc"
 
 include "name.mc"
 include "common.mc"
@@ -125,7 +126,7 @@ lang VariableCompile = CalcCompileBase + VariableDSLExprAst
   sem compileExprToMexpr =
   | VariableDSLExpr x -> TmVar {
     ident = nameNoSym x.ident.v,
-    ty = _tyuk x.info,
+    ty = _tyfloat x.info,
     info = x.info,
     frozen = false
   }

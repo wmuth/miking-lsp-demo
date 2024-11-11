@@ -3,24 +3,39 @@ include "json.mc"
 include "./dsl.mc"
 include "./json-rpc.mc"
 include "./lsp/lsp.mc"
+include "./lsp/pprintjson.mc"
 
-let handleRequest = lam compileFunc. lam request.
+let handleRequest = lam compileFunc. lam environment. lam request.
   let request = getRPCRequest request in
   let method = request.method in
   eprintln method;
+  
   use LSP in
   let params = getParams request request.method in
   match params with UnknownMethod {} then
-    eprintln (join ["[Unknown method] ", method])
+    eprintln (join ["[Unknown method] ", method]);
+    environment
   else
     let executionContext = {
-      compileFunc = compileFunc
+      compileFunc = compileFunc,
+      environment = environment
     } in
-    let response = execute executionContext params in
-    match response with Some response then
-      rpcprint (json2string response)
-    else
-      eprintln ""
+    
+    let result = execute executionContext params in
+
+    (
+      match result.response with Some response then
+        eprintln "Responding to request\n";
+        eprintln (pprintjson2string response);
+        eprintln "";
+
+        rpcprint (json2string response)
+      else
+        eprintln ""
+    );
+
+    result.environment
+
 
 let getContentLength: String -> Int = lam header.
   match header with "Content-Length: " ++ len ++ "\n" then
@@ -28,17 +43,19 @@ let getContentLength: String -> Int = lam header.
   else
     error "Content-Length not found"
 
-recursive let readJsonRPC = lam compileFunc.
+recursive let readJsonRPC = lam compileFunc. lam environment.
   switch readLine stdin  
     case None _ then {}
     case Some header then
-      switch readBytesBuffered stdin (addi (getContentLength header) 2) -- We add 2 to the content length to account for the newline characters
+      -- We add 2 to the content length to account for the newline characters
+      let contentHeaderLength = addi (getContentLength header) 2 in
+      switch readBytesBuffered stdin contentHeaderLength
         case None _ then {}
         case Some body then
           let asciiBody = map int2char body in
           let json = jsonParseExn asciiBody in
-          handleRequest compileFunc json;
-          readJsonRPC compileFunc
+          let environment = handleRequest compileFunc environment json in
+          readJsonRPC compileFunc environment
       end
   end
 end
@@ -76,6 +93,11 @@ in
 --     end
 -- in
 
+let environment: LSPEnvironment = {
+  findVariable = lam. lam. lam. None (),
+  findDefinition = lam. None ()
+} in
+
 eprintln "Miking LSP started";
-readJsonRPC compileFunc;
+readJsonRPC compileFunc environment;
 eprintln "Miking LSP ended"

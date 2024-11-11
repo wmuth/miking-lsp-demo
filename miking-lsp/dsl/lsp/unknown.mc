@@ -9,5 +9,8 @@ lang LSPUnknownMethod = LSPRoot
 		UnknownMethod {}
 
 	sem execute context =
-	| UnknownMethod {} -> None ()
+	| UnknownMethod {} -> {
+		response = None (),
+		environment = context.environment
+	}
 end

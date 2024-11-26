@@ -4,6 +4,10 @@ include "../utils.mc"
 include "./utils.mc"
 
 include "./root.mc"
+include "coreppl::parser.mc"
+
+lang SuperPrettyPrint = MExprPrettyPrint + DPPLParser
+end
 
 lang LSPHover = LSPRoot
 	syn Params =
@@ -34,7 +38,7 @@ lang LSPHover = LSPRoot
 			let line = addi line 1 in
 
 			let debugText = join [
-				-- "Uri: ", uri, ", ",
+				"Uri: ", uri, ", ",
 				"Line: ", int2string line, ", Character: ", int2string character, "\n\n"
 			] in
 
@@ -67,18 +71,12 @@ lang LSPHover = LSPRoot
 			let response = match variable with Some ((info, variable, ty)) then
 				let info = getFileInfo info in
 
-				eprintln "Variable found";
-				eprintln (join[
-					"Variable: ", nameGetStr variable, ", ",
-					", Type: ", use MExprPrettyPrint in type2str ty
-				]);
-
 				jsonKeyObject [
 					("contents", JsonString (join [
 						debugText,
 						"\n\n",
 						join [
-							"Variable: ", nameGetStr variable, " (", use MExprPrettyPrint in type2str ty, ")"
+							"Variable: ", nameGetStr variable, " (", use SuperPrettyPrint in type2str ty, ")"
 						]
 					])),
 					("range", jsonKeyObject [

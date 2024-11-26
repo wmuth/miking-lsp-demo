@@ -61,9 +61,19 @@ let stripUriProtocol = lam uri. match uri
 let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
 	and (geqi element target.0) (leqi element target.1)
 
-let infoCollision: Info -> Int -> Int -> Bool = lam info1. lam line. lam character.
-  match info1 with Info r1 then
-    and (collision (r1.row1, r1.row2) line) (collision (r1.col1, r1.col2) character)
+let infoCollision: Info -> String -> Int -> Int -> Bool = lam info. lam filename. lam line. lam character.
+  match info with Info r then
+    (
+      and
+      (
+        eqString r.filename filename
+      )
+      (
+        and
+        (collision (r.row1, r.row2) line)
+        (collision (r.col1, r.col2) character)
+      )
+    )
   else
     false
 

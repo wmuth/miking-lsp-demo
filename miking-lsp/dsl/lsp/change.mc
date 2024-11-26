@@ -149,11 +149,11 @@ lang LSPChange = LSPRoot
 		-- in
 		-- iter f seq;
 
-		recursive let findVariables = lam acc. lam variableLookupSeq. lam file. lam line. lam character.
+		recursive let findVariables = lam acc. lam variableLookupSeq. lam filename. lam line. lam character.
 			match variableLookupSeq with [x] ++ seq then
 				let info = x.0 in
 				let variable = x.1 in
-				let collision = infoCollision info line character in
+				let collision = infoCollision info filename line character in
 				let acc = if collision then
 					let name = variable.0 in
 					let ty = variable.1 in
@@ -162,7 +162,7 @@ lang LSPChange = LSPRoot
 					acc
 				in
 
-				findVariables acc seq file line character
+				findVariables acc seq filename line character
 			else
 				acc
 		in

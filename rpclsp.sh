@@ -19,7 +19,7 @@ DIR=$(dirname "$0")
 # 		.$DIR/miking-lsp/dsl/lsp-server \
 # 		# | .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout --quit-after-one-request
 
-		$DIR/miking-lsp/dsl/lsp-server
+		# $DIR/miking-lsp/dsl/lsp-server
 # 	done	
 # else
 # 	# .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdin \
@@ -27,4 +27,4 @@ DIR=$(dirname "$0")
 # 	# | .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout
 # fi
 
-# docker run --rm -v /Users/didrik/projects/miking/:/mnt -i miking /app/ProbTime/lsp-server
+docker run --rm -v /Users/didrik/projects/miking/:/mnt -i miking /app/ProbTime/lsp-server

@@ -5,7 +5,7 @@ include "ext/file-ext.mc"
 -- otherwise, None is returned
 recursive
   let readBytesBuffered : ReadChannel -> Int -> Option [Int] =
-    lam rc. lam len. switch readBytes rc len
+    lam rc. lam len. switch fileReadBytes rc len
       case Some s then (
         let actual_length = length s in
         if eqi actual_length len then Some s
@@ -18,19 +18,19 @@ recursive
   end
 
 let eprint: String -> () = lam s.
-  writeString stderr s;
+  fileWriteString fileStderr s;
   flushStderr()
   
 let eprintln: String -> () = lam s.
-  writeString stderr (join [s, "\n"]);
+  fileWriteString fileStderr (join [s, "\n"]);
   flushStderr()
 
 let print: String -> () = lam s.
-  writeString stdout s;
+  fileWriteString fileStdout s;
   flushStdout()
 
 let println: String -> () = lam s.
-  writeString stdout (join [s, "\n"]);
+  fileWriteString fileStdout (join [s, "\n"]);
   flushStdout()
 
 let rpcprint = lam s.

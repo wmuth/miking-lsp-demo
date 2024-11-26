@@ -44,12 +44,12 @@ let getContentLength: String -> Int = lam header.
     error "Content-Length not found"
 
 recursive let readJsonRPC = lam compileFunc. lam environment.
-  switch readLine stdin  
+  switch fileReadLine fileStdin
     case None _ then {}
     case Some header then
       -- We add 2 to the content length to account for the newline characters
       let contentHeaderLength = addi (getContentLength header) 2 in
-      switch readBytesBuffered stdin contentHeaderLength
+      switch readBytesBuffered fileStdin contentHeaderLength
         case None _ then {}
         case Some body then
           let asciiBody = map int2char body in

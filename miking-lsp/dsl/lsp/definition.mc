@@ -21,7 +21,7 @@ lang LSPGotoDefinition = LSPRoot
 			textDocument = getTextDocumentPositionParams request.params
 		}
 
-	sem getDefinition context =
+	sem getDefinition environment =
 	| (_info, variable_name, _ty) ->
 		-- (
 		-- 	match variable with Some (info, variable) then
@@ -30,7 +30,7 @@ lang LSPGotoDefinition = LSPRoot
 		-- 		eprintln "No variable found"; ()
 		-- );
 
-		context.environment.findDefinition variable_name
+		environment.findDefinition variable_name
 
 	sem getLSPResponse context id =
 	| definition ->
@@ -88,8 +88,10 @@ lang LSPGotoDefinition = LSPRoot
 
 			-- eprintln (join ["Finding definition for: ", strippedUri, ":", int2string line, ":", int2string character]);
 
-			let variable = context.environment.findVariable uri line character in
-			let definition = optionBind variable (getDefinition context) in
+			let environment = mapLookup uri context.environment.files in
+			let environment = match environment with Some environment then environment else error "Environment not found" in
+			let variable = environment.findVariable uri line character in
+			let definition = optionBind variable (getDefinition environment) in
 			let response = getLSPResponse context id definition in
 			
 			{

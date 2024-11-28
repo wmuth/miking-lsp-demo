@@ -169,6 +169,14 @@ lang LSPChange = LSPRoot
 
 		let findVariable: String -> Int -> Int -> Option ((Info, Name, Type)) = lam filename. lam line. lam character.
 			let foundVariables = findVariables [] (mapToSeq variableLookup) filename line character in
+
+			let seq = foundVariables in
+			eprintln (join ["Found variables (", int2string (length seq), "):"]);
+			let f = lam x.
+				eprintln (join [info2str x.0, ": ", nameGetStr x.1]); ()
+			in
+			iter f seq;
+
 			match foundVariables with [x] ++ seq then
 				let f = lam var1. lam var2.
 					let info1 = var1.0 in
@@ -193,16 +201,29 @@ lang LSPChange = LSPRoot
 
 		let findDefinition = _findDefinition (mapToSeq definitionLookup) in
 
+		-- {
+		-- 	context.environment with
+
+			-- -- Definitions
+			-- -- definitionLookup = definitionLookup,
+			-- findDefinition = findDefinition,
+
+			-- -- Variables
+			-- -- variableLookup = variableLookup,
+			-- findVariable = findVariable
+		-- }
+
 		{
 			context.environment with
+			files = mapInsert uri {
+				-- Definitions
+				-- definitionLookup = definitionLookup,
+				findDefinition = findDefinition,
 
-			-- Definitions
-			-- definitionLookup = definitionLookup,
-			findDefinition = findDefinition,
-
-			-- Variables
-			-- variableLookup = variableLookup,
-			findVariable = findVariable
+				-- Variables
+				-- variableLookup = variableLookup,
+				findVariable = findVariable
+			} context.environment.files
 		}
 
 	sem execute context =

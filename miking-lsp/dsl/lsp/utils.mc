@@ -66,7 +66,7 @@ let infoCollision: Info -> String -> Int -> Int -> Bool = lam info. lam filename
     (
       and
       (
-        eqString r.filename filename
+        eqString (stripUriProtocol r.filename) (stripUriProtocol filename)
       )
       (
         and

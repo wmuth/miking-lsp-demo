@@ -7,9 +7,13 @@ include "../json-rpc.mc"
 
 type CompileFunc = use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations)
 
-type LSPEnvironment = {
+type LSPFileEnvironment = {
 	findVariable: String -> Int -> Int -> Option ((Info, Name, use MExprAst in Type)),
 	findDefinition: Name -> Option (Info)
+}
+
+type LSPEnvironment = {
+	files: Map String LSPFileEnvironment
 }
 
 type LSPExecutionContext = {

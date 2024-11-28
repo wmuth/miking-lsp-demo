@@ -27,4 +27,8 @@ DIR=$(dirname "$0")
 # 	# | .$DIR/rpc-wrapper/target/debug/rpc-wrapper --stdout
 # fi
 
-docker run --rm -v /Users/didrik/projects/miking/:/mnt -i miking /app/ProbTime/lsp-server
+# docker run --rm -v /Users/didrik/projects/miking/:/mnt -i miking /app/ProbTime/lsp-server
+
+# docker run --rm -v /Users/didrik/projects/miking/:/mnt -i miking /app/lsp-demo/mcore-lsp/lsp-server
+
+$DIR/mcore-lsp/lsp-server

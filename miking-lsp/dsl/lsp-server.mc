@@ -94,8 +94,7 @@ in
 -- in
 
 let environment: LSPEnvironment = {
-  findVariable = lam. lam. lam. None (),
-  findDefinition = lam. None ()
+  files = mapEmpty cmpString
 } in
 
 eprintln "Miking LSP started";

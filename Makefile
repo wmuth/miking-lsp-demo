@@ -1,7 +1,7 @@
 
 .PHONY: all clean playground dsl
 
-all: miking-lsp/dsl/ast-gen.mc miking-lsp/dsl/lsp-server lsp-client/client/out/extension.js
+all: miking-lsp/dsl/ast-gen.mc miking-lsp/dsl/lsp-server lsp-client/client/out/extension.js mcore-lsp/lsp-server
 
 clean:
 	rm -f miking-lsp/dsl/lsp-server
@@ -17,6 +17,9 @@ miking-lsp/dsl/ast-gen.mc: miking-lsp/dsl/ast.syn
 
 miking-lsp/dsl/lsp-server: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc
 	mi compile miking-lsp/dsl/lsp-server.mc --output miking-lsp/dsl/lsp-server
+
+mcore-lsp/lsp-server: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc mcore-lsp/*.mc
+	mi compile mcore-lsp/lsp.mc --output mcore-lsp/lsp-server
 
 miking-lsp/dsl/dsl: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc
 	mi compile miking-lsp/dsl/dsl.mc --output miking-lsp/dsl/dsl

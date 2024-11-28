@@ -4,9 +4,9 @@ include "../utils.mc"
 include "./utils.mc"
 
 include "./root.mc"
-include "coreppl::parser.mc"
+-- include "coreppl::parser.mc"
 
-lang SuperPrettyPrint = MExprPrettyPrint + DPPLParser
+lang SuperPrettyPrint = MExprPrettyPrint --+ DPPLParser
 end
 
 lang LSPHover = LSPRoot
@@ -66,7 +66,9 @@ lang LSPHover = LSPRoot
 			-- eprintln hoverInformation;
 			-- None ()
 
-			let variable = context.environment.findVariable uri line character in
+			let environment = mapLookup uri context.environment.files in
+			let environment = match environment with Some environment then environment else error "Environment not found" in
+			let variable = environment.findVariable uri line character in
 
 			let response = match variable with Some ((info, variable, ty)) then
 				let info = getFileInfo info in

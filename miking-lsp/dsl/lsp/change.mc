@@ -92,10 +92,34 @@ lang LSPChange = LSPRoot
 		recursive let createDefinitionLookup: Expr -> Map Name Info =
 			lam expr.
 				let m = mapEmpty nameCmp in
-				let m = match expr with
-					TmLet { ident=ident, info=info } then mapInsert ident info m
-					else m
-				in
+				let m = switch expr
+					case TmLet { ident=ident, info=info } then
+						mapInsert ident info m
+					case TmLam { ty = ty, ident = ident, body = body, info = info, tyParam = tyParam, tyAnnot = tyAnnot } then (
+						match info with Info r then
+							-- Heuristic: The info field for a lambda includes the entire lambda expression
+							-- To use in LSP, we need to extract the lambda name and position.
+							-- We assume that the lambda name is the first word after "lam ".
+							let info = Info {
+								r with
+								row2 = r.row1,
+								col1 = addi r.col1 (length "lam "),
+								col2 = addi r.col1 (length (join ["lam ", nameGetStr ident]))
+							} in
+							mapInsert ident info m
+						else
+							m
+					)
+					case TmRecLets { bindings = bindings } then (
+						let f = lam acc. lam x.
+							let ident = x.ident in
+							let info = x.info in
+							mapInsert ident info acc
+						in
+						foldl f m bindings
+					)
+					case _ then m
+				end in
 
 				sfold_Expr_Expr (lam acc. lam e.
 					let children = createDefinitionLookup e in
@@ -188,6 +212,20 @@ lang LSPChange = LSPRoot
 				None ()
 		in
 
+		-- let f = lam x.
+		-- 	(
+		-- 		-- match x.1 with Info r then (
+		-- 		-- 	if eqString (stripUriProtocol r.filename) (stripUriProtocol uri) then
+		-- 				eprintln (join [nameGetStr x.0, ": ", info2str x.1]); ()
+		-- 		-- 	else ()
+		-- 		-- )
+		-- 		-- else ()
+		-- 	);
+		-- 	()
+		-- in
+		-- eprintln "Definition Lookup:";
+		-- iter f (mapToSeq definitionLookup);
+
 		recursive let _findDefinition = lam definitionLookupSeq. lam name.
 			match definitionLookupSeq with [x] ++ seq then
 				let info = x.1 in
@@ -200,18 +238,6 @@ lang LSPChange = LSPRoot
 		in
 
 		let findDefinition = _findDefinition (mapToSeq definitionLookup) in
-
-		-- {
-		-- 	context.environment with
-
-			-- -- Definitions
-			-- -- definitionLookup = definitionLookup,
-			-- findDefinition = findDefinition,
-
-			-- -- Variables
-			-- -- variableLookup = variableLookup,
-			-- findVariable = findVariable
-		-- }
 
 		{
 			context.environment with

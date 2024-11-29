@@ -1,8 +1,10 @@
-mexpr
-
 let myLam = lam abc.
   dprint abc;
   ()
-in
+
+mexpr
+dprint (addi myLam);
+
+
 
 ()

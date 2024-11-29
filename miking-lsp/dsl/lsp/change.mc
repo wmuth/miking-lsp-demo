@@ -1,4 +1,7 @@
 include "json.mc"
+include "mexpr/type-check.mc"
+include "mexpr/mexpr.mc"
+include "mexpr/keyword-maker.mc"
 
 include "../utils.mc"
 include "./utils.mc"
@@ -82,13 +85,26 @@ lang LSPChange = LSPRoot
 		use MExprAst in
 		use MExpr in
 
+		eprintln "Getting environment";
+
 		-- let originalUri = uri in
 		-- let strippedUri = "/mnt/ProbTime/examples/coin/coin.rpl" in
 		let strippedUri = stripUriProtocol uri in
 
+		eprintln "Make keywords";
+		let expr = use KeywordMaker in makeKeywords expr in
+
+		eprintln "Symbolizing";
 		let expr = symbolizeAllowFree expr in
+
+		-- (Note Didrik): Type checking takes several minutes to run. Disabling for now.
+		-- eprintln "Type checking";
+		-- let expr = use TypeCheck in removeMetaVarExpr (typeCheckExpr typcheckEnvDefault expr) in
+		-- let expr = use TypeCheck in typeCheckExpr typcheckEnvDefault expr in
+
 		-- eprintln (join ["Symbolized: ", use MExprPrettyPrint in expr2str expr, "\n"]);
 
+		eprintln "Creating definition lookup";
 		recursive let createDefinitionLookup: Expr -> Map Name Info =
 			lam expr.
 				let m = mapEmpty nameCmp in

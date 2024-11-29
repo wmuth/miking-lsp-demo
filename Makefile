@@ -5,6 +5,7 @@ all: miking-lsp/dsl/ast-gen.mc miking-lsp/dsl/lsp-server lsp-client/client/out/e
 
 clean:
 	rm -f miking-lsp/dsl/lsp-server
+	rm -f mcore-lsp/lsp-server
 	rm -f miking-lsp/dsl/ast-gen.mc
 	cd lsp-client && npm run clean
 

@@ -81,7 +81,7 @@ include "../../miking/src/main/eval.mc"
   
 --       Right (ast, implementations)
 
-let compileFunc = lam debug. lam uri. lam content.
+let compileFunc = lam debug. lam uri.
   -- : use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations)
   use ExtMCore in
 
@@ -115,6 +115,5 @@ mexpr
 -- Fatal error: exception Sys_error("/Users/didrik/projects/miking/lsp-demo/miking-lsp/tesat.mc: No such file or directory")
 
 let uri = get argv 1 in
-let content = "" in
-compileFunc false uri content;
+compileFunc false uri;
 ()

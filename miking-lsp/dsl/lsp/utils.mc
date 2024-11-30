@@ -118,3 +118,15 @@ recursive let getChildExpr: use MExprAst in Expr -> Int -> Int -> Option Expr =
 				acc
 		) (Some expr) expr
 end
+
+let temp_file_extension = "~lsp"
+
+let stripTempFileExtension = lam filename.
+	let parts = strSplit temp_file_extension filename in
+	head parts
+
+let stripTempFileExtensionFromInfo = lam info.
+  match info with Info r then
+    Info {r with filename = stripTempFileExtension r.filename}
+  else
+    info

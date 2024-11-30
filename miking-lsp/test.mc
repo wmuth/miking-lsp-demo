@@ -3,8 +3,6 @@ let myLam = lam abc.
   ()
 
 mexpr
-dprint (addi myLam);
-
-
+dprint (addi 2 myLam);
 
 ()

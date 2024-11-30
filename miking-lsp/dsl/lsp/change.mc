@@ -110,6 +110,7 @@ lang LSPChange = LSPRoot
 				let m = mapEmpty nameCmp in
 				let m = switch expr
 					case TmLet { ident=ident, info=info } then
+						let info = stripTempFileExtensionFromInfo info in
 						mapInsert ident info m
 					case TmLam { ty = ty, ident = ident, body = body, info = info, tyParam = tyParam, tyAnnot = tyAnnot } then (
 						match info with Info r then
@@ -122,6 +123,7 @@ lang LSPChange = LSPRoot
 								col1 = addi r.col1 (length "lam "),
 								col2 = addi r.col1 (length (join ["lam ", nameGetStr ident]))
 							} in
+							let info = stripTempFileExtensionFromInfo info in
 							mapInsert ident info m
 						else
 							m
@@ -129,7 +131,7 @@ lang LSPChange = LSPRoot
 					case TmRecLets { bindings = bindings } then (
 						let f = lam acc. lam x.
 							let ident = x.ident in
-							let info = x.info in
+							let info = stripTempFileExtensionFromInfo x.info in
 							mapInsert ident info acc
 						in
 						foldl f m bindings
@@ -156,7 +158,7 @@ lang LSPChange = LSPRoot
 			let m = switch expr
 				case TmVar { ident=ident, ty=ty, info=info } then
 					match info with Info realInfo then
-						mapInsert info (ident, ty) m
+						mapInsert (stripTempFileExtensionFromInfo (Info realInfo)) (ident, ty) m
 					else
 						m
 				-- case expr & TmRecord { bindings=bindings, info=info } then

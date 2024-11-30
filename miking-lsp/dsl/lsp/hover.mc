@@ -67,6 +67,7 @@ lang LSPHover = LSPRoot
 			-- None ()
 
 			let environment = mapLookup uri context.environment.files in
+			-- Todo: remove error
 			let environment = match environment with Some environment then environment else error "Environment not found" in
 			let variable = environment.findVariable uri line character in
 

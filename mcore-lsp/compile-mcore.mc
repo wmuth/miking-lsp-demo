@@ -85,13 +85,11 @@ let compileFunc = lam debug. lam uri.
   -- : use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations)
   use ExtMCore in
 
-  (if debug then
-    eprintln (join ["Parsing Mcore program: ", uri]); ()
-  else ());
+  (if debug then eprintln (join ["Parsing Mcore program: ", uri]); () else ());
 
   let strippedUri = stripUriProtocol uri in
 
-  let ast = parseParseMCoreFile {
+  let expr = parseParseMCoreFile {
     keepUtests = false,
     keywords = [],
     pruneExternalUtests = true,
@@ -100,11 +98,24 @@ let compileFunc = lam debug. lam uri.
     eliminateDeadCode = false
   } strippedUri in
 
+  (if debug then eprintln "Make keywords"; () else ());
+  let expr = use KeywordMaker in makeKeywords expr in
+
+  (if debug then eprintln "Symbolizing"; () else ());
+  let expr = symbolizeAllowFree expr in
+  -- eprintln (join ["Symbolized: ", use MExprPrettyPrint in expr2str expr, "\n"]);
+
+  -- (Note Didrik): Type checking takes several minutes to run. Disabling for now.
+  (if debug then eprintln "Type checking"; () else ());
+  let expr = removeMetaVarExpr (typeCheckExpr typcheckEnvDefault expr) in
+  -- let expr = use TypeCheck in typeCheckExpr typcheckEnvDefault expr in
+  -- let expr = typeCheckExpr typcheckEnvDefault expr in
+
   let implementations: LSPImplementations = {
     hover=[]
   } in
 
-  Right (ast, implementations)
+  Right (expr, implementations)
 
 mexpr
 

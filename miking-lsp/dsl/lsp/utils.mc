@@ -1,4 +1,6 @@
 include "mexpr/info.mc"
+include "mexpr/ast.mc"
+include "json.mc"
 
 let temp_file_extension = "~lsp"
 
@@ -57,11 +59,12 @@ let getFileInfo: Info -> ProdPosition = lam fi.
     never
 
 let stripUriProtocol = lam uri. match uri
-	with "file://" ++ rest then rest
-	else uri
+  with "file://" ++ rest then rest
+  else uri
+
 
 let collision: (Int, Int) -> Int -> Bool = lam target. lam element.
-	and (geqi element target.0) (leqi element target.1)
+  and (geqi element target.0) (leqi element target.1)
 
 let infoCollision: Info -> String -> Int -> Int -> Bool = lam info. lam filename. lam line. lam character.
   match info with Info r then
@@ -98,32 +101,32 @@ let infoContainsInfo: Info -> Info -> Bool = lam info1. lam info2.
   else
     false
 
--- Try to do it binary search, but it's not working
-recursive let getChildExpr: use MExprAst in Expr -> Int -> Int -> Option Expr =
-	lam expr. lam line. lam character.
-    -- eprintln (join ["Looking for line: ", int2string line, ", character: ", int2string character, "\n"]);
-    -- eprintln (join ["Starting at:\n--------\n", use MExprPrettyPrint in expr2str expr, "\n-------\n"]);
+-- -- Try to do it binary search, but it's not working
+-- recursive let getChildExpr: use MExprAst in Expr -> Int -> Int -> Option Expr =
+-- 	lam expr. lam line. lam character.
+--     -- eprintln (join ["Looking for line: ", int2string line, ", character: ", int2string character, "\n"]);
+--     -- eprintln (join ["Starting at:\n--------\n", use MExprPrettyPrint in expr2str expr, "\n-------\n"]);
 
-		use MExprAst in
-		sfold_Expr_Expr (lam acc. lam e.
-			let info = getFileInfo (infoTm e) in
-      -- eprintln (join ["Looking at: line:", int2string info.lineStart, ", character:", int2string info.colStart, " to line:", int2string info.lineEnd, ", character:", int2string info.colEnd ,"\n--------\n", use MExprPrettyPrint in expr2str e, "\n-------\n"]);
-			if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
-				match getChildExpr e line character with Some eChild then
-          -- eprintln (join ["Found:\n---------\n", use MExprPrettyPrint in expr2str eChild, "\n-------\n"]);
-					Some eChild
-				else 
-          -- eprintln "No child found\n";
-					Some e
-			) else
-        -- eprintln "No collision\n";
-				acc
-		) (Some expr) expr
-end
+-- 		sfold_Expr_Expr (lam acc. lam e.
+-- 			let info = getFileInfo (infoTm e) in
+--       -- eprintln (join ["Looking at: line:", int2string info.lineStart, ", character:", int2string info.colStart, " to line:", int2string info.lineEnd, ", character:", int2string info.colEnd ,"\n--------\n", use MExprPrettyPrint in expr2str e, "\n-------\n"]);
+-- 			if and (collision (info.colStart, info.colEnd) character) (collision (info.lineStart, info.lineEnd) line) then (
+-- 				match getChildExpr e line character with Some eChild then
+--           -- eprintln (join ["Found:\n---------\n", use MExprPrettyPrint in expr2str eChild, "\n-------\n"]);
+-- 					Some eChild
+-- 				else 
+--           -- eprintln "No child found\n";
+-- 					Some e
+-- 			) else
+--         -- eprintln "No collision\n";
+-- 				acc
+-- 		) (Some expr) expr
+-- end
 
 let stripTempFileExtension = lam filename.
-	let parts = strSplit temp_file_extension filename in
-	head parts
+  let parts = strSplit temp_file_extension filename in
+  head parts
+
 
 let stripTempFileExtensionFromInfo = lam info.
   match info with Info r then

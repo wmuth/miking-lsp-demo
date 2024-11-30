@@ -13,11 +13,11 @@ let compileFunc = lam uri.
     uri
   ]) in
   let status = result.2 in
-  let err = result.1 in
+  let err = strTrim result.1 in
 
   switch (status, err)
     case (0, _) then compileFunc true uri
-    case (1, "ERROR <" ++ rest) then (
+    case (_, "ERROR <" ++ rest) then (
       let errorResult = parseMcoreError err in
       let info = stripTempFileExtensionFromInfo errorResult.info in
       let msg = errorResult.msg in

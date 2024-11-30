@@ -1,6 +1,6 @@
 let parseMcoreError = lam err.
 	-- ERROR </Users/didrik/projects/miking/lsp-demo/miking-lsp/test.mc 6:7-6:10>: Unknown variable 'abc'
-  
+
 	let parsePos = lam uri. lam pos.
 	  let parts = strSplit ":" pos in
 	  let row = string2int (head parts) in
@@ -20,10 +20,11 @@ let parseMcoreError = lam err.
 	in
   
 	match err with "ERROR <" ++ rest then
-	  let parts = strSplit ">: " rest in
+	  let parts = strSplit ">:" rest in
 	  let locationInfo = parseLocation (head parts) in
 	  let msg = join (tail parts) in
   
 	  {info = locationInfo, msg = msg}
   
 	else error "Invalid error format in `parseMcoreError`"
+  

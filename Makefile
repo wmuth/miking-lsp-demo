@@ -19,7 +19,10 @@ miking-lsp/dsl/ast-gen.mc: miking-lsp/dsl/ast.syn
 miking-lsp/dsl/lsp-server: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc
 	mi compile miking-lsp/dsl/lsp-server.mc --output miking-lsp/dsl/lsp-server
 
-mcore-lsp/lsp-server: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc mcore-lsp/*.mc
+mcore-lsp/compile-mcore: miking-lsp/dsl/**/*.mc mcore-lsp/*.mc
+	mi compile mcore-lsp/compile-mcore.mc --output mcore-lsp/compile-mcore
+
+mcore-lsp/lsp-server: mcore-lsp/compile-mcore miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc mcore-lsp/*.mc
 	mi compile mcore-lsp/lsp.mc --output mcore-lsp/lsp-server
 
 miking-lsp/dsl/dsl: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc

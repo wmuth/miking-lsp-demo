@@ -1,3 +1,5 @@
+include "json.mc"
+
 recursive let _pprintjson2string: Int -> JsonValue -> String = lam indent. lam value.
   let indAmount = 2 in
   let indStr = strJoin "" (make (muli indent indAmount) " ") in

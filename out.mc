@@ -7035,6 +7035,11 @@ let fileReadBytes: ReadChannel -> Int -> Option [Int] =
       None
           {}
 in
+external externalExecuteCommand! : [Char] -> ([Char], [Char], Int)
+in
+let executeCommand = lam path.
+    externalExecuteCommand path
+in
 external externalStdin! : ReadChannel
 in
 let fileStdin = externalStdin in
@@ -11002,6 +11007,7 @@ let jsonKeyObject: [([Char], JsonValue)] -> JsonValue =
     JsonObject
       (mapFromSeq cmpString content)
 in
+let temp_file_extension = "~lsp" in
 type TextDocumentPositionParams =
   {uri: [Char], line: Int, character: Int}
 in
@@ -11122,6 +11128,23 @@ let infoContainsInfo: Info -> Info -> Bool =
           false
       else
         false
+in
+let stripTempFileExtension =
+  lam filename.
+    let parts = strSplit temp_file_extension filename in
+    head parts
+in
+let stripTempFileExtensionFromInfo =
+  lam info.
+    match
+      info
+    with
+      Info r
+    then
+      Info
+        { r with filename = stripTempFileExtension r.filename }
+    else
+      info
 in
 type LSPHoverImplementation =
   {info: Info, content: [Char]}
@@ -13784,6 +13807,7 @@ recursive
                     with
                       LetAst_TmLet {info = info, ident = ident}
                     then
+                      let info = stripTempFileExtensionFromInfo info in
                       mapInsert ident info m
                     else match
                       #var"X"
@@ -13809,6 +13833,7 @@ recursive
                                         [ "lam ",
                                           nameGetStr ident ])) }
                         in
+                        let info = stripTempFileExtensionFromInfo info in
                         mapInsert ident info m
                       else
                         m
@@ -13821,7 +13846,7 @@ recursive
                         lam acc.
                           lam x.
                             let ident = x.ident in
-                            let info = x.info in
+                            let info = stripTempFileExtensionFromInfo x.info in
                             mapInsert ident info acc
                       in
                       foldl f m bindings
@@ -13857,7 +13882,11 @@ recursive
                       with
                         Info realInfo
                       then
-                        mapInsert info (ident, ty) m
+                        mapInsert
+                          (stripTempFileExtensionFromInfo (Info
+                                realInfo))
+                          (ident, ty)
+                          m
                       else
                         m
                     else match
@@ -15878,6 +15907,12 @@ let sysFileExists: [Char] -> Bool =
     else
       false
 in
+let sysDeleteFile =
+  lam file.
+    _commandList [ "rm",
+        "-f",
+        file ]
+in
 let sysDeleteDir =
   lam dir.
     _commandList [ "rm",
@@ -16525,7 +16560,18 @@ let fileExtMap =
                     tybool_,
                     tybool_ ] ],
           expr =
-            "(fun rc len -> try let buf = Bytes.create len in let actual_len = input rc buf 0 len in let reached_eof = actual_len < len in let had_error = false in let int_list = List.init actual_len (fun i -> int_of_char (Bytes.get buf i)) in (int_list, reached_eof, had_error) with | Sys_error err -> ([], false, true))",
+            "\n          (fun rc len ->\n            try\n              let buf = Bytes.create len in\n              let actual_len = input rc buf 0 len in\n              let reached_eof = actual_len < len in\n              let had_error = false in\n              let int_list = List.init actual_len (\n                fun i -> int_of_char (Bytes.get buf i)\n              ) in\n              (int_list, reached_eof, had_error)\n            with\n              | Sys_error err -> ([], false, true)\n          )\n        ",
+          libraries = "",
+          cLibraries = "" } ]),
+      ("externalExecuteCommand", [ { ty =
+            tyarrows_
+              [ otystring_,
+                otytuple_
+                  [ otystring_,
+                    otystring_,
+                    tyint_ ] ],
+          expr =
+            "\n        (\n          fun path ->\n            (* Run the command and get channels for stdout and stderr *)\n            let in_channel, out_channel, err_channel = Unix.open_process_full path (Unix.environment ()) in\n          \n            (* Read the entire stdout *)\n            let rec read_channel chan acc =\n              match input_line chan with\n              | line -> read_channel chan (acc ^ line ^ \"\n\")\n              | exception End_of_file -> acc\n            in\n            let stdout_output = read_channel in_channel \"\" in\n            let stderr_output = read_channel err_channel \"\" in\n          \n            (* Close the channels and get the exit status *)\n            let process_status = Unix.close_process_full (in_channel, out_channel, err_channel) in\n\n            let status = match process_status with\n              | Unix.WEXITED i -> i\n              | Unix.WSIGNALED i -> -i\n              | Unix.WSTOPPED i -> -i\n            in\n\n            (stdout_output, stderr_output, status)\n        )\n      ",
           libraries = "",
           cLibraries = "" } ]),
       ("externalReadString", [ { ty =
@@ -17776,10 +17822,19 @@ con PEvalLetInline: () -> PEvalLetInlineOrRemove in
 con PEvalLetRemove: () -> PEvalLetInlineOrRemove in
 con SpecializeAst_TmSpecialize: {e: Ast_Expr, info: Info} -> Ast_Expr in
 let compileFunc =
-  lam uri.
-    lam content.
-      (eprintln "Parsing Mcore program")
-      ; (eprintln uri)
+  lam debug.
+    lam uri.
+      (match
+           debug
+         with
+           true
+         then
+           (eprintln
+                (join [ "Parsing Mcore program: ",
+                     uri ]))
+           ; {}
+         else
+           {})
       ; let strippedUri = stripUriProtocol uri in
       let ast =
         parseParseMCoreFile
@@ -17794,6 +17849,94 @@ let compileFunc =
       let implementations: LSPImplementations = { hover = "" } in
       Right
         (ast, implementations)
+in
+let parseMcoreError =
+  lam err.
+    let parsePos =
+      lam uri.
+        lam pos.
+          let parts = strSplit ":" pos in
+          let row = string2int (head parts) in
+          let col = string2int (head (tail parts)) in
+          { filename = uri, col = col, row = row }
+    in
+    let parseLocation =
+      lam location.
+        let locationParts = strSplit " " location in
+        let uri = head locationParts in
+        let positions = strSplit "-" (join (tail locationParts)) in
+        let startPos = parsePos uri (head positions) in
+        let endPos = parsePos uri (head (tail positions)) in
+        makeInfo startPos endPos
+    in
+    match
+      err
+    with
+      "ERROR <" ++ rest
+    then
+      let parts = strSplit ">: " rest in
+      let locationInfo = parseLocation (head parts) in
+      let msg = join (tail parts) in
+      { info = locationInfo, msg = msg }
+    else
+      error "Invalid error format in `parseMcoreError`"
+in
+let compileFunc =
+  lam uri.
+    let result =
+      executeCommand
+        (join
+           [ "/Users/didrik/projects/miking/lsp-demo/mcore-lsp/compile-mcore ",
+             uri ])
+    in
+    let status = result.2 in
+    let err = result.1 in
+    match
+      eqi status 1
+    with
+      true
+    then
+      match
+        err
+      with
+        "ERROR <" ++ rest
+      then
+        let errorResult = parseMcoreError err in
+        let info = stripTempFileExtensionFromInfo errorResult.info in
+        let msg = errorResult.msg in
+        Left
+          [ (info, join [ "Compile error: ",
+                msg ]) ]
+      else
+        let info =
+          makeInfo
+            { filename = uri, col = 1, row = 1 }
+            { filename = uri, col = 100, row = 1 }
+        in
+        let info = stripTempFileExtensionFromInfo info in
+        Left
+          [ (info, join [ "Unknown compiler error ",
+                err ]) ]
+    else
+      compileFunc true uri
+in
+let compileFunc =
+  lam uri.
+    lam content.
+      let paths = strSplit "/" (stripUriProtocol uri) in
+      let directory = strJoin "/" (init paths) in
+      let file = last paths in
+      let tmpFilePath =
+        join
+          [ directory,
+            "/",
+            file,
+            temp_file_extension ]
+      in
+      (writeFile tmpFilePath content)
+      ; let result = compileFunc tmpFilePath in
+      (sysDeleteFile tmpFilePath)
+      ; result
 in
 let environment: LSPEnvironment = { files = mapEmpty cmpString }
 in

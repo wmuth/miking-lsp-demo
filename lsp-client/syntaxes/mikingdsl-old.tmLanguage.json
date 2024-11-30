@@ -1,0 +1,94 @@
+{
+	"scopeName": "source.mikingdsl",
+	"patterns": [
+		{
+			"name": "meta.function-call.mikingdsl",
+			"match": "(\\b[a-zA-Z_][a-zA-Z0-9_]*\\b)\\s*\\(",
+			"captures": {
+				"1": {
+					"name": "support.function.builtin.mikingdsl"
+				}
+			}
+		},
+		{
+			"name": "meta.function-definition.mikingdsl",
+			"match": "(fn)\\s*([a-zA-Z_][a-zA-Z0-9_]*)",
+			"captures": {
+				"1": {
+					"name": "keyword.control.mikingdsl"
+				},
+				"2": {
+					"name": "support.function.builtin.mikingdsl"
+				}
+			}
+		},
+		{
+			"name": "comment.block.mikingdsl",
+			"begin": "/\\*",
+			"end": "\\*/"
+		},
+		{
+			"name": "comment.line.mikingdsl",
+			"begin": "/\\*",
+			"end": "\\*/"
+		},
+		{
+			"name": "comment.line.double-slash.mikingdsl",
+			"match": "//.*$"
+		},
+		{
+			"name": "keyword.control.mikingdsl",
+			"match": "\\b(__builtin|pub|let|fn|if|else|for|while|return)\\b"
+		},
+		{
+			"name": "string.quoted.double.mikingdsl",
+			"begin": "\"",
+			"end": "\""
+		},
+		{
+			"name": "constant.numeric.mikingdsl",
+			"match": "\\b\\d+\\b"
+		},
+		{
+			"name": "variable.other.mikingdsl",
+			"match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+		},
+		{
+			"name": "punctuation.terminator.mikingdsl",
+			"match": ";"
+		},
+		{
+			"name": "punctuation.separator.mikingdsl",
+			"match": ","
+		},
+		{
+			"name": "punctuation.bracket.mikingdsl",
+			"match": "[\\[\\]\\(\\)\\{\\}]"
+		},
+		{
+			"name": "operator.arithmetic.mikingdsl",
+			"match": "[\\+\\-\\*\\/\\%]"
+		},
+		{
+			"name": "operator.comparison.mikingdsl",
+			"match": "[\\=\\!\\<\\>]"
+		},
+		{
+			"name": "operator.assignment.mikingdsl",
+			"match": "="
+		},
+		{
+			"name": "storage.type.mikingdsl",
+			"match": "\\b(int|float|double|char|void)\\b"
+		},
+		{
+			"name": "storage.class.mikingdsl",
+			"match": "\\b(struct|enum)\\b"
+		}
+	],
+	"repository": {},
+	"name": "Rost",
+	"fileTypes": [
+		".ro"
+	]
+}

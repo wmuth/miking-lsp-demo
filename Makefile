@@ -9,7 +9,7 @@ clean:
 	rm -f miking-lsp/dsl/ast-gen.mc
 	cd lsp-client && npm run clean
 
-lsp-client/client/out/extension.js: lsp-client/client/src/extension.ts
+lsp-client/client/out/extension.js: lsp-client/client/src/**/* lsp-client/client/syntaxes/**/* lsp-client/client/package.json
 	cd lsp-client && npm install && npm run compile
 
 # Generating the parser and AST from the '.syn' file

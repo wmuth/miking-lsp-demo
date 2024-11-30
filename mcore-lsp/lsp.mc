@@ -15,8 +15,9 @@ let compileFunc = lam uri.
   let status = result.2 in
   let err = result.1 in
 
-  if eqi status 1 then (
-    match err with "ERROR <" ++ rest then
+  switch (status, err)
+    case (0, _) then compileFunc true uri
+    case (1, "ERROR <" ++ rest) then (
       let errorResult = parseMcoreError err in
       let info = stripTempFileExtensionFromInfo errorResult.info in
       let msg = errorResult.msg in
@@ -24,15 +25,15 @@ let compileFunc = lam uri.
       Left [
         (info, join ["Compile error: ", msg])
       ]
-    else
-      let info = makeInfo {filename = uri, row = 1, col = 1} {filename = uri, row = 1, col = 100} in
+    )
+    case (_, _) then (
+      let info = makeInfo {filename = uri, row = 1, col = 0} {filename = uri, row = 1, col = 0} in
       let info = stripTempFileExtensionFromInfo info in
       Left [
         (info, join ["Unknown compiler error ", err])
       ]
-  ) else
-  
-  compileFunc true uri
+    )
+  end
 
 let compileFunc = lam uri. lam content.
   let paths = strSplit "/" (stripUriProtocol uri) in

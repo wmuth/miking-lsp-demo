@@ -68,48 +68,57 @@ lang LSPHover = LSPRoot
 
 			let environment = mapLookup uri context.environment.files in
 			-- Todo: remove error
-			let environment = match environment with Some environment then environment else error "Environment not found" in
-			let variable = environment.findVariable uri line character in
+			match environment with Some environment then
+				let variable = environment.findVariable uri line character in
 
-			let response = match variable with Some ((info, variable, ty)) then
-				let info = getFileInfo info in
+				let response = match variable with Some ((info, variable, ty)) then
+					let info = getFileInfo info in
 
-				jsonKeyObject [
-					("contents", JsonString (join [
-						debugText,
-						"\n\n",
-						join [
-							"Variable: ", nameGetStr variable, " (", use SuperPrettyPrint in type2str ty, ")"
-						]
-					])),
-					("range", jsonKeyObject [
-						("start", jsonKeyObject [
-							("line", JsonInt (subi info.lineStart 1)),
-							("character", JsonInt info.colStart)
-						]),
-						("end", jsonKeyObject [
-							("line", JsonInt (subi info.lineEnd 1)),
-							("character", JsonInt info.colEnd)
+					jsonKeyObject [
+						("contents", JsonString (join [
+							debugText,
+							"\n\n",
+							join [
+								"Variable: ", nameGetStr variable, " (", use SuperPrettyPrint in type2str ty, ")"
+							]
+						])),
+						("range", jsonKeyObject [
+							("start", jsonKeyObject [
+								("line", JsonInt (subi info.lineStart 1)),
+								("character", JsonInt info.colStart)
+							]),
+							("end", jsonKeyObject [
+								("line", JsonInt (subi info.lineEnd 1)),
+								("character", JsonInt info.colEnd)
+							])
 						])
-					])
-				]
-			else
-				eprintln "Variable not found";
-				jsonKeyObject [
-					("contents", JsonString (join [
-						debugText,
-						"[nothing found]"
-					]))
-				]
-			in
+					]
+				else
+					eprintln "Variable not found";
+					jsonKeyObject [
+						("contents", JsonString (join [
+							debugText,
+							"[nothing found]"
+						]))
+					]
+				in
 
-			{
-				environment = context.environment,
-				response = Some(jsonKeyObject [
-					("jsonrpc", JsonString "2.0"),
-					("id", JsonInt id),
-					("result", response)
-				])
-			}
+				{
+					environment = context.environment,
+					response = Some(jsonKeyObject [
+						("jsonrpc", JsonString "2.0"),
+						("id", JsonInt id),
+						("result", response)
+					])
+				}
+			else
+				{
+					environment = context.environment,
+					response = Some(jsonKeyObject [
+						("jsonrpc", JsonString "2.0"),
+						("id", JsonInt id),
+						("result", JsonNull ())
+					])
+				}
 
 end

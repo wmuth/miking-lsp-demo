@@ -280,7 +280,10 @@ lang LSPChange = LSPRoot
 				let response = getDiagnostics uri version errors in
 				{
 					response = Some(response),
-					environment = context.environment
+					environment = {
+						context.environment with
+						files = mapRemove uri context.environment.files
+					}
 				}
 			case Right file then
 				eprintln "[Compile Success]";

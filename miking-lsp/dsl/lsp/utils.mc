@@ -1,5 +1,7 @@
 include "mexpr/info.mc"
 
+let temp_file_extension = "~lsp"
+
 type TextDocumentPositionParams = {
   uri: String,
   line: Int,
@@ -118,8 +120,6 @@ recursive let getChildExpr: use MExprAst in Expr -> Int -> Int -> Option Expr =
 				acc
 		) (Some expr) expr
 end
-
-let temp_file_extension = "~lsp"
 
 let stripTempFileExtension = lam filename.
 	let parts = strSplit temp_file_extension filename in

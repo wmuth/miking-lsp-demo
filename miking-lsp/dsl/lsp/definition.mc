@@ -89,14 +89,19 @@ lang LSPGotoDefinition = LSPRoot
 			-- eprintln (join ["Finding definition for: ", strippedUri, ":", int2string line, ":", int2string character]);
 
 			let environment = mapLookup uri context.environment.files in
-			let environment = match environment with Some environment then environment else error "Environment not found" in
-			let variable = environment.findVariable uri line character in
-			let definition = optionBind variable (getDefinition environment) in
-			let response = getLSPResponse context id definition in
-			
-			{
-				response = response,
-				environment = context.environment
-			}
+			match environment with Some environment then
+				let variable = environment.findVariable uri line character in
+				let definition = optionBind variable (getDefinition environment) in
+				let response = getLSPResponse context id definition in
+				
+				{
+					response = response,
+					environment = context.environment
+				}
+			else
+				{
+					response = None (),
+					environment = context.environment
+				}
 
 end

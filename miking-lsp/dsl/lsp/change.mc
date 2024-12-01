@@ -93,16 +93,10 @@ recursive let createVariableLookup: use MExprAst in Expr -> Map Info (Name, Type
   let m = mapEmpty infoCmp in
 
   let m = switch expr
-    case TmVar { ident=ident, ty=ty, info=info } then
-      match info with Info realInfo then
-        mapInsert (stripTempFileExtensionFromInfo (Info realInfo)) (ident, ty) m
-      else
-        m
-    case TmConApp { ident=ident, ty=ty, info=info } then
-      match info with Info realInfo then
-        mapInsert (stripTempFileExtensionFromInfo (Info realInfo)) (ident, ty) m
-      else
-        m
+    case TmVar { ident=ident, ty=ty, info = Info r } then
+      mapInsert (stripTempFileExtensionFromInfo (Info r)) (ident, ty) m
+    case TmConApp { ident=ident, ty=ty, info = Info r } then
+      mapInsert (stripTempFileExtensionFromInfo (Info r)) (ident, ty) m
     -- case expr & TmRecord { bindings=bindings, info=info } then
     -- 	-- eprintln "Record";
     -- 	-- eprintln (expr2str expr);

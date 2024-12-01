@@ -5,7 +5,7 @@ include "./compile-mcore.mc"
 include "./parse-error.mc"
 
 type CompilationStatus
-con UnParsed: String -> CompilationStatus
+con Unparsed: String -> CompilationStatus
 con Parsed: String -> CompilationStatus
 con Keywords: String -> CompilationStatus
 con Symbolized: String -> CompilationStatus
@@ -14,7 +14,7 @@ con Compiled: String -> CompilationStatus
 
 let unwrapCompilationStatus: CompilationStatus -> String = lam status.
   switch status
-    case UnParsed v then v
+    case Unparsed v then v
     case Parsed v then v
     case Keywords v then v
     case Symbolized v then v
@@ -24,7 +24,7 @@ let unwrapCompilationStatus: CompilationStatus -> String = lam status.
 
 let pprintCompilationStatus: CompilationStatus -> String = lam status.
   switch status
-    case UnParsed err then "UnParsed"
+    case Unparsed err then "Unparsed"
     case Parsed rest then "Parsed"
     case Keywords rest then "Keywords"
     case Symbolized rest then "Symbolized"
@@ -37,12 +37,9 @@ let compileFunc: String -> CompilationResult = lam uri.
   -- This is because the MCore compiler simply crashes if there is a parser error.
   -- We then parse the error message and return it to the client as a diagnostic.
 
-  eprintln (join ["Preparing temporary MCore file for '", uri, "'"]);
-
-  let result = executeCommand (join [
-    "/Users/didrik/projects/miking/lsp-demo/mcore-lsp/compile-mcore ",
-    uri
-  ]) in
+  eprintln "Compiling first round of MCore file";
+  let cmd = join ["/Users/didrik/projects/miking/lsp-demo/mcore-lsp/compile-mcore ", uri] in
+  let result = executeCommand cmd in
   let exitStatus = result.2 in
   let output = strTrim result.1 in
 
@@ -62,9 +59,10 @@ let compileFunc: String -> CompilationResult = lam uri.
               else Symbolized rest
           else Keywords rest
       else Parsed rest
-  else UnParsed output in
+  else Unparsed output in
 
-  eprintln (join ["Compilation status: ", pprintCompilationStatus compilationStatus]);
+  eprintln (join ["... compilation status: ", pprintCompilationStatus compilationStatus]);
+  eprintln "Compiling second round of MCore file";
   let compilationStatusContent = strTrim (unwrapCompilationStatus compilationStatus) in
 
   switch compilationStatus
@@ -121,6 +119,7 @@ let compileFunc: CompilationParameters -> CompilationResult =
     let file = last paths in
     let tmpFilePath = join [directory, "/", file, temp_file_extension] in
 
+    eprintln (join ["Reindexing MCore file '", uri, "'"]);
     writeFile tmpFilePath content;
     let result = compileFunc tmpFilePath in
 

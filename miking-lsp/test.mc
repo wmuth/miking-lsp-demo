@@ -2,15 +2,19 @@ type Option a
 con Some : all a. a -> Option a
 con None : all a. () -> Option a
 
+type MyType = {
+  a: String,
+  b: Int
+}
+
 let myLam = lam abc.
-  dprint abc;
+  let obj: MyType = {a = "hello", b = 123} in
+
+  let thing = obj.a in
+  dprint thing;
   ()
 
-let myLam2 = lam abc.
-  let a = Some 2 in
-  let b = None () in
-  dprint abc;
-  ()
+
 
 mexpr
 

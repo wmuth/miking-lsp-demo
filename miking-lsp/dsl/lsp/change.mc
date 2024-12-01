@@ -97,17 +97,9 @@ recursive let createVariableLookup: use MExprAst in Expr -> Map Info (Name, Type
       mapInsert (stripTempFileExtensionFromInfo (Info r)) (ident, ty) m
     case TmConApp { ident=ident, ty=ty, info = Info r } then
       mapInsert (stripTempFileExtensionFromInfo (Info r)) (ident, ty) m
-    -- case expr & TmRecord { bindings=bindings, info=info } then
-    -- 	-- eprintln "Record";
-    -- 	-- eprintln (expr2str expr);
-    -- 	m
-    -- 	-- let seq = mapToSeq bindings in
-    -- 	-- let f = lam x.
-        
-    -- 	-- 	()
-    -- 	-- in
-    -- 	-- iter f seq;
-    -- 	-- m
+    case TmMatch { thn = TmVar {ident = ident}, ty = ty, info = Info r } then
+      -- pat = PatRecord {bindings = bindings}
+      mapInsert (stripTempFileExtensionFromInfo (Info r)) (ident, ty) m
     case _ then m
   end in
 
@@ -143,6 +135,11 @@ lang LSPChange = LSPRoot
     version: Int,
     text: String -- todo: doesn't match LSP protocol
   }
+  | DidOpen {
+    uri: String,
+    version: Int,
+    text: String
+  }
 
   sem getParams request =
   | "textDocument/didChange" ->
@@ -165,7 +162,7 @@ lang LSPChange = LSPRoot
     match mapLookup "version" textDocument with Some JsonInt version in
     match mapLookup "text" textDocument with Some JsonString text in
 
-    DidChange {
+    DidOpen {
       uri = uri,
       version = version,
       text = text
@@ -269,6 +266,33 @@ lang LSPChange = LSPRoot
     }
 
   sem execute context =
+  | DidOpen {uri = uri, version = version, text = text} ->
+    match mapLookup uri context.environment.files with Some files then
+      {
+        response = None (),
+        environment = context.environment
+      }
+    else
+      let compilationArguments: CompilationParameters = {
+        uri = uri,
+        content = text
+      } in
+
+      -- Todo: use warnings in the `compilationResult`
+      let compilationResult = context.compileFunc compilationArguments in
+      let response = getDiagnostics uri version compilationResult.errors in
+
+      let environment = match compilationResult.expr with
+        Some expr then
+          getEnvironment context uri expr
+        else
+          { context.environment with files = mapRemove uri context.environment.files }
+      in
+
+      {
+        response = Some(response),
+        environment = environment
+      }
   | DidChange {uri = uri, version = version, text = text} ->
     -- let uri = "/mnt/ProbTime/examples/coin/coin.rpl" in
 
@@ -277,9 +301,8 @@ lang LSPChange = LSPRoot
       content = text
     } in
 
-    let compilationResult = context.compileFunc compilationArguments in
     -- Todo: use warnings in the `compilationResult`
-
+    let compilationResult = context.compileFunc compilationArguments in
     let response = getDiagnostics uri version compilationResult.errors in
 
     let environment = match compilationResult.expr with
@@ -293,27 +316,5 @@ lang LSPChange = LSPRoot
       response = Some(response),
       environment = environment
     }
-
-    -- switch 
-    --   case Left errors then
-    --     eprintln "[Compile Error]";
-    --     let response = getDiagnostics uri version errors in
-    --     {
-    --       response = Some(response),
-    --       environment = {
-    --         context.environment with
-    --         files = mapRemove uri context.environment.files
-    --       }
-    --     }
-    --   case Right expr then
-    --     eprintln "[Compile Success]";
-
-    --     let response = getPublishDiagnostic uri version [] in
-    --     let environment = getEnvironment context uri expr in
-    --     {
-    --       response = Some(response),
-    --       environment = environment
-    --     }
-    -- end
 
 end

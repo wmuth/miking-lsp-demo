@@ -6,7 +6,7 @@ include "./root.mc"
 lang LSPInitialize = LSPRoot
 	syn Params =
 	| Initialized {}
-	| Initialize { }
+	| Initialize {}
 
 	sem getParams request =
 	| "initialized" ->
@@ -20,7 +20,7 @@ lang LSPInitialize = LSPRoot
 		response = None ()
 	}
 	| Initialize {} -> {
-		environment = context.environment,
+    environment = context.environment,
 		response = Some (
 			jsonKeyObject [
 				("jsonrpc", JsonString "2.0"),

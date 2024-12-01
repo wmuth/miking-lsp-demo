@@ -86,13 +86,16 @@ sem execute context =
     let line = addi line 1 in
     let strippedUri = stripUriProtocol uri in
 
-    -- eprintln (join ["Finding definition for: ", strippedUri, ":", int2string line, ":", int2string character]);
-
     let environment = mapLookup uri context.environment.files in
     match environment with Some environment then
       let variable = environment.findVariable uri line character in
       let definition = optionBind variable (getDefinition environment) in
       let response = getLSPResponse context id definition in
+
+      -- TODO: if definition and variable overlap,
+      -- truncate the definition position to end
+      -- at the start of the variable position.
+      -- Otherwise, LSP will return no result.
       
       {
         response = response,

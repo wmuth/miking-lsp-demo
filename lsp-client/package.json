@@ -33,7 +33,8 @@
           ".mdsl",
           ".rpl",
           ".mc"
-        ]
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [

@@ -1,4 +1,5 @@
 let parseMcoreError = lam err.
+  -- Handler for parsing the following error format:
 	-- ERROR </Users/didrik/projects/miking/lsp-demo/miking-lsp/test.mc 6:7-6:10>: Unknown variable 'abc'
 
 	let parsePos = lam uri. lam pos.
@@ -21,10 +22,10 @@ let parseMcoreError = lam err.
   
 	match err with "ERROR <" ++ rest then
 	  let parts = strSplit ">:" rest in
-	  let locationInfo = parseLocation (head parts) in
+	  let info = parseLocation (head parts) in
 	  let msg = join (tail parts) in
-  
-	  {info = locationInfo, msg = msg}
-  
-	else error "Invalid error format in `parseMcoreError`"
+
+    (info, msg)
+	else
+    error "Invalid error format in `parseMcoreError`"
   

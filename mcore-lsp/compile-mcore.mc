@@ -81,42 +81,58 @@ include "../../miking/src/main/eval.mc"
   
 --       Right (ast, implementations)
 
-let compileFunc = lam debug. lam uri.
-  -- : use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations)
-  use ExtMCore in
+type CompileMCoreOptions = {
+  debug: Bool,
+  printCheckpoints: Bool,
+  typeCheck: Bool
+}
 
-  (if debug then eprintln (join ["Parsing Mcore program: ", uri]); () else ());
+let defaultCompileMCoreOptions: CompileMCoreOptions = {
+  debug = false,
+  printCheckpoints = false,
+  typeCheck = true
+}
 
-  let strippedUri = stripUriProtocol uri in
+-- let compileFunc: use MExprAst in CompileMCoreOptions -> String -> Either [(Info, String)] (Expr, LSPImplementations) =
+let compileFunc: use MExprAst in CompileMCoreOptions -> String -> Expr =
+  lam options. lam uri.
+    use ExtMCore in
 
-  let expr = parseParseMCoreFile {
-    keepUtests = false,
-    keywords = [],
-    pruneExternalUtests = true,
-    pruneExternalUtestsWarning = true,
-    findExternalsExclude = false, -- the interpreter does not support externals
-    eliminateDeadCode = false
-  } strippedUri in
+    let printCheckpoint = lam value. if options.printCheckpoints then eprintln value; () else () in
+    let printDebug = lam value. if options.debug then eprintln value; () else () in
 
-  (if debug then eprintln "Make keywords"; () else ());
-  let expr = use KeywordMaker in makeKeywords expr in
+    printDebug (join ["Parsing Mcore program: ", uri]);
 
-  (if debug then eprintln "Symbolizing"; () else ());
-  let expr = symbolizeAllowFree expr in
-  -- eprintln (join ["Symbolized: ", use MExprPrettyPrint in expr2str expr, "\n"]);
+    let strippedUri = stripUriProtocol uri in
 
-  -- (Note Didrik): Type checking takes several minutes to run. Disabling for now.
-  (if debug then eprintln "Type checking"; () else ());
-  let expr = removeMetaVarExpr (typeCheckExpr typcheckEnvDefault expr) in
-  -- let expr = use TypeCheck in typeCheckExpr typcheckEnvDefault expr in
-  -- let expr = typeCheckExpr typcheckEnvDefault expr in
+    let expr = parseParseMCoreFile {
+      keepUtests = false,
+      keywords = [],
+      pruneExternalUtests = true,
+      pruneExternalUtestsWarning = true,
+      findExternalsExclude = false, -- the interpreter does not support externals
+      eliminateDeadCode = false
+    } strippedUri in
+    printCheckpoint "[__PARSED]";
 
-  let implementations: LSPImplementations = {
-    hover=[]
-  } in
+    printDebug "Making keywords ...";
+    let expr = use KeywordMaker in makeKeywords expr in
+    printCheckpoint "[__KEYWORDS]";
 
-  Right (expr, implementations)
+    printDebug "Symbolizing ...";
+    let expr = symbolizeAllowFree expr in
+    printCheckpoint "[__SYMBOLIZED]";
+    -- eprintln (join ["Symbolized: ", use MExprPrettyPrint in expr2str expr, "\n"]);
 
+    let expr = if options.typeCheck then
+      printDebug "Type checking ...";
+      let expr = removeMetaVarExpr (typeCheckExpr typcheckEnvDefault expr) in
+      printCheckpoint "[__TYPECHECKED]";
+      expr
+    else expr in
+
+    expr
+    
 mexpr
 
 -- Compile an MCore program
@@ -126,5 +142,13 @@ mexpr
 -- Fatal error: exception Sys_error("/Users/didrik/projects/miking/lsp-demo/miking-lsp/tesat.mc: No such file or directory")
 
 let uri = get argv 1 in
-compileFunc false uri;
+
+let options = {
+  defaultCompileMCoreOptions with
+  debug = false,
+  printCheckpoints = true
+} in
+
+compileFunc options uri;
+
 ()

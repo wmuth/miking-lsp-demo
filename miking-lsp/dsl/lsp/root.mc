@@ -5,12 +5,22 @@ include "./definitions.mc"
 include "../utils.mc"
 include "../json-rpc.mc"
 
-type CompileFunc = use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations)
--- type CompileFunc = use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations)
+type CompilationResult = {
+  expr: use MExprAst in Option Expr, -- Todo: this is Mexpr specific, should be abstracted
+  errors: [(Info, String)],
+  warnings: [(Info, String)]
+}
+
+type CompilationParameters = {
+  uri: String,
+  content: String
+}
+
+type CompileFunc = CompilationParameters -> CompilationResult
 
 type LSPFileEnvironment = {
-	findVariable: String -> Int -> Int -> Option ((Info, Name, use MExprAst in Type)),
-	findDefinition: Name -> Option (Info)
+	findVariable: use MExprAst in String -> Int -> Int -> Option ((Info, Name, Type)), -- Todo: this is Mexpr specific, should be abstracted
+	findDefinition: Name -> Option (Info) -- Todo: this is Mexpr specific, should be abstracted
 }
 
 type LSPEnvironment = {

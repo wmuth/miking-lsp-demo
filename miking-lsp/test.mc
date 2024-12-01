@@ -14,6 +14,6 @@ let myLam2 = lam abc.
 
 mexpr
 
-let b = myLam2 123 in
+let b = myLam 123 in
 
-addi 2 2
+addi 2 3

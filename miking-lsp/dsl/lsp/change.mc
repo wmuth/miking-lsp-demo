@@ -179,14 +179,16 @@ lang LSPChange = LSPRoot
 
   sem getDiagnostics uri version =
   | errors ->
-    let error = head errors in
-    match error with (info, msg) in
-    let fileInfo = getFileInfo info in
-    eprintln "[Compile Failed]";
-  
-    let uri = fileInfo.filename in
-  
-    getPublishDiagnostic uri version [
+    -- let error = head errors in
+    -- match error with (info, msg) in
+    -- let fileInfo = getFileInfo info in
+    -- let uri = fileInfo.filename in
+
+    let createDiagnostic = lam err.
+      let info = err.0 in
+      let msg = err.1 in
+      let fileInfo = getFileInfo info in
+      let uri = fileInfo.filename in
       jsonKeyObject [
         ("message", JsonString msg),
         ("severity", JsonInt 1),
@@ -202,10 +204,14 @@ lang LSPChange = LSPRoot
           ])
         ])
       ]
-    ]
+    in
+
+    let diagnostics = map createDiagnostic errors in
+    
+    getPublishDiagnostic uri version diagnostics
 
   sem getEnvironment context uri = 
-  | (expr, implementations) ->
+  | expr ->
     eprintln "Getting environment";
 
     -- let strippedUri = "/mnt/ProbTime/examples/coin/coin.rpl" in
@@ -218,8 +224,6 @@ lang LSPChange = LSPRoot
     eprintln "Creating variable lookup";
     let variableLookup = createVariableLookup expr in
     (if __debug then debugPrintVariableLookup variableLookup; () else ());
-
-    
 
     let findVariable: String -> Int -> Int -> Option ((Info, Name, use MExprAst in Type)) = lam filename. lam line. lam character.
       let foundVariables = findVariables [] (mapToSeq variableLookup) filename line character in
@@ -255,6 +259,8 @@ lang LSPChange = LSPRoot
 
     let findDefinition = _findDefinition (mapToSeq definitionLookup) in
 
+    eprintln "Environment created!";
+
     {
       context.environment with
       files = mapInsert uri {
@@ -272,26 +278,48 @@ lang LSPChange = LSPRoot
   | DidChange {uri = uri, version = version, text = text} ->
     -- let uri = "/mnt/ProbTime/examples/coin/coin.rpl" in
 
-    switch context.compileFunc uri text
-      case Left errors then
-        eprintln "[Compile Error]";
-        let response = getDiagnostics uri version errors in
-        {
-          response = Some(response),
-          environment = {
-            context.environment with
-            files = mapRemove uri context.environment.files
-          }
-        }
-      case Right file then
-        eprintln "[Compile Success]";
+    let compilationArguments: CompilationParameters = {
+      uri = uri,
+      content = text
+    } in
 
-        let response = getPublishDiagnostic uri version [] in
-        let environment = getEnvironment context uri file in
-        {
-          response = Some(response),
-          environment = environment
-        }
-    end
+    let compilationResult = context.compileFunc compilationArguments in
+    -- Todo: use warnings in the `compilationResult`
+
+    let response = getDiagnostics uri version compilationResult.errors in
+
+    let environment = match compilationResult.expr with
+      Some expr then
+        getEnvironment context uri expr
+      else
+        { context.environment with files = mapRemove uri context.environment.files }
+    in
+
+    {
+      response = Some(response),
+      environment = environment
+    }
+
+    -- switch 
+    --   case Left errors then
+    --     eprintln "[Compile Error]";
+    --     let response = getDiagnostics uri version errors in
+    --     {
+    --       response = Some(response),
+    --       environment = {
+    --         context.environment with
+    --         files = mapRemove uri context.environment.files
+    --       }
+    --     }
+    --   case Right expr then
+    --     eprintln "[Compile Success]";
+
+    --     let response = getPublishDiagnostic uri version [] in
+    --     let environment = getEnvironment context uri expr in
+    --     {
+    --       response = Some(response),
+    --       environment = environment
+    --     }
+    -- end
 
 end

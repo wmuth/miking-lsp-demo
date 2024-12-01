@@ -62,41 +62,43 @@ end
 
 mexpr
 
-let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations) =
-  lam uri. lam code.
-    use Complete in
-    switch parseCalc uri code
-      case Right file then
-        let context = {} in
-        let lspResult = (stmtToLSP context (fileToStatements file)) in
-        let implementations = foldl (
-          lam acc. lam x.
-            {
-              hover=join [acc.hover, x.hover]
-            }
-        ) lsp lspResult in
-        let expr = compileStatementsToMexpr (fileToStatements file) in
-        Right (expr, implementations)
-      case Left errors then
-        Left errors
-    end
-in
-
--- let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] Expr =
+-- let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations) =
 --   lam uri. lam code.
 --     use Complete in
 --     switch parseCalc uri code
 --       case Right file then
---         Right (compileStatementsToMexpr (fileToStatements file))
+--         let context = {} in
+--         let lspResult = (stmtToLSP context (fileToStatements file)) in
+--         let implementations = foldl (
+--           lam acc. lam x.
+--             {
+--               hover=join [acc.hover, x.hover]
+--             }
+--         ) lsp lspResult in
+--         let expr = compileStatementsToMexpr (fileToStatements file) in
+--         Right (expr, implementations)
 --       case Left errors then
 --         Left errors
 --     end
 -- in
 
-let environment: LSPEnvironment = {
-  files = mapEmpty cmpString
-} in
+-- -- let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] Expr =
+-- --   lam uri. lam code.
+-- --     use Complete in
+-- --     switch parseCalc uri code
+-- --       case Right file then
+-- --         Right (compileStatementsToMexpr (fileToStatements file))
+-- --       case Left errors then
+-- --         Left errors
+-- --     end
+-- -- in
 
-eprintln "Miking LSP started";
-readJsonRPC compileFunc environment;
-eprintln "Miking LSP ended"
+-- let environment: LSPEnvironment = {
+--   files = mapEmpty cmpString
+-- } in
+
+-- eprintln "Miking LSP started";
+-- readJsonRPC compileFunc environment;
+-- eprintln "Miking LSP ended"
+
+()

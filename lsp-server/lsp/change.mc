@@ -246,7 +246,7 @@ let getEnvironment = lam context. lam uri. lam expr.
     } context.environment.files
   }
 
-let getDiagnosticsResponse = lam uri. lam compilationResult.
+let getDiagnosticsResponses = lam uri. lam compilationResult.
   let errorsGroupedByFile = groupBy
     cmpString
     (lam err. (getFileInfo err.0).filename)
@@ -261,8 +261,8 @@ let getDiagnosticsResponse = lam uri. lam compilationResult.
 
 let compile = lam context. lam uri. lam content.
   let notifyPartialResult = lam compilationResult.
-    let response = getDiagnosticsResponse uri compilationResult in
-    iter context.sendNotification response;
+    let responses = getDiagnosticsResponses uri compilationResult in
+    iter context.sendNotification responses;
     ()
   in
 
@@ -274,7 +274,7 @@ let compile = lam context. lam uri. lam content.
 
   -- Todo: use warnings in the `compilationResult`
   let compilationResult = context.compileFunc compilationArguments in
-  let response = getDiagnosticsResponse uri compilationResult in
+  let responses = getDiagnosticsResponses uri compilationResult in
 
   let environment = match compilationResult.expr with
     Some expr then
@@ -283,8 +283,10 @@ let compile = lam context. lam uri. lam content.
       { context.environment with files = mapRemove uri context.environment.files }
   in
 
+  iter context.sendNotification responses;
+
   {
-    response = Some(response),
+    response = None (),
     environment = environment
   }
 

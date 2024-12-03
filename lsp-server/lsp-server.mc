@@ -44,9 +44,9 @@ let handleRequest = lam compileFunc. lam environment. lam request.
     (
       match result.response with Some response then
         eprintln "Responding to request\n";
-        iter (compose eprintln pprintjson2string) response;
+        eprintln (pprintjson2string response);
         eprintln "";
-        iter (compose rpcprint json2string) response
+        rpcprint (json2string response)
       else
         eprintln ""
     );

@@ -1,7 +1,6 @@
 include "json.mc"
 include "mexpr/ast.mc"
 
-include "./definitions.mc"
 include "../../lib/utils.mc"
 include "../json-rpc.mc"
 
@@ -41,7 +40,7 @@ type LSPExecutionContext = {
 }
 
 type LSPResult = {
-  response: Option [JsonValue],
+  response: Option JsonValue,
   environment: LSPEnvironment
 }
 

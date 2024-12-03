@@ -21,7 +21,7 @@ lang LSPInitialize = LSPRoot
   }
   | Initialize {} -> {
     environment = context.environment,
-    response = Some ([
+    response = Some (
       jsonKeyObject [
         ("jsonrpc", JsonString "2.0"),
         ("id", JsonInt 0),
@@ -47,6 +47,6 @@ lang LSPInitialize = LSPRoot
           ])
         ])
       ]
-    ])
+    )
   }
 end

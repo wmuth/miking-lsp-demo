@@ -49,7 +49,7 @@ sem getLSPResponse context id =
 
       eprintln (join ["Going to: ", filename, ":", int2string info.lineStart, ":", int2string info.colStart, "-", int2string info.lineEnd, ":", int2string info.colEnd]);
 
-      Some([
+      Some(
         jsonKeyObject [
           ("jsonrpc", JsonString "2.0"),
           ("id", JsonInt id),
@@ -67,15 +67,15 @@ sem getLSPResponse context id =
             ])
           ])
         ]
-      ])
+      )
     else
-      Some([
+      Some(
         jsonKeyObject [
           ("jsonrpc", JsonString "2.0"),
           ("id", JsonInt id),
           ("result", JsonNull ())
         ]
-      ])
+      )
 
 sem execute context =
   | GotoDefinition { id = id, textDocument = {

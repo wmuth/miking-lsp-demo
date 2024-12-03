@@ -246,23 +246,35 @@ let getEnvironment = lam context. lam uri. lam expr.
     } context.environment.files
   }
 
-let compile = lam context. lam uri. lam content.
-  let compilationArguments: CompilationParameters = {
-    uri = uri,
-    content = content
-  } in
-
-  -- Todo: use warnings in the `compilationResult`
-  let compilationResult = context.compileFunc compilationArguments in
-
+let getDiagnosticsResponse = lam uri. lam compilationResult.
   let errorsGroupedByFile = groupBy
     cmpString
     (lam err. (getFileInfo err.0).filename)
     compilationResult.errors
   in
+
+  -- If there are no errors for this file, we need to include an empty list to reset the errors in the IDE.
   let emptyErrorForThisFile = mapFromSeq cmpString [(stripUriProtocol uri, [])] in
   let errorsGroupedByFile = mapUnionWith concat errorsGroupedByFile emptyErrorForThisFile in
-  let response = getDiagnostics errorsGroupedByFile in
+
+  getDiagnostics errorsGroupedByFile
+
+let compile = lam context. lam uri. lam content.
+  let notifyPartialResult = lam compilationResult.
+    let response = getDiagnosticsResponse uri compilationResult in
+    iter context.sendNotification response;
+    ()
+  in
+
+  let compilationArguments: CompilationParameters = {
+    uri = uri,
+    content = content,
+    notifyPartialResult = notifyPartialResult
+  } in
+
+  -- Todo: use warnings in the `compilationResult`
+  let compilationResult = context.compileFunc compilationArguments in
+  let response = getDiagnosticsResponse uri compilationResult in
 
   let environment = match compilationResult.expr with
     Some expr then

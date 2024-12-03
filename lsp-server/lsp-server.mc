@@ -30,7 +30,13 @@ let handleRequest = lam compileFunc. lam environment. lam request.
   else
     let executionContext = {
       compileFunc = compileFunc,
-      environment = environment
+      environment = environment,
+      sendNotification = lam notification.
+        eprintln "Sending notification\n";
+        eprintln (pprintjson2string notification);
+        eprintln "";
+        rpcprint (json2string notification);
+        ()
     } in
     
     let result = execute executionContext params in

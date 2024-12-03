@@ -16,7 +16,6 @@ https://github.com/user-attachments/assets/5ffcb3a5-773c-4d26-830c-b3de1d564780
 2. Make
 3. Node
 4. NPM
-5. Rust/Cargo
 
 ### Miking
 
@@ -46,7 +45,7 @@ To be able to run this, two changes to the Miking codebase is needed:
 6. The RPC Wrapper wraps the JSON object with an RPC header, and forwards the message to the LSP client.
 7. The LSP client forwards the message to VS Code, which displays the diagnostics.
 
-*The RPC header consists of the line `Content-Length: <n>`, describing the length of the JSON body. We can't handle this in the Miking LSP server, so we strip it in the RPC Wrapper.
+*The RPC header consists of the line `Content-Length: <n>`, describing the length of the JSON body.
 
 ## Limitations
 

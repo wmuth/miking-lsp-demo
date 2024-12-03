@@ -20,7 +20,10 @@ type CompileFunc = CompilationParameters -> CompilationResult
 
 type LSPFileEnvironment = {
 	findVariable: use MExprAst in String -> Int -> Int -> Option ((Info, Name, Type)), -- Todo: this is Mexpr specific, should be abstracted
-	findDefinition: Name -> Option (Info) -- Todo: this is Mexpr specific, should be abstracted
+	findDefinition: Name -> Option (Info), -- Todo: this is Mexpr specific, should be abstracted
+
+	errors: [(Info, String)],
+  warnings: [(Info, String)]
 }
 
 type LSPEnvironment = {
@@ -33,7 +36,7 @@ type LSPExecutionContext = {
 }
 
 type LSPResult = {
-	response: Option JsonValue,
+	response: Option [JsonValue],
 	environment: LSPEnvironment
 }
 

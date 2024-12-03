@@ -49,28 +49,32 @@ sem getLSPResponse context id =
 
       eprintln (join ["Going to: ", filename, ":", int2string info.lineStart, ":", int2string info.colStart, "-", int2string info.lineEnd, ":", int2string info.colEnd]);
 
-      Some(jsonKeyObject [
-        ("jsonrpc", JsonString "2.0"),
-        ("id", JsonInt id),
-        ("result", jsonKeyObject [
-          ("uri", JsonString filename),
-          ("range", jsonKeyObject [
-            ("start", jsonKeyObject [
-              ("line", JsonInt (subi info.lineStart 1)),
-              ("character", JsonInt info.colStart)
-            ]),
-            ("end", jsonKeyObject [
-              ("line", JsonInt (subi info.lineEnd 1)),
-              ("character", JsonInt info.colEnd)
+      Some([
+        jsonKeyObject [
+          ("jsonrpc", JsonString "2.0"),
+          ("id", JsonInt id),
+          ("result", jsonKeyObject [
+            ("uri", JsonString filename),
+            ("range", jsonKeyObject [
+              ("start", jsonKeyObject [
+                ("line", JsonInt (subi info.lineStart 1)),
+                ("character", JsonInt info.colStart)
+              ]),
+              ("end", jsonKeyObject [
+                ("line", JsonInt (subi info.lineEnd 1)),
+                ("character", JsonInt info.colEnd)
+              ])
             ])
           ])
-        ])
+        ]
       ])
     else
-      Some(jsonKeyObject [
-        ("jsonrpc", JsonString "2.0"),
-        ("id", JsonInt id),
-        ("result", JsonNull ())
+      Some([
+        jsonKeyObject [
+          ("jsonrpc", JsonString "2.0"),
+          ("id", JsonInt id),
+          ("result", JsonNull ())
+        ]
       ])
 
 sem execute context =
@@ -79,7 +83,6 @@ sem execute context =
     line = line,
     character = character
   } } -> 
-    -- let originalUri = uri in
     -- let strippedUri = "/mnt/ProbTime/examples/coin/coin.rpl" in
 
     -- Add 1 to incoming line and character to match the 1-based indexing of LSP

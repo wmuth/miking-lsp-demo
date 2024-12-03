@@ -31,7 +31,6 @@ lang LSPHover = LSPRoot
 			line = line,
 			character = character
 		} } -> 
-			-- Todo: create temp file using /tmp/
 			-- let strippedUri = "/mnt/ProbTime/examples/coin/coin.rpl" in
       let strippedUri = stripUriProtocol uri in
 
@@ -42,30 +41,6 @@ lang LSPHover = LSPRoot
 				"Uri: ", uri, ", ",
 				"Line: ", int2string line, ", Character: ", int2string character, "\n\n"
 			] in
-
-			-- let hoverInformation = (
-			-- 	strJoin ", " (map 
-			-- 		(lam x.
-			-- 			let info = getFileInfo x.info in
-			-- 			join [
-			-- 				"<",
-			-- 				x.content,
-			-- 				" @ ",
-			-- 				int2string (subi info.lineStart 1),
-			-- 				":",
-			-- 				int2string info.colStart,
-			-- 				"-",
-			-- 				int2string (subi info.lineEnd 1),
-			-- 				":",
-			-- 				int2string info.colEnd,
-			-- 				">"
-			-- 			]
-			-- 		) implementations.hover
-			-- 	)
-			-- ) in
-
-			-- eprintln hoverInformation;
-			-- None ()
 
 			let environment = mapLookup uri context.environment.files in
 			match environment with Some environment then
@@ -91,29 +66,29 @@ lang LSPHover = LSPRoot
 				else
 					eprintln "Variable not found";
 					jsonKeyObject [
-					("contents", JsonString (join [
-						debugText,
-						"[nothing found]"
-					]))
+            ("contents", JsonString (join [
+              debugText,
+              "[nothing found]"
+            ]))
 					]
 				in
 
 				{
 					environment = context.environment,
-					response = Some(jsonKeyObject [
+					response = Some([jsonKeyObject [
 						("jsonrpc", JsonString "2.0"),
 						("id", JsonInt id),
 						("result", response)
-					])
+					]])
 				}
 			else
 				{
 					environment = context.environment,
-					response = Some(jsonKeyObject [
+					response = Some([jsonKeyObject [
 						("jsonrpc", JsonString "2.0"),
 						("id", JsonInt id),
 						("result", JsonNull ())
-					])
+					]])
 				}
 
 end

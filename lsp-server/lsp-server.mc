@@ -5,7 +5,17 @@ include "./json-rpc.mc"
 include "./lsp/lsp.mc"
 include "../lib/pprintjson.mc"
 
+type RequestPruningEnvironment = {
+  -- fileChanges: Map String String
+}
 
+-- TODO: request request pruning, e.g. removing concurrent didChange notifications
+let pruneRequests: RequestPruningEnvironment -> [String] -> [String] =
+  lam environment. lam requests.
+    requests
+
+let pruneRequests: [String] -> [String] =
+  pruneRequests {}
 
 let handleRequest = lam compileFunc. lam environment. lam request.
   let request = getRPCRequest request in
@@ -28,10 +38,9 @@ let handleRequest = lam compileFunc. lam environment. lam request.
     (
       match result.response with Some response then
         eprintln "Responding to request\n";
-        eprintln (pprintjson2string response);
+        iter (compose eprintln pprintjson2string) response;
         eprintln "";
-
-        rpcprint (json2string response)
+        iter (compose rpcprint json2string) response
       else
         eprintln ""
     );

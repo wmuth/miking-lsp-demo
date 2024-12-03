@@ -22,54 +22,46 @@ let debugPrintVariableLookup = lam variableLookup.
     eprintln (join ["Variable Lookup (", int2string (length seq), "):"]);
     iter f seq; ()
 
-let getPublishDiagnostic = lam uri. lam version. lam diagnostics.
+let getDiagnosticsObject = lam info. lam msg.
+  let fileInfo = getFileInfo info in
+  let uri = fileInfo.filename in
+  jsonKeyObject [
+    ("message", JsonString msg),
+    ("severity", JsonInt 1),
+    ("source", JsonString "miking-lsp"),
+    ("range", jsonKeyObject [
+      ("start", jsonKeyObject [
+        ("line", JsonInt (subi fileInfo.lineStart 1)),
+        ("character", JsonInt fileInfo.colStart)
+      ]),
+      ("end", jsonKeyObject [
+        ("line", JsonInt (subi fileInfo.lineEnd 1)),
+        ("character", JsonInt fileInfo.colEnd)
+      ])
+    ])
+  ]
+
+let getDiagnostic = lam uri. lam errors.
+  let diagnostics = map
+    (lam err. getDiagnosticsObject err.0 err.1)
+    errors
+  in
+
   jsonKeyObject [
     ("jsonrpc", JsonString "2.0"),
     ("method", JsonString "textDocument/publishDiagnostics"),
     ("params", jsonKeyObject [
       ("uri", JsonString uri),
-      ("version", JsonInt version),
       ("diagnostics", JsonArray diagnostics)
     ])
   ]
 
-let getDiagnostics = lam version. lam errors.
-    -- let error = head errors in
-    -- match error with (info, msg) in
-    -- let fileInfo = getFileInfo info in
-    -- let uri = fileInfo.filename in
-
-    let errorsGroupedByFile = groupBy
-      cmpString
-      (lam err. (getFileInfo err.0).filename)
-      errors
-    in
-
-    let createDiagnostic = lam err.
-      let info = err.0 in
-      let msg = err.1 in
-      let fileInfo = getFileInfo info in
-      let uri = fileInfo.filename in
-      jsonKeyObject [
-        ("message", JsonString msg),
-        ("severity", JsonInt 1),
-        ("source", JsonString "miking-lsp"),
-        ("range", jsonKeyObject [
-          ("start", jsonKeyObject [
-            ("line", JsonInt (subi fileInfo.lineStart 1)),
-            ("character", JsonInt fileInfo.colStart)
-          ]),
-          ("end", jsonKeyObject [
-            ("line", JsonInt (subi fileInfo.lineEnd 1)),
-            ("character", JsonInt fileInfo.colEnd)
-          ])
-        ])
-      ]
-    in
-
-    let diagnostics = map createDiagnostic errors in
-    
-    getPublishDiagnostic "" version diagnostics
+let getDiagnostics = lam errorsGroupedByFile.
+  let createDiagnosticsFromGroupedErrors = lam groupedErrors.
+    getDiagnostic groupedErrors.0 groupedErrors.1
+  in
+  
+  map createDiagnosticsFromGroupedErrors (mapToSeq errorsGroupedByFile)
 
 -- recursive let createTypeLookup: use MExprAst in Expr -> Map Name Info = lam expr.
 --   use MExprAst in
@@ -131,34 +123,48 @@ recursive let createDefinitionLookup: use MExprAst in Expr -> Map Name Info = la
   ) m expr
 end
 
-recursive let createVariableLookup: use MExprAst in Expr -> Map Info (Name, Type) = lam expr.
-  use MExprAst in
-  use MExpr in
-  let m = mapEmpty infoCmp in
+let mapInsertVariableWithFileName = lam filename. lam info. lam x. lam m.
+  let filename = stripUriProtocol filename in
+  match info with Info { filename = infoFilename } then
+    let infoFilename = stripTempFileExtension infoFilename in
+    if eqString filename infoFilename then
+      mapInsert (stripTempFileExtensionFromInfo info) x m
+    else
+      m
+  else
+    m
 
-  let m = switch expr
-    case TmLet { ident=ident, ty=ty, info = Info r }
-       | TmVar { ident=ident, ty=ty, info = Info r }
-       | TmConApp { ident=ident, ty=ty, info = Info r }
-       | TmType { ident=ident, ty=ty, info = Info r }
-    then
-      mapInsert (stripTempFileExtensionFromInfo (Info r)) (ident, ty) m
-    case TmMatch { thn = TmVar {ident = ident}, ty = ty, info = Info r } then
-      -- pat = PatRecord {bindings = bindings}
-      mapInsert (stripTempFileExtensionFromInfo (Info r)) (ident, ty) m
-    case TmRecLets { bindings = bindings } then
-      -- The info field appears to point to just the "let" keyword??
-      let f = lam acc. lam x.
-        mapInsert (stripTempFileExtensionFromInfo x.info) (x.ident, x.tyAnnot) acc
-      in
-      foldl f m bindings
-    case _ then m
-  end in
+recursive let createVariableLookup: use MExprAst in String -> Expr -> Map Info (Name, Type) =
+  lam filename. lam expr.
+    let mapInsertVariable = mapInsertVariableWithFileName filename in
 
-  sfold_Expr_Expr (lam acc. lam e.
-    let children = createVariableLookup e in
-    mapUnion acc children
-  ) m expr
+    use MExprAst in
+    use MExpr in
+
+    let m = mapEmpty infoCmp in
+    let m = switch expr
+      case TmLet { ident=ident, ty=ty, info=info }
+        | TmVar { ident=ident, ty=ty, info=info }
+        | TmConApp { ident=ident, ty=ty, info=info }
+        | TmType { ident=ident, ty=ty, info=info }
+      then
+        mapInsertVariable info (ident, ty) m
+      case TmMatch { thn=TmVar {ident=ident}, ty=ty, info=info } then
+        -- pat = PatRecord {bindings = bindings}
+        mapInsertVariable info (ident, ty) m
+      case TmRecLets { bindings=bindings } then
+        -- The info field appears to point to just the "let" keyword??
+        let f = lam acc. lam x.
+          mapInsertVariable x.info (x.ident, x.tyAnnot) acc
+        in
+        foldl f m bindings
+      case _ then m
+    end in
+
+    sfold_Expr_Expr (lam acc. lam e.
+      let children = createVariableLookup filename e in
+      mapUnion acc children
+    ) m expr
 end
 
 recursive let findVariables = lam acc. lam variableLookupSeq. lam filename. lam line. lam character.
@@ -179,6 +185,96 @@ recursive let findVariables = lam acc. lam variableLookupSeq. lam filename. lam 
     acc
 end
 
+let getEnvironment = lam context. lam uri. lam expr.
+  eprintln "Getting environment";
+
+  -- let strippedUri = "/mnt/ProbTime/examples/coin/coin.rpl" in
+  let strippedUri = stripUriProtocol uri in
+
+  eprintln "Creating definition lookup";
+  let definitionLookup = createDefinitionLookup expr in
+  -- let definitionLookup = createTypeLookup expr in -- TODO: implement
+  (if __debug then debugPrintDefinitionLookup definitionLookup; () else ());
+
+  eprintln "Creating variable lookup";
+  let variableLookup = createVariableLookup uri expr in
+  (if __debug then debugPrintVariableLookup variableLookup; () else ());
+
+  let findVariable: String -> Int -> Int -> Option ((Info, Name, use MExprAst in Type)) = lam filename. lam line. lam character.
+    let foundVariables = findVariables [] (mapToSeq variableLookup) filename line character in
+
+    -- let seq = foundVariables in
+    -- eprintln (join ["Found variables (", int2string (length seq), "):"]);
+    -- let f = lam x.
+    -- 	eprintln (join [info2str x.0, ": ", nameGetStr x.1]); ()
+    -- in
+    -- iter f seq;
+
+    match foundVariables with [x] ++ seq then
+      let f = lam var1. lam var2.
+        let info1 = var1.0 in
+        let info2 = var2.0 in
+        if infoContainsInfo info1 info2 then var1 else var2
+      in
+      Some (foldl f x seq)
+    else
+      None ()
+  in
+
+  recursive let _findDefinition = lam definitionLookupSeq. lam name.
+    match definitionLookupSeq with [x] ++ seq then
+      let info = x.1 in
+      let collision = nameEq name x.0 in
+      if collision then
+        Some (info)
+      else
+        _findDefinition seq name
+    else None ()
+  in
+
+  let findDefinition = _findDefinition (mapToSeq definitionLookup) in
+
+  eprintln "Environment created!";
+
+  {
+    context.environment with
+    files = mapInsert uri {
+      findDefinition = findDefinition,
+      findVariable = findVariable,
+      errors = [],
+      warnings = []
+    } context.environment.files
+  }
+
+let compile = lam context. lam uri. lam content.
+  let compilationArguments: CompilationParameters = {
+    uri = uri,
+    content = content
+  } in
+
+  -- Todo: use warnings in the `compilationResult`
+  let compilationResult = context.compileFunc compilationArguments in
+
+  let errorsGroupedByFile = groupBy
+    cmpString
+    (lam err. (getFileInfo err.0).filename)
+    compilationResult.errors
+  in
+  let emptyErrorForThisFile = mapFromSeq cmpString [(stripUriProtocol uri, [])] in
+  let errorsGroupedByFile = mapUnionWith concat errorsGroupedByFile emptyErrorForThisFile in
+  let response = getDiagnostics errorsGroupedByFile in
+
+  let environment = match compilationResult.expr with
+    Some expr then
+      getEnvironment context uri expr
+    else
+      { context.environment with files = mapRemove uri context.environment.files }
+  in
+
+  {
+    response = Some(response),
+    environment = environment
+  }
 
 lang LSPChange = LSPRoot
   syn Params =
@@ -220,71 +316,6 @@ lang LSPChange = LSPRoot
       text = text
     }
 
-  sem getEnvironment context uri = 
-  | expr ->
-    eprintln "Getting environment";
-
-    -- let strippedUri = "/mnt/ProbTime/examples/coin/coin.rpl" in
-    let strippedUri = stripUriProtocol uri in
-
-    eprintln "Creating definition lookup";
-    let definitionLookup = createDefinitionLookup expr in
-    -- let definitionLookup = createTypeLookup expr in -- TODO: implement
-    (if __debug then debugPrintDefinitionLookup definitionLookup; () else ());
-
-    eprintln "Creating variable lookup";
-    let variableLookup = createVariableLookup expr in
-    (if __debug then debugPrintVariableLookup variableLookup; () else ());
-
-    let findVariable: String -> Int -> Int -> Option ((Info, Name, use MExprAst in Type)) = lam filename. lam line. lam character.
-      let foundVariables = findVariables [] (mapToSeq variableLookup) filename line character in
-
-      -- let seq = foundVariables in
-      -- eprintln (join ["Found variables (", int2string (length seq), "):"]);
-      -- let f = lam x.
-      -- 	eprintln (join [info2str x.0, ": ", nameGetStr x.1]); ()
-      -- in
-      -- iter f seq;
-
-      match foundVariables with [x] ++ seq then
-        let f = lam var1. lam var2.
-          let info1 = var1.0 in
-          let info2 = var2.0 in
-          if infoContainsInfo info1 info2 then var1 else var2
-        in
-        Some (foldl f x seq)
-      else
-        None ()
-    in
-
-    recursive let _findDefinition = lam definitionLookupSeq. lam name.
-      match definitionLookupSeq with [x] ++ seq then
-        let info = x.1 in
-        let collision = nameEq name x.0 in
-        if collision then
-          Some (info)
-        else
-          _findDefinition seq name
-      else None ()
-    in
-
-    let findDefinition = _findDefinition (mapToSeq definitionLookup) in
-
-    eprintln "Environment created!";
-
-    {
-      context.environment with
-      files = mapInsert uri {
-        -- Definitions
-        -- definitionLookup = definitionLookup,
-        findDefinition = findDefinition,
-
-        -- Variables
-        -- variableLookup = variableLookup,
-        findVariable = findVariable
-      } context.environment.files
-    }
-
   sem execute context =
   | DidOpen {uri = uri, version = version, text = text} ->
     match mapLookup uri context.environment.files with Some files then
@@ -293,48 +324,8 @@ lang LSPChange = LSPRoot
         environment = context.environment
       }
     else
-      let compilationArguments: CompilationParameters = {
-        uri = uri,
-        content = text
-      } in
-
-      -- Todo: use warnings in the `compilationResult`
-      let compilationResult = context.compileFunc compilationArguments in
-      let response = getDiagnostics version compilationResult.errors in
-
-      let environment = match compilationResult.expr with
-        Some expr then
-          getEnvironment context uri expr
-        else
-          { context.environment with files = mapRemove uri context.environment.files }
-      in
-
-      {
-        response = Some(response),
-        environment = environment
-      }
+      compile context uri text
   | DidChange {uri = uri, version = version, text = text} ->
-    -- let uri = "/mnt/ProbTime/examples/coin/coin.rpl" in
-
-    let compilationArguments: CompilationParameters = {
-      uri = uri,
-      content = text
-    } in
-
-    -- Todo: use warnings in the `compilationResult`
-    let compilationResult = context.compileFunc compilationArguments in
-    let response = getDiagnostics version compilationResult.errors in
-
-    let environment = match compilationResult.expr with
-      Some expr then
-        getEnvironment context uri expr
-      else
-        { context.environment with files = mapRemove uri context.environment.files }
-    in
-
-    {
-      response = Some(response),
-      environment = environment
-    }
+    compile context uri text
 
 end

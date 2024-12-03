@@ -1,73 +1,13 @@
 include "json.mc"
 
--- include "./dsl.mc"
+include "../lib/pprintjson.mc"
+
 include "./json-rpc.mc"
 include "./lsp/lsp.mc"
-include "../lib/pprintjson.mc"
+include "./prune.mc"
 
 -- How long to wait before executing a batch of requests
 let debounceTimeMs = 100
-
-type MessagePruningEnvironment = {
-  cancelled: Map Int Bool,
-  overwrittenDidChange: Map String Bool
-}
-
-type MessageWithContext = {
-  method: String,
-  id: Option Int,
-  message: use LSP in Message
-}
-
--- TODO: request request pruning, e.g. removing concurrent didChange notifications
-recursive let pruneMessages: MessagePruningEnvironment -> use LSP in [MessageWithContext] -> [MessageWithContext] =
-  lam environment. lam messages.
-    match messages with [message] ++ messages then
-      use LSP in
-      switch (message.id, message.message)
-        case (_, CancelRequest { id = id }) then
-          -- When cancelling a request, we remove the message with the same id
-          -- The `CancelRequest` will during execution respond with a
-          -- `ErrorCodes.RequestCancelled=32800` error, satisfying the LSP JSON-RPC spec.
-          let environment = {
-            environment with
-            cancelled = mapInsert id true environment.cancelled
-          } in
-          concat [message] (pruneMessages environment messages)
-        case (Some id, _) then
-          let messages = pruneMessages environment messages in
-          match mapLookup id environment.cancelled with Some _ then
-            messages
-          else
-            concat [message] messages
-        case (_, _) then
-          concat [message] (pruneMessages environment messages)
-      end
-    else
-      messages
-end
-
-let pruneMessages: use LSP in [MessageWithContext] -> [MessageWithContext] =
-  lam messages.
-    let messages = reverse messages in
-    let environment: MessagePruningEnvironment = {
-      cancelled = mapEmpty subi,
-      overwrittenDidChange = mapEmpty cmpString
-    } in
-    reverse (pruneMessages environment messages)
-
-let getMessage: String -> MessageWithContext =
-  lam body.
-    let jsonBody = jsonParseExn body in
-    let request = getRPCRequest jsonBody in
-    let method = request.method in
-    let id = request.id in
-    let message = use LSP in getMessage request request.method in
-    {
-      method = method,
-      id = id,
-      message = message
-    }
 
 let executeRequest: CompileFunc -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
   lam compileFunc. lam environment. lam message.
@@ -96,22 +36,16 @@ let executeRequest: CompileFunc -> LSPEnvironment -> use LSP in Message -> LSPEn
 
     result.environment
 
-let getContentLength: String -> Int = lam header.
-  match header with "Content-Length: " ++ len ++ "\n" then
-    string2int len
-  else
-    error "The JSON-RPC header could not be read, this shouldn't happen!"
-
 let executeRequests: CompileFunc -> LSPEnvironment -> [String] -> LSPEnvironment =
-  let debugPrintMessages = lam messages.
-    let messages = map
-      (lam x. join [x.method, ":", match x.id with Some id then int2string id else "?"])
-      messages
-    in
-    strJoin ", " messages
-  in
-
   lam compileFunc. lam environment. lam bodies.
+    let debugPrintMessages = lam messages.
+      let messages = map
+        (lam x. join [x.method, ":", match x.id with Some id then int2string id else "?"])
+        messages
+      in
+      strJoin ", " messages
+    in
+
     if leqi (length bodies) 0 then
       environment
     else

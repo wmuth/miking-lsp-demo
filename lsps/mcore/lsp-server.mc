@@ -1,3 +1,6 @@
+-- include "mlang/boot-parser.mc"
+include "mlang/main.mc"
+
 include "../../lsp-server/lsp-server.mc"
 include "../../../miking/src/main/eval.mc"
 
@@ -121,22 +124,111 @@ let compileFunc: CompilationParameters -> String -> CompilationResult =
         end
     end
 
+
+
 let compileFunc: CompilationParameters -> CompilationResult =
   lam parameters.
     let uri = parameters.uri in
     let content = parameters.content in
 
-    let paths = strSplit "/" (stripUriProtocol uri) in
-    let directory = strJoin "/" (init paths) in
-    let file = last paths in
-    let tmpFilePath = join [directory, "/", file, temp_file_extension] in
+    -- use BootParserMLang in
+    use MLangPipeline in
+    -- match result.consume (parseMLangString str) with (_, Right p) in
 
-    eprintln (join ["Reindexing MCore file '", uri, "'"]);
-    writeFile tmpFilePath content;
-    let result = compileFunc parameters tmpFilePath in
+    -- match result.consume (parseMLangFile path) with (_, errOrProg) in
+    -- switch errOrProg
+    --   case Left err then error (join [
+    --     "File '",
+    --     path,
+    --     "' could not be parsed!"
+    --   ])
+    --   case Right prog then 
+    --     -- modref included (setInsert path s);
+    --     -- handleIncludesProgram included dir libs prog
+    -- end
 
-    sysDeleteFile tmpFilePath;
-    result
+    -- let p = parseMLangString content in
+    match result.consume (parseMLangString content) with (_, Right p) in
+    
+    let p = constTransformProgram builtin p in
+    let p = composeProgram p in
+    match symbolizeMLang symEnvDefault p with (_, p) in
+    match result.consume (checkComposition p) with (_, res) in
+    (switch res
+      case Right env then
+        let ctx = _emptyCompilationContext env in 
+        let res = result.consume (compile ctx p) in 
+        match res with (_, rhs) in 
+        match rhs with Right expr in
+        printLn (expr2str expr);
+        ()
+    end);
+
+    -- let p = parseAndHandleIncludes (stripUriProtocol uri) in 
+    -- let p = constTransformProgram builtin p in
+    -- let p = composeProgram p in 
+    -- match symbolizeMLang symEnvDefault p with (_, p) in 
+    -- match result.consume (checkComposition p) with (_, res) in 
+
+    -- switch res 
+    --   case Left errs then 
+    --     iter raiseError errs ;
+    --     never
+    --   case Right env then
+    --     let ctx = _emptyCompilationContext env in 
+    --     let res = result.consume (compile ctx p) in 
+    --     match res with (_, rhs) in 
+    --     match rhs with Right expr in
+    --     endPhaseStats log "mlang-mexpr-lower" expr;
+
+    --     let expr = postprocess env.semSymMap expr in 
+    --     endPhaseStats log "postprocess" expr;
+
+    --     -- printLn (expr2str expr);
+
+    --     runner options filepath expr;
+    --     ()
+    -- end
+
+    {
+      expr = None (),
+      errors = [],
+      warnings = []
+    }
+
+
+
+    -- (
+    --   use BootParserMLang in
+    --   let parseProgram = lam str.
+    --     match result.consume (parseMLangString str) with (_, Right p) in p
+    --   in
+
+    --   let getIncludeStrings : MLangProgram -> [String] = lam p.
+    --     let decls = p.decls in
+    --     mapOption
+    --       (lam d. match d with DeclInclude r then Some r.path else None ())
+    --       decls
+    --   in
+
+    --   let p = parseProgram content in
+    --   use MLangPrettyPrint in
+    --   eprintln (mlang2str p);
+    --   eprintln (join ["includes: ", strJoin ", " (getIncludeStrings p)]);
+    --   ()
+    -- );
+
+    -- let paths = strSplit "/" (stripUriProtocol uri) in
+    -- let directory = strJoin "/" (init paths) in
+    -- let file = last paths in
+    -- let tmpFilePath = join [directory, "/", file, temp_file_extension] in
+
+    -- eprintln (join ["Reindexing MCore file '", uri, "'"]);
+    -- writeFile tmpFilePath content;
+    -- let result = compileFunc parameters tmpFilePath in
+
+    -- sysDeleteFile tmpFilePath;
+    -- result
 
 mexpr
 

@@ -7,7 +7,7 @@ include "./lsp/lsp.mc"
 include "./prune.mc"
 
 -- How long to wait before executing a batch of requests
-let debounceTimeMs = 100
+let debounceTimeMs = 10
 
 let executeRequest: CompileFunc -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
   lam compileFunc. lam environment. lam message.

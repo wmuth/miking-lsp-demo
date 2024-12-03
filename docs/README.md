@@ -1,6 +1,12 @@
 # Miking LSP PoC
 
+### Version 1
+
 https://github.com/didrikmunther/miking-lsp-demo/assets/5240046/3fb31104-b3fc-44c9-8262-ad91f5245114
+
+### Version 2
+
+https://github.com/user-attachments/assets/5ffcb3a5-773c-4d26-830c-b3de1d564780
 
 ## Requirements
 

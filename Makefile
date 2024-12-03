@@ -1,38 +1,38 @@
+DSLS := $(wildcard dsls/*)
+LSPS := $(wildcard lsps/*)
 
-.PHONY: all clean playground dsl
+.PHONY: all clean vscode-client $(DSLS) $(LSPS)
 
-all: miking-lsp/dsl/ast-gen.mc miking-lsp/dsl/lsp-server lsp-client/client/out/extension.js mcore-lsp/lsp-server
+all: $(DSLS) $(LSPS) vscode-client
 
 clean:
-	rm -f miking-lsp/dsl/lsp-server
-	rm -f mcore-lsp/lsp-server
-	rm -f miking-lsp/dsl/ast-gen.mc
-	cd lsp-client && npm run clean
+	@for d in $(DSLS); do \
+		echo "-- [Cleaning DSL $$d] --"; \
+		make -C $$d clean; \
+	done
 
-lsp-client/client/out/extension.js: lsp-client/client/src/**/* lsp-client/syntaxes/**/* lsp-client/package.json
-	cd lsp-client && npm install && npm run compile
+	@for l in $(LSPS); do \
+		echo "-- [Cleaning LSP $$l] --"; \
+		make -C $$l clean; \
+	done
 
-# Generating the parser and AST from the '.syn' file
-miking-lsp/dsl/ast-gen.mc: miking-lsp/dsl/ast.syn
-	mi syn miking-lsp/dsl/ast.syn miking-lsp/dsl/ast-gen.mc
+	@echo "-- [Cleaning VSCode extension] --"
+	@make -C lsp-client clean
 
-miking-lsp/dsl/lsp-server: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc
-	mi compile miking-lsp/dsl/lsp-server.mc --output miking-lsp/dsl/lsp-server
+# -- DSLs --
 
-mcore-lsp/compile-mcore: miking-lsp/dsl/**/*.mc mcore-lsp/*.mc
-	mi compile mcore-lsp/compile-mcore.mc --output mcore-lsp/compile-mcore
+$(DSLS):
+	@echo "-- [Building DSL $@] --"
+	@make -C $@
 
-mcore-lsp/lsp-server: mcore-lsp/compile-mcore miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc mcore-lsp/*.mc
-	mi compile mcore-lsp/lsp.mc --output mcore-lsp/lsp-server
+# -- LSPs --
 
-miking-lsp/dsl/dsl: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc
-	mi compile miking-lsp/dsl/dsl.mc --output miking-lsp/dsl/dsl
+$(LSPS):
+	@echo "-- [Building LSP $@] --"
+	@make -C $@
 
-miking-lsp/dsl/playground: miking-lsp/dsl/*.mc miking-lsp/dsl/**/*.mc
-	mi compile miking-lsp/dsl/playground.mc --output miking-lsp/dsl/playground
+# -- VSCode extension --
 
-playground: miking-lsp/dsl/playground miking-lsp/dsl/ast-gen.mc
-	./miking-lsp/dsl/playground
-
-dsl: miking-lsp/dsl/dsl miking-lsp/dsl/ast-gen.mc
-	./miking-lsp/dsl/dsl
+vscode-client:
+	@echo "-- [Building VSCode extension] --"
+	@make -C lsp-client

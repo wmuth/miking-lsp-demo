@@ -18,6 +18,12 @@ recursive let pruneMessages: MessagePruningEnvironment -> use LSP in [MessageWit
             cancelled = mapInsert id true environment.cancelled
           } in
           concat [message] (pruneMessages environment messages)
+        case (Some id, _) then
+          let messages = pruneMessages environment messages in
+          match mapLookup id environment.cancelled with Some _ then
+            messages
+          else
+            concat [message] messages
         case (_, DidChange { uri = uri }) then
           -- When a `DidChange` notification is received, we check if we have already received one for the same URI.
           -- If we have, we don't include this one, as it has been overwritten (we are in a reversed message array).
@@ -30,12 +36,6 @@ recursive let pruneMessages: MessagePruningEnvironment -> use LSP in [MessageWit
               overwrittenDidChange = mapInsert uri true environment.overwrittenDidChange
             } in
             concat [message] (pruneMessages environment messages)
-        case (Some id, _) then
-          let messages = pruneMessages environment messages in
-          match mapLookup id environment.cancelled with Some _ then
-            messages
-          else
-            concat [message] messages
         case (_, _) then
           concat [message] (pruneMessages environment messages)
       end

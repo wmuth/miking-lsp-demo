@@ -5,6 +5,8 @@ include "./json-rpc.mc"
 include "./lsp/lsp.mc"
 include "../lib/pprintjson.mc"
 
+
+
 let handleRequest = lam compileFunc. lam environment. lam request.
   let request = getRPCRequest request in
   let method = request.method in
@@ -36,29 +38,64 @@ let handleRequest = lam compileFunc. lam environment. lam request.
 
     result.environment
 
-
 let getContentLength: String -> Int = lam header.
   match header with "Content-Length: " ++ len ++ "\n" then
     string2int len
   else
-    error "Content-Length not found"
+    error "The JSON-RPC header could not be read, this shouldn't happen!"
 
-recursive let readJsonRPC = lam compileFunc. lam environment.
-  switch fileReadLine fileStdin
-    case None _ then {}
-    case Some header then
-      -- We add 2 to the content length to account for the newline characters
-      let contentHeaderLength = addi (getContentLength header) 2 in
-      switch readBytesBuffered fileStdin contentHeaderLength
-        case None _ then {}
-        case Some body then
-          let asciiBody = map int2char body in
-          let json = jsonParseExn asciiBody in
-          let environment = handleRequest compileFunc environment json in
-          readJsonRPC compileFunc environment
+let executeRequest: CompileFunc -> LSPEnvironment -> String -> LSPEnvironment =
+  lam compileFunc. lam environment. lam request.
+    let json = jsonParseExn request in
+    handleRequest compileFunc environment json
+
+let executeRequests: CompileFunc -> LSPEnvironment -> [String] -> LSPEnvironment =
+  lam compileFunc. lam environment. lam requests.
+    if leqi (length requests) 0 then
+      environment
+    else
+      eprintln (join ["Executing ", int2string (length requests), " requests"]);
+      reduce (executeRequest compileFunc) environment requests
+
+recursive let readJsonRPC: CompileFunc -> LSPEnvironment -> [String] -> () =
+  lam compileFunc. lam environment. lam bufferedRequests.
+    let headerIsReady = fileHasBytesToRead fileStdin in
+    let headerIsReady = if not headerIsReady then
+      sleepMs 100;
+      fileHasBytesToRead fileStdin
+    else
+      headerIsReady
+    in
+    
+    let result = if not headerIsReady then
+      -- sleepMs 100; -- Debounce
+      let environment = executeRequests compileFunc environment bufferedRequests in
+      let bufferedRequests = [] in
+      (environment, bufferedRequests)
+    else
+      switch fileReadLine fileStdin
+        case None _ then error "LSP client closed stdout"
+        case Some header then
+          -- We add 2 to the content length to account for the newline characters
+          let contentHeaderLength = addi (getContentLength header) 2 in
+          switch readBytesBuffered fileStdin contentHeaderLength
+            case None _ then error "LSP client closed stdout"
+            case Some body then
+              let asciiBody = map int2char body in
+              let bufferedRequests = concat [asciiBody] bufferedRequests in
+              (environment, bufferedRequests)
+          end
       end
-  end
+    in
+
+    let environment = result.0 in
+    let bufferedRequests = result.1 in
+    readJsonRPC compileFunc environment bufferedRequests
 end
+
+let readJsonRPC: CompileFunc -> LSPEnvironment -> () =
+  lam compileFunc. lam environment.
+    readJsonRPC compileFunc environment []
 
 mexpr
 
@@ -102,3 +139,4 @@ mexpr
 -- eprintln "Miking LSP ended"
 
 ()
+

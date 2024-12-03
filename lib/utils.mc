@@ -17,6 +17,14 @@ recursive
     end
   end
 
+recursive let reduce: all a. all b. (b -> a -> b) -> b -> [a] -> b =
+  lam f. lam acc. lam xs.
+    match xs with [x] ++ xs then
+      reduce f (f acc x) xs
+    else
+      acc
+end
+
 let groupBy: all k. all v. (k -> k -> Int) -> (v -> k) -> [v] -> Map k [v] =
   lam cmp. lam f. lam arr.
     foldl

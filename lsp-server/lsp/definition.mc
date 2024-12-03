@@ -7,13 +7,13 @@ include "./root.mc"
 include "../mexpr.mc"
 
 lang LSPGotoDefinition = LSPRoot
-syn Params =
+  syn Message =
   | GotoDefinition {
     id: Int,
     textDocument: TextDocumentPositionParams
   }
 
-sem getParams request =
+  sem getMessage request =
   | "textDocument/definition" ->
     match request.id with Some id in
     GotoDefinition {
@@ -21,7 +21,7 @@ sem getParams request =
       textDocument = getTextDocumentPositionParams request.params
     }
 
-sem getDefinition environment =
+  sem getDefinition environment =
   | (_info, variable_name, _ty) ->
     -- (
     -- 	match variable with Some (info, variable) then
@@ -32,7 +32,7 @@ sem getDefinition environment =
 
     environment.findDefinition variable_name
 
-sem getLSPResponse context id =
+  sem getLSPResponse context id =
   | definition ->
     match definition with Some info then
       -- eprintln (join ["Found definition: ", info2str info]);
@@ -77,7 +77,7 @@ sem getLSPResponse context id =
         ]
       )
 
-sem execute context =
+  sem execute context =
   | GotoDefinition { id = id, textDocument = {
     uri = uri,
     line = line,

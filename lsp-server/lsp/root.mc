@@ -45,11 +45,11 @@ type LSPResult = {
 }
 
 lang LSPRoot
-  syn Params =
+  syn Message =
 
   -- Translate RPC message to LSP Params object, to be used in `execute`
-  sem getParams: RPCRequest -> String -> Params
+  sem getMessage: RPCRequest -> String -> Message
 
   -- todo: return abstracted LSP response
-  sem execute: LSPExecutionContext -> Params -> LSPResult
+  sem execute: LSPExecutionContext -> Message -> LSPResult
 end

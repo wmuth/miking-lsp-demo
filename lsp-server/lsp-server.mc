@@ -23,8 +23,8 @@ let handleRequest = lam compileFunc. lam environment. lam request.
   eprintln method;
   
   use LSP in
-  let params = getParams request request.method in
-  match params with UnknownMethod {} then
+  let message = getMessage request request.method in
+  match message with UnknownMethod {} then
     eprintln (join ["[Unknown method] ", method]);
     environment
   else
@@ -39,7 +39,7 @@ let handleRequest = lam compileFunc. lam environment. lam request.
         ()
     } in
     
-    let result = execute executionContext params in
+    let result = execute executionContext message in
 
     (
       match result.response with Some response then

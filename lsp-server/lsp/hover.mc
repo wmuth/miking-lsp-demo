@@ -11,13 +11,13 @@ lang SuperPrettyPrint = MExprPrettyPrint --+ DPPLParser
 end
 
 lang LSPHover = LSPRoot
-  syn Params =
+  syn Message =
   | Hover {
     id: Int,
     textDocument: TextDocumentPositionParams
   }
 
-  sem getParams request =
+  sem getMessage request =
   | "textDocument/hover" ->
     match request.id with Some id in
     Hover {

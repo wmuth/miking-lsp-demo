@@ -291,7 +291,7 @@ let compile = lam context. lam uri. lam content.
   }
 
 lang LSPChange = LSPRoot
-  syn Params =
+  syn Message =
   | DidChange {
     uri: String,
     version: Int,
@@ -303,7 +303,7 @@ lang LSPChange = LSPRoot
     text: String
   }
 
-  sem getParams request =
+  sem getMessage request =
   | "textDocument/didChange" ->
     match mapLookup "textDocument" request.params with Some JsonObject textDocument in
     match mapLookup "uri" textDocument with Some JsonString uri in

@@ -4,11 +4,11 @@ include "../../lib/utils.mc"
 include "./root.mc"
 
 lang LSPInitialize = LSPRoot
-  syn Params =
+  syn Message =
   | Initialized {}
   | Initialize {}
 
-  sem getParams request =
+  sem getMessage request =
   | "initialized" ->
     Initialized {}
   | "initialize" ->

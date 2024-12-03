@@ -1,10 +1,10 @@
 include "./root.mc"
 
 lang LSPUnknownMethod = LSPRoot
-	syn Params =
+	syn Message =
 	| UnknownMethod {}
 
-	sem getParams request =
+	sem getMessage request =
 	| _method ->
 		UnknownMethod {}
 

@@ -4,6 +4,7 @@ include "./change.mc"
 include "./completion.mc"
 include "./hover.mc"
 include "./definition.mc"
+include "./misc.mc"
 
 lang LSP =
 LSPInitialize
@@ -12,4 +13,5 @@ LSPInitialize
 -- + LSPCompletion
 + LSPHover
 + LSPGotoDefinition
++ LSPMisc
 end

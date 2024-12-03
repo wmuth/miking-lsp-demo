@@ -117,6 +117,7 @@ recursive let createDefinitionLookup: use MExprAst in Expr -> Map Name Info = la
       m
   end in
 
+  
   sfold_Expr_Expr (lam acc. lam expr.
     let children = createDefinitionLookup expr in
     mapUnion acc children

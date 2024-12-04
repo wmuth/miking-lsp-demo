@@ -1,3 +1,5 @@
+include "./lsp/lsp.mc"
+
 type MessagePruningEnvironment = {
   cancelled: Map Int Bool,
   overwrittenDidChange: Map String Bool

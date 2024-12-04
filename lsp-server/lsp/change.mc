@@ -8,7 +8,7 @@ include "./utils.mc"
 include "./root.mc"
 
 -- Print debug information
-let __debug = false
+let __debug = true
 
 let debugPrintDefinitionLookup = lam definitionLookup.
     let seq = mapToSeq definitionLookup in

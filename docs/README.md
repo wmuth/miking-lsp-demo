@@ -6,7 +6,13 @@ https://github.com/didrikmunther/miking-lsp-demo/assets/5240046/3fb31104-b3fc-44
 
 ### Version 2
 
+#### Goto Definition & Hover Support (Type information)
+
 https://github.com/user-attachments/assets/5ffcb3a5-773c-4d26-830c-b3de1d564780
+
+#### Code Lens (Run unit tests)
+
+https://github.com/user-attachments/assets/9895db91-e153-4248-858c-d3ae952b0612
 
 ## Requirements
 

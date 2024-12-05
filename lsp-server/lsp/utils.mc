@@ -1,6 +1,7 @@
 include "mexpr/info.mc"
 include "mexpr/ast.mc"
 include "json.mc"
+include "../../lib/utils.mc"
 
 let temp_file_extension = "~lsp"
 
@@ -57,6 +58,24 @@ let getFileInfo: Info -> ProdPosition = lam fi.
     }
   else
     never
+
+let infoToRange = lam info: Info.
+  match info
+    with Info r then
+      Some (
+        ("range", jsonKeyObject [
+          ("start", jsonKeyObject [
+            ("line", JsonInt (subi r.row1 1)),
+            ("character", JsonInt r.col1)
+          ]),
+          ("end", jsonKeyObject [
+            ("line", JsonInt (subi r.row2 1)),
+            ("character", JsonInt r.col2)
+          ])
+        ])
+      )
+    else
+      None ()
 
 let stripUriProtocol = lam uri. match uri
   with "file://" ++ rest then rest

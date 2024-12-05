@@ -106,7 +106,7 @@ let compileFunc: use MExprAst in CompileMCoreOptions -> String -> Expr =
     let strippedUri = stripUriProtocol uri in
 
     let expr = parseParseMCoreFile {
-      keepUtests = false,
+      keepUtests = true,
       keywords = [],
       pruneExternalUtests = true,
       pruneExternalUtestsWarning = true,

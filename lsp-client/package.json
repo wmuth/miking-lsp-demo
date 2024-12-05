@@ -21,6 +21,12 @@
   ],
   "main": "./client/out/extension",
   "contributes": {
+    "commands": [
+      {
+        "command": "mikingdsl.debugSingle",
+        "title": "Run test"
+      }
+    ],
     "languages": [
       {
         "id": "mikingdsl",

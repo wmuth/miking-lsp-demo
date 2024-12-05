@@ -27,6 +27,7 @@ type LSPFileEnvironment = {
 
   -- TODO: Temporary in order to support naive completion
   definitionLookup: Map Name Info,
+  utestLookup: [Info],
 
   errors: [(Info, String)],
   warnings: [(Info, String)]

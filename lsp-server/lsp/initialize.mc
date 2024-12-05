@@ -31,6 +31,9 @@ lang LSPInitialize = LSPRoot
               ("interFileDependencies", JsonBool false),
               ("workspaceDiagnostics", JsonBool false)
             ]),
+            ("codeLensProvider", jsonKeyObject [
+              ("resolveProvider", JsonBool true)
+            ]),
             ("hoverProvider", JsonBool true),
             ("textDocumentSync", JsonInt 1),
             ("definitionProvider", JsonBool true),

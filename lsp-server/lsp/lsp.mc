@@ -5,10 +5,12 @@ include "./completion.mc"
 include "./hover.mc"
 include "./definition.mc"
 include "./misc.mc"
+include "./codelens.mc"
 
 lang LSP =
 LSPInitialize
 + LSPUnknownMethod
++ LSPCodeLens
 + LSPChange
 + LSPCompletion
 + LSPHover

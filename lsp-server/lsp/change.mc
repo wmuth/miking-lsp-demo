@@ -168,6 +168,28 @@ recursive let createVariableLookup: use MExprAst in String -> Expr -> Map Info (
     ) m expr
 end
 
+recursive let createUtestLookup: use MExprAst in String -> Expr -> [Info] =
+  lam filename. lam expr.
+    use MExprAst in
+
+    let filename = stripUriProtocol filename in
+    let arr = [] in
+    let arr = switch expr
+      case TmUtest { info = info & Info r } then
+        if eqString (stripTempFileExtension r.filename) filename then
+          [info]
+        else
+          arr
+      case _ then
+        arr
+    end in
+
+    sfold_Expr_Expr (lam acc. lam e.
+      let children = createUtestLookup filename e in
+      concat acc children
+    ) arr expr
+end
+
 recursive let findVariables = lam acc. lam variableLookupSeq. lam filename. lam line. lam character.
   match variableLookupSeq with [x] ++ seq then
     match x with (info, variable) in
@@ -233,6 +255,7 @@ let getEnvironment = lam context. lam uri. lam expr.
   in
 
   let findDefinition = _findDefinition (mapToSeq definitionLookup) in
+  let utestLookup = createUtestLookup uri expr in
 
   eprintln "Environment created!";
 
@@ -243,6 +266,7 @@ let getEnvironment = lam context. lam uri. lam expr.
 
       findDefinition = findDefinition,
       findVariable = findVariable,
+      utestLookup = utestLookup,
 
       errors = [],
       warnings = []

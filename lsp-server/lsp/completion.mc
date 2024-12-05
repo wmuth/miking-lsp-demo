@@ -65,10 +65,11 @@ end
 let getCompletionItems = lam environment.
   let getCompletionItem = lam definition.
     match definition with (name, info) in
+    let name = nameGetStr name in
     jsonKeyObject [
-      ("label", JsonString (nameGetStr name)),
+      ("label", JsonString name),
       ("kind", JsonInt (use LSPCompletionItem in getCompletionItemKind (Method ()))),
-      ("insertText", JsonString "+"),
+      ("insertText", JsonString (join [name, " in"])),
       ("insertTextFormat", JsonInt 2),
       ("documentation", jsonKeyObject [
         ("kind", JsonString "markdown"),
@@ -121,50 +122,4 @@ lang LSPCompletion = LSPRoot
           ]
         )
       }
-
-  -- sem execute context =
-  --   | Completion { id = id } ->
-  --     {
-  --       environment = context.environment,
-  --       response = Some(
-  --         jsonKeyObject [
-  --           ("jsonrpc", JsonString "2.0"),
-  --           ("id", JsonInt id),
-  --           ("result", jsonKeyObject [
-  --           ("isIncomplete", JsonBool true),
-  --           ("items", JsonArray [
-  --             jsonKeyObject [
-  --             ("label", JsonString "add"),
-  --             ("kind", JsonInt (getCompletionItemKind (Method ()))),
-  --             ("insertText", JsonString "+"),
-  --             ("insertTextFormat", JsonInt 2),
-  --             ("documentation", jsonKeyObject [
-  --               ("kind", JsonString "markdown"),
-  --               ("value", JsonString "Addition operation `markdown test`")
-  --             ]),
-  --             ("deprecated", JsonBool true)
-  --             ],
-  --             jsonKeyObject [
-  --             ("label", JsonString "sub"),
-  --             ("kind", JsonInt (getCompletionItemKind (Constructor ()))),
-  --             ("insertText", JsonString "-"),
-  --             ("insertTextFormat", JsonInt 2)
-  --             ],
-  --             jsonKeyObject [
-  --             ("label", JsonString "mul"),
-  --             ("kind", JsonInt (getCompletionItemKind (Function ()))),
-  --             ("insertText", JsonString "*"),
-  --             ("insertTextFormat", JsonInt 2)
-  --             ],
-  --             jsonKeyObject [
-  --             ("label", JsonString "div"),
-  --             ("kind", JsonInt (getCompletionItemKind (Class ()))),
-  --             ("insertText", JsonString "/"),
-  --             ("insertTextFormat", JsonInt 2)
-  --             ]
-  --           ])
-  --           ])
-  --         ]
-  --       )
-  --     }
 end

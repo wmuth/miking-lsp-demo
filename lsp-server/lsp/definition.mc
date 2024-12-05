@@ -1,10 +1,10 @@
 include "json.mc"
 
 include "../../lib/utils.mc"
-include "./utils.mc"
-
-include "./root.mc"
 include "../mexpr.mc"
+
+include "./utils.mc"
+include "./root.mc"
 
 lang LSPGotoDefinition = LSPRoot
   syn Message =
@@ -23,31 +23,12 @@ lang LSPGotoDefinition = LSPRoot
 
   sem getDefinition environment =
   | (_info, variable_name, _ty) ->
-    -- (
-    -- 	match variable with Some (info, variable) then
-    -- 		eprintln (join ["Found variable: ", info2str info]); ()
-    -- 	else
-    -- 		eprintln "No variable found"; ()
-    -- );
-
     environment.findDefinition variable_name
 
   sem getLSPResponse context id =
   | definition ->
-    match definition with Some info then
-      -- eprintln (join ["Found definition: ", info2str info]);
-
-      let info = getFileInfo info in
-
-      -- let filename = match info.filename with "/app/" ++ rest then
-      -- 	join ["/Users/didrik/projects/miking/", rest]
-      -- else 
-      -- 	originalUri
-      -- in
-
-      let filename = info.filename in 
-
-      eprintln (join ["Going to: ", filename, ":", int2string info.lineStart, ":", int2string info.colStart, "-", int2string info.lineEnd, ":", int2string info.colEnd]);
+    match (definition, optionBind definition infoToRange) with (Some (Info r), Some range) then
+      let filename = r.filename in
 
       Some(
         jsonKeyObject [
@@ -55,16 +36,7 @@ lang LSPGotoDefinition = LSPRoot
           ("id", JsonInt id),
           ("result", jsonKeyObject [
             ("uri", JsonString filename),
-            ("range", jsonKeyObject [
-              ("start", jsonKeyObject [
-                ("line", JsonInt (subi info.lineStart 1)),
-                ("character", JsonInt info.colStart)
-              ]),
-              ("end", jsonKeyObject [
-                ("line", JsonInt (subi info.lineEnd 1)),
-                ("character", JsonInt info.colEnd)
-              ])
-            ])
+            range
           ])
         ]
       )

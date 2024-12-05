@@ -25,6 +25,9 @@ type LSPFileEnvironment = {
   findVariable: use MExprAst in String -> Int -> Int -> Option ((Info, Name, Type)), -- Todo: this is Mexpr specific, should be abstracted
   findDefinition: Name -> Option (Info), -- Todo: this is Mexpr specific, should be abstracted
 
+  -- TODO: Temporary in order to support naive completion
+  definitionLookup: Map Name Info,
+
   errors: [(Info, String)],
   warnings: [(Info, String)]
 }
@@ -52,4 +55,9 @@ lang LSPRoot
 
   -- todo: return abstracted LSP response
   sem execute: LSPExecutionContext -> Message -> LSPResult
+  sem execute context =
+  | message -> {
+    response = None (),
+    environment = context.environment
+  }
 end

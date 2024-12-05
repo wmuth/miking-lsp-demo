@@ -8,7 +8,7 @@ include "./utils.mc"
 include "./root.mc"
 
 -- Print debug information
-let __debug = true
+let __debug = false
 
 let debugPrintDefinitionLookup = lam definitionLookup.
     let seq = mapToSeq definitionLookup in
@@ -18,7 +18,7 @@ let debugPrintDefinitionLookup = lam definitionLookup.
 
 let debugPrintVariableLookup = lam variableLookup.
     let seq = mapToSeq variableLookup in
-    let f = lam x. eprintln (join ["\t", info2str x.0, ": ", nameGetStr (x.1).0]); () in
+    let f = lam x. eprintln (join ["\t", nameGetStr (x.1).0, ": ", info2str x.0]); () in
     eprintln (join ["Variable Lookup (", int2string (length seq), "):"]);
     iter f seq; ()
 
@@ -170,12 +170,10 @@ end
 
 recursive let findVariables = lam acc. lam variableLookupSeq. lam filename. lam line. lam character.
   match variableLookupSeq with [x] ++ seq then
-    let info = x.0 in
-    let variable = x.1 in
+    match x with (info, variable) in
     let collision = infoCollision info filename line character in
     let acc = if collision then
-      let name = variable.0 in
-      let ty = variable.1 in
+      match variable with (name, ty) in
       concat [(info, name, ty)] acc
     else
       acc
@@ -194,7 +192,7 @@ let getEnvironment = lam context. lam uri. lam expr.
 
   eprintln "Creating definition lookup";
   let definitionLookup = createDefinitionLookup expr in
-  -- let definitionLookup = createTypeLookup expr in -- TODO: implement
+  -- let typeLookup = createTypeLookup expr in -- TODO: implement
   (if __debug then debugPrintDefinitionLookup definitionLookup; () else ());
 
   eprintln "Creating variable lookup";
@@ -224,13 +222,14 @@ let getEnvironment = lam context. lam uri. lam expr.
 
   recursive let _findDefinition = lam definitionLookupSeq. lam name.
     match definitionLookupSeq with [x] ++ seq then
-      let info = x.1 in
-      let collision = nameEq name x.0 in
+      match x with (variableName, info) in
+      let collision = nameEq name variableName in
       if collision then
         Some (info)
       else
         _findDefinition seq name
-    else None ()
+    else
+      None ()
   in
 
   let findDefinition = _findDefinition (mapToSeq definitionLookup) in
@@ -240,8 +239,11 @@ let getEnvironment = lam context. lam uri. lam expr.
   {
     context.environment with
     files = mapInsert uri {
+      definitionLookup = definitionLookup,
+
       findDefinition = findDefinition,
       findVariable = findVariable,
+
       errors = [],
       warnings = []
     } context.environment.files
@@ -303,6 +305,9 @@ lang LSPChange = LSPRoot
     version: Int,
     text: String
   }
+  | DidClose {
+    uri: String
+  }
 
   sem getMessage request =
   | "textDocument/didChange" ->
@@ -329,6 +334,13 @@ lang LSPChange = LSPRoot
       uri = uri,
       version = version,
       text = text
+    }
+  | "textDocument/didClose" ->
+    match mapLookup "textDocument" request.params with Some JsonObject textDocument in
+    match mapLookup "uri" textDocument with Some JsonString uri in
+
+    DidClose {
+      uri = uri
     }
 
   sem execute context =

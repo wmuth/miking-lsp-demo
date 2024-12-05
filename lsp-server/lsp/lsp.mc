@@ -10,7 +10,7 @@ lang LSP =
 LSPInitialize
 + LSPUnknownMethod
 + LSPChange
--- + LSPCompletion
++ LSPCompletion
 + LSPHover
 + LSPGotoDefinition
 + LSPMisc

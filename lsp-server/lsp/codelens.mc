@@ -12,7 +12,7 @@ let getUtestLenses = lam environment.
         range,
         ("command", jsonKeyObject [
           ("title", JsonString "Run Test"),
-          ("command", JsonString "mikingdsl.debugSingle"),
+          ("command", JsonString "mcore.debugSingle"),
           ("arguments", JsonArray [
             JsonString (stripTempFileExtension r.filename),
             JsonString (info2str (stripTempFileExtensionFromInfo info))

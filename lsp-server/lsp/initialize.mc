@@ -45,7 +45,7 @@ lang LSPInitialize = LSPRoot
             ])
           ]),
           ("serverInfo", jsonKeyObject [
-            ("name", JsonString "miking-lsp-server"),
+            ("name", JsonString "mcoreLanguageServer"),
             ("version", JsonString "0.1.0")
           ])
         ])

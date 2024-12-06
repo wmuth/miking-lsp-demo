@@ -20,6 +20,9 @@ import {
   TaskRevealKind,
   TaskPanelKind,
   TaskGroup,
+  StatusBarItem,
+  window,
+  StatusBarAlignment,
 } from "vscode";
 
 import {
@@ -28,7 +31,10 @@ import {
   ServerOptions,
 } from "vscode-languageclient/node";
 
+let clientActive: boolean = false;
 let client: LanguageClient;
+
+let statusBar: StatusBarItem;
 
 async function createTemporaryDirectory() {
   return new Promise<string>((resolve, reject) => {
@@ -106,12 +112,51 @@ async function runUtest(url: string, info: string) {
   await tasks.executeTask(buildTask);
 }
 
-export function activate(context: ExtensionContext) {
-  // const command = context.asAbsolutePath(path.join("..", "rpclsp.sh"));
-  // const command = context.asAbsolutePath(path.join("..", "/miking-lsp/dsl/lsp-server"));
+function activateStatusBar({ subscriptions }: ExtensionContext) {
+  const commandId = "mcore.testCommand";
 
+  subscriptions.push(
+    commands.registerCommand(commandId, async () => {
+      if (clientActive) {
+        let error;
+        for(let i = 0; i < 5; i++) {
+          try {
+            await client.stop();
+            window.showInformationMessage(`Stopped MCore Language Server`);
+            clientActive = false;
+            statusBar.text = "$(circle-outline) Start MCore LSP";
+            return;
+          } catch(e) {
+            error = e;
+          }
+        }
+        throw new Error(`Error stopping MCore Language Server: ${error.message}`);
+      } else {
+        try {
+          await client.start();
+          window.showInformationMessage(`Started MCore Language Server`);
+          clientActive = true;
+          statusBar.text = "$(check) Stop MCore LSP";
+        } catch (e) {
+          window.showErrorMessage(`Error starting MCore Language Server: ${e.message}`);
+        }
+      }
+    })
+  );
+
+  statusBar = window.createStatusBarItem(StatusBarAlignment.Left, 100);
+  statusBar.command = commandId;
+  statusBar.text = "$(check) Stop MCore LSP";
+  statusBar.show();
+
+  subscriptions.push(statusBar);
+}
+
+export async function activate(context: ExtensionContext) {
   const lspServerBin = context.asAbsolutePath(path.join("bin", "lsp-server"));
-  const mcoreCompilerBin = context.asAbsolutePath(path.join("bin", "compile-mcore"));
+  const mcoreCompilerBin = context.asAbsolutePath(
+    path.join("bin", "compile-mcore")
+  );
 
   const serverOptions: ServerOptions = {
     command: lspServerBin,
@@ -123,8 +168,6 @@ export function activate(context: ExtensionContext) {
       "mcore.debugSingle",
       async (url: string, info: string) => {
         await runUtest(url, info);
-
-        // throw new Error(JSON.stringify({ url, info }));
       }
     )
   );
@@ -139,6 +182,8 @@ export function activate(context: ExtensionContext) {
     },
   };
 
+  activateStatusBar(context);
+
   // Create the language client and start the client.
   client = new LanguageClient(
     "mcoreLanguageServer",
@@ -148,7 +193,8 @@ export function activate(context: ExtensionContext) {
   );
 
   // Start the client. This will also launch the server
-  client.start();
+  await client.start();
+  clientActive = true;
 }
 
 export function deactivate(): Thenable<void> | undefined {

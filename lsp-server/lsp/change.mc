@@ -150,8 +150,13 @@ recursive let createVariableLookup: use MExprAst in String -> Expr -> Map Info (
         | TmType { ident=ident, ty=ty, info=info }
       then
         mapInsertVariable info (ident, ty) m
-      case TmMatch { thn=TmVar {ident=ident}, ty=ty, info=info } then
-        -- pat = PatRecord {bindings = bindings}
+      case TmMatch {
+        thn=TmVar { ident=ident },
+        ty=ty,
+        info=info,
+        pat=p & PatRecord { bindings=bindings }
+      } then
+        -- eprintln (join ["Match: ", expr2str p]);
         mapInsertVariable info (ident, ty) m
       case TmRecLets { bindings=bindings } then
         -- The info field appears to point to just the "let" keyword??

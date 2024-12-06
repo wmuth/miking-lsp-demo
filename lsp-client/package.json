@@ -1,14 +1,15 @@
 {
-  "name": "lsp-client",
-  "description": "A language server example",
-  "author": "Microsoft Corporation",
+  "name": "mcore",
+  "description": "MCore Language Support",
+  "author": "Didrik Munther",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.6",
+  "icon": "images/miking.jpeg",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Microsoft/vscode-extension-samples"
+    "url": "https://github.com/didrikmunther/miking-lsp-demo"
   },
-  "publisher": "vscode-samples",
+  "publisher": "didrikmunther",
   "categories": [],
   "keywords": [
     "multi-root ready"
@@ -23,21 +24,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "mikingdsl.debugSingle",
+        "command": "mcore.debugSingle",
         "title": "Run test"
       }
     ],
     "languages": [
       {
-        "id": "mikingdsl",
-        "aliases": [
-          "mdsl",
-          "rpl",
-          "mc"
-        ],
+        "id": "MCore",
         "extensions": [
-          ".mdsl",
-          ".rpl",
           ".mc"
         ],
         "configuration": "./language-configuration.json"
@@ -45,9 +39,9 @@
     ],
     "grammars": [
       {
-        "language": "mikingdsl",
-        "scopeName": "source.mikingdsl",
-        "path": "./syntaxes/mikingdsl.tmLanguage.json"
+        "language": "MCore",
+        "scopeName": "source.mcore",
+        "path": "./syntaxes/mcore.tmLanguage.json"
       }
     ],
     "configuration": {

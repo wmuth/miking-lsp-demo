@@ -107,17 +107,20 @@ async function runUtest(url: string, info: string) {
 }
 
 export function activate(context: ExtensionContext) {
-  const rpcScriptModule = context.asAbsolutePath(path.join("..", "rpclsp.sh"));
-  // const rpcScriptModule = context.asAbsolutePath(path.join("..", "/miking-lsp/dsl/lsp-server"));
+  // const command = context.asAbsolutePath(path.join("..", "rpclsp.sh"));
+  // const command = context.asAbsolutePath(path.join("..", "/miking-lsp/dsl/lsp-server"));
+
+  const lspServerBin = context.asAbsolutePath(path.join("bin", "lsp-server"));
+  const mcoreCompilerBin = context.asAbsolutePath(path.join("bin", "compile-mcore"));
 
   const serverOptions: ServerOptions = {
-    command: rpcScriptModule,
-    args: ["--dev"],
+    command: lspServerBin,
+    args: [`'${mcoreCompilerBin}'`],
   };
 
   context.subscriptions.push(
     commands.registerCommand(
-      "mikingdsl.debugSingle",
+      "mcore.debugSingle",
       async (url: string, info: string) => {
         await runUtest(url, info);
 
@@ -129,7 +132,7 @@ export function activate(context: ExtensionContext) {
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
     // Register the server for plain text documents
-    documentSelector: [{ scheme: "file", language: "mikingdsl" }],
+    documentSelector: [{ scheme: "file", language: "MCore" }],
     synchronize: {
       // Notify the server about file changes to '.clientrc files contained in the workspace
       fileEvents: workspace.createFileSystemWatcher("**/.clientrc"),
@@ -138,8 +141,8 @@ export function activate(context: ExtensionContext) {
 
   // Create the language client and start the client.
   client = new LanguageClient(
-    "mikingLanguageServerExample",
-    "Miking DSL LSP Example",
+    "mcoreLanguageServer",
+    "MCore Language Server",
     serverOptions,
     clientOptions
   );

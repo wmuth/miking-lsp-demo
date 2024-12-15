@@ -17,22 +17,27 @@ clean:
 	done
 
 	@echo "-- [Cleaning VSCode extension] --"
-	@make -C lsp-client clean
+	make -C lsp-client clean
 
 # -- DSLs --
 
 $(DSLS):
 	@echo "-- [Building DSL $@] --"
-	@make -C $@
+	make -C $@
 
 # -- LSPs --
 
 $(LSPS):
 	@echo "-- [Building LSP $@] --"
-	@make -C $@
+	make -C $@
 
 # -- VSCode extension --
 
-vscode-client:
+vscode-client: lsps/mcore
 	@echo "-- [Building VSCode extension] --"
-	@make -C lsp-client
+	rm -rf lsp-client/mcore
+	mkdir -p lsp-client/mcore
+	cp -r ./{lsp-server,lib} lsp-client/mcore
+	mkdir -p lsp-client/mcore/lsps/mcore
+	cp -r lsps/mcore/*.mc lsp-client/mcore/lsps/mcore
+	make -C lsp-client

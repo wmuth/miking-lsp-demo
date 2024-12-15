@@ -1,4 +1,5 @@
 include "json.mc"
+include "mexpr/info.mc"
 include "ext/file-ext.mc"
 
 -- returns Option content if the requested number of bytes could be read
@@ -58,3 +59,11 @@ let jsonKeyObject: [(String, JsonValue)] -> JsonValue = lam content.
   JsonObject (
     mapFromSeq cmpString content
   )
+
+let infoWithFilename: String -> Info -> Info =
+  lam filename. lam info.
+    match info
+      with Info r then
+        Info {r with filename = filename}
+      else
+        info

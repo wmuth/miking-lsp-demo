@@ -96,30 +96,30 @@ lang LSPCompletion = LSPRoot
       textDocument = getTextDocumentPositionParams request.params
     }
 
-  sem execute context =
-    | Completion {
-      id = id,
-      textDocument = {
-        uri = uri,
-        line = line,
-        character = character
-      }
-    } ->
-      let environmentMaybe = mapLookup uri context.environment.files in
-      let items = optionMap getCompletionItems environmentMaybe in
-      let items = optionGetOr [] items in
+  -- sem execute context =
+  --   | Completion {
+  --     id = id,
+  --     textDocument = {
+  --       uri = uri,
+  --       line = line,
+  --       character = character
+  --     }
+  --   } ->
+  --     let environmentMaybe = mapLookup uri context.environment.files in
+  --     let items = optionMap getCompletionItems environmentMaybe in
+  --     let items = optionGetOr [] items in
 
-      {
-        environment = context.environment,
-        response = Some(
-          jsonKeyObject [
-            ("jsonrpc", JsonString "2.0"),
-            ("id", JsonInt id),
-            ("result", jsonKeyObject [
-              ("isIncomplete", JsonBool true),
-              ("items", JsonArray items)
-            ])
-          ]
-        )
-      }
+  --     {
+  --       environment = context.environment,
+  --       response = Some(
+  --         jsonKeyObject [
+  --           ("jsonrpc", JsonString "2.0"),
+  --           ("id", JsonInt id),
+  --           ("result", jsonKeyObject [
+  --             ("isIncomplete", JsonBool true),
+  --             ("items", JsonArray items)
+  --           ])
+  --         ]
+  --       )
+  --     }
 end

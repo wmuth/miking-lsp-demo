@@ -8,6 +8,7 @@ all: client/out/extension.js
 
 clean:
 	npm run clean
+	rm -rf lsp-server mcore
 
 client/out/extension.js: $(JS_FILES) $(TS_FILES) $(JSON_FILES)
 	npm install && npm run compile

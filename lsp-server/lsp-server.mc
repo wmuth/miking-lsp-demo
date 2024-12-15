@@ -7,19 +7,18 @@ include "./lsp/lsp.mc"
 include "./prune.mc"
 
 -- How long to wait before executing a batch of requests
-let debounceTimeMs = 100
+let debounceTimeMs = 10
 
-let executeRequest: CompileFunc -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
-  lam compileFunc. lam environment. lam message.
+let executeRequest: LSPStartParameters -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
+  lam parameters. lam environment. lam message.
     let executionContext = {
-      compileFunc = compileFunc,
+      parameters = parameters,
       environment = environment,
       sendNotification = lam notification.
         eprintln "Sending notification\n";
         eprintln (pprintjson2string notification);
         eprintln "";
-        rpcprint (json2string notification);
-        ()
+        rpcprint (json2string notification)
     } in
     
     let result = use LSP in execute executionContext message in
@@ -36,8 +35,8 @@ let executeRequest: CompileFunc -> LSPEnvironment -> use LSP in Message -> LSPEn
 
     result.environment
 
-let executeRequests: CompileFunc -> LSPEnvironment -> [String] -> LSPEnvironment =
-  lam compileFunc. lam environment. lam bodies.
+let executeRequests: LSPStartParameters -> LSPEnvironment -> [String] -> LSPEnvironment =
+  lam parameters. lam environment. lam bodies.
     let debugPrintMessages = lam messages.
       let messages = map
         (lam x. join [x.method, ":", match x.id with Some id then int2string id else "?"])
@@ -50,7 +49,10 @@ let executeRequests: CompileFunc -> LSPEnvironment -> [String] -> LSPEnvironment
       environment
     else
       let messages = map getMessage bodies in
-      let messages = pruneMessages messages in
+      let messages = if parameters.options.pruneMessages
+        then pruneMessages messages
+        else messages
+      in
       
       eprintln (join [
         "Executing ",
@@ -63,10 +65,10 @@ let executeRequests: CompileFunc -> LSPEnvironment -> [String] -> LSPEnvironment
       ]);
 
       let messages = map (lam message. message.message) messages in
-      reduce (executeRequest compileFunc) environment messages
+      reduce (executeRequest parameters) environment messages
 
-recursive let readJsonRPC: CompileFunc -> LSPEnvironment -> [String] -> () =
-  lam compileFunc. lam environment. lam bufferedRequests.
+recursive let readJsonRPC: LSPStartParameters -> LSPEnvironment -> [String] -> () =
+  lam parameters. lam environment. lam bufferedRequests.
     let headerIsReady = fileHasBytesToRead fileStdin in
     let headerIsReady = if not headerIsReady then
       sleepMs debounceTimeMs;
@@ -76,7 +78,7 @@ recursive let readJsonRPC: CompileFunc -> LSPEnvironment -> [String] -> () =
     in
     
     let result = if not headerIsReady then
-      let environment = executeRequests compileFunc environment bufferedRequests in
+      let environment = executeRequests parameters environment bufferedRequests in
       let bufferedRequests = [] in
       (environment, bufferedRequests)
     else
@@ -97,13 +99,15 @@ recursive let readJsonRPC: CompileFunc -> LSPEnvironment -> [String] -> () =
 
     let environment = result.0 in
     let bufferedRequests = result.1 in
-    readJsonRPC compileFunc environment bufferedRequests
+    readJsonRPC parameters environment bufferedRequests
 end
 
-let readJsonRPC: CompileFunc -> LSPEnvironment -> () =
-  lam compileFunc. lam environment.
-    readJsonRPC compileFunc environment []
-
+let startLSPServer: LSPStartParameters -> () =
+  lam parameters.
+    let environment: LSPEnvironment = {
+      files = mapEmpty cmpString
+    } in
+    readJsonRPC parameters environment []
 mexpr
 
 -- let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations) =

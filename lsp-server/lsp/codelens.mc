@@ -46,24 +46,24 @@ lang LSPCodeLens = LSPRoot
       uri = uri
     }
 
-  sem execute context =
-    | CodeLens { id = id, uri = uri } -> 
-      let result = match mapLookup uri context.environment.files
-        with Some environment then
-          (getUtestLenses environment, context.environment)
-        else
-          (JsonNull (), context.environment)
-      in
+  -- sem execute context =
+  --   | CodeLens { id = id, uri = uri } -> 
+  --     let result = match mapLookup uri context.environment.files
+  --       with Some environment then
+  --         (getUtestLenses environment, context.environment)
+  --       else
+  --         (JsonNull (), context.environment)
+  --     in
 
-      match result with (result, environment) in
+  --     match result with (result, environment) in
 
-      {
-        environment = environment,
-        response = Some(jsonKeyObject [
-          ("jsonrpc", JsonString "2.0"),
-          ("id", JsonInt id),
-          ("result", result)
-        ])
-      }
+  --     {
+  --       environment = environment,
+  --       response = Some(jsonKeyObject [
+  --         ("jsonrpc", JsonString "2.0"),
+  --         ("id", JsonInt id),
+  --         ("result", result)
+  --       ])
+  --     }
 
 end

@@ -153,14 +153,14 @@ function activateStatusBar({ subscriptions }: ExtensionContext) {
 }
 
 export async function activate(context: ExtensionContext) {
-  const lspServerBin = context.asAbsolutePath(path.join("bin", "lsp-server"));
-  const mcoreCompilerBin = context.asAbsolutePath(
-    path.join("bin", "compile-mcore")
-  );
+  const lspServerBin = context.asAbsolutePath(path.join("compile-and-start.sh"));
+  // const mcoreCompilerBin = context.asAbsolutePath(
+  //   path.join("bin", "compile-mcore")
+  // );
 
   const serverOptions: ServerOptions = {
     command: lspServerBin,
-    args: [`'${mcoreCompilerBin}'`],
+    // args: [`'${mcoreCompilerBin}'`],
   };
 
   context.subscriptions.push(

@@ -4,41 +4,75 @@ include "mexpr/ast.mc"
 include "../../lib/utils.mc"
 include "../json-rpc.mc"
 
+type URI = String
+
+type CodeLens = {
+  title: String,
+  ideCommand: String,
+  commands: [JsonValue],
+  data: JsonValue,
+  location: Info
+}
+
+type LookupResult = {
+  info: Info,
+  pprint: () -> String,
+  lookupDefinition: Option (() -> Info)
+}
+
 type CompilationResult = {
-  expr: use MExprAst in Option Expr, -- Todo: this is Mexpr specific, should be abstracted
   errors: [(Info, String)],
-  warnings: [(Info, String)]
+  warnings: [(Info, String)],
+  lenses: [CodeLens],
+  lookup: Int -> Int -> Option LookupResult
 }
 
 type CompilationParameters = {
-  uri: String,
-  content: String,
-
-  -- When we know e.g. that the result is error-free,
-  -- we can notify the server about the partial result.
-  notifyPartialResult: CompilationResult -> ()
+  uri: URI,
+  content: String
+  -- -- URI, Result
+  -- update: String -> CompilationResult -> ()
 }
 
-type CompileFunc = CompilationParameters -> CompilationResult
+type LSPOptions = {
+  completion: Bool,
+  hover: Bool,
+  definition: Bool,
+  pruneMessages: Bool
+}
+
+let defaultLSPOptions: LSPOptions = {
+  completion = true,
+  hover = true,
+  definition = true,
+  pruneMessages = true
+}
+
+type LSPStartParameters = {
+  onOpen: CompilationParameters -> Map URI CompilationResult,
+  onChange: CompilationParameters -> Map URI CompilationResult,
+  onClose: String -> (),
+  options: LSPOptions
+}
 
 type LSPFileEnvironment = {
-  findVariable: use MExprAst in String -> Int -> Int -> Option ((Info, Name, Type)), -- Todo: this is Mexpr specific, should be abstracted
-  findDefinition: Name -> Option (Info), -- Todo: this is Mexpr specific, should be abstracted
+  lookup: Int -> Int -> Option LookupResult
+
+  -- findVariable: use MExprAst in String -> Int -> Int -> Option ((Info, Name, Type)), -- Todo: this is Mexpr specific, should be abstracted
+  -- findVariable: String -> Int -> Int -> (() -> Option VariableLookupResult),
+  -- findDefinition: Name -> Option (Info), -- Todo: this is Mexpr specific, should be abstracted
 
   -- TODO: Temporary in order to support naive completion
-  definitionLookup: Map Name Info,
-  utestLookup: [Info],
-
-  errors: [(Info, String)],
-  warnings: [(Info, String)]
+  -- definitionLookup: Map Name Info,
+  -- utestLookup: [Info]
 }
 
 type LSPEnvironment = {
-  files: Map String LSPFileEnvironment
+  files: Map URI LSPFileEnvironment
 }
 
 type LSPExecutionContext = {
-  compileFunc: CompileFunc,
+  parameters: LSPStartParameters,
   sendNotification: JsonValue -> (),
   environment: LSPEnvironment
 }

@@ -36,6 +36,7 @@ lang LSPHover = LSPRoot
 
       -- Add 1 to incoming line and character to match the 1-based indexing of LSP
       let line = addi line 1 in
+      let uri = stripUriProtocol uri in
 
       let debugText = join [
         "Uri: ", uri, ", ",

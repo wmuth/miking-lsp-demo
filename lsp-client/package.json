@@ -5,7 +5,7 @@
   "author": "Didrik Munther",
   "publisher": "didrikmunther",
   "license": "MIT",
-  "version": "1.1.4",
+  "version": "1.1.7",
   "icon": "images/miking.jpeg",
   "repository": {
     "type": "git",
@@ -71,9 +71,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "prebuild": "node -p \"'export const LIB_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > client/src/version.ts",
     "publish": "vsce publish",
     "package": "vsce package",
-    "compile": "tsc -b",
+    "compile": "npm run prebuild && tsc -b",
     "watch": "tsc -b -w",
     "lint": "eslint ./client/src --ext .ts,.tsx",
     "postinstall": "cd client && npm install && cd ..",

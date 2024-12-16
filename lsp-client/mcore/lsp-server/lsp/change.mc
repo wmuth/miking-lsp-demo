@@ -10,6 +10,11 @@ include "./root.mc"
 -- Print debug information
 let __debug = false
 
+let emptyResponse = lam context. {
+  response = None (),
+  environment = context.environment
+}
+
 let debugPrintDefinitionLookup = lam definitionLookup.
     let seq = mapToSeq definitionLookup in
     let f = lam x. eprintln (join ["\t", nameGetStr x.0, ": ", info2str x.1]); () in
@@ -278,11 +283,11 @@ let getEnvironment = lam context. lam uri. lam expr.
     } context.environment.files
   }
 
-let getDiagnosticsResponses = lam uri: String. lam compilationResults: [CompilationResult].
+let getDiagnosticsResponses = lam compilationResults: Map URI CompilationResult.
   let errors: [(Info, String)] = foldl
     (lam acc: [(Info, String)]. lam errs: [(Info, String)]. join [acc, errs])
     []
-    (map (lam compilationResult. compilationResult.errors) compilationResults)
+    (map (lam compilationResult. compilationResult.errors) (mapValues compilationResults))
   in
 
   let errorsGroupedByFile = groupBy
@@ -292,55 +297,20 @@ let getDiagnosticsResponses = lam uri: String. lam compilationResults: [Compilat
   in
 
   -- If there are no errors for this file, we need to include an empty list to reset the errors in the IDE.
-  let emptyErrorForThisFile = mapFromSeq cmpString [(stripUriProtocol uri, [])] in
+  let emptyErrorForThisFile = mapFromSeq cmpString (map (lam uri. (uri, [])) (mapKeys compilationResults)) in
   let errorsGroupedByFile = mapUnionWith concat errorsGroupedByFile emptyErrorForThisFile in
 
   getDiagnostics errorsGroupedByFile
-
-let compile = lam context. lam uri. lam content.
-  -- let update: String -> CompilationResult -> () = lam uri. lam compilationResult.
-  --   let responses = getDiagnosticsResponses uri compilationResult in
-  --   iter context.sendNotification responses
-  -- in
-
-  -- let compilationArguments: CompilationParameters = {
-  --   uri = uri,
-  --   content = content,
-  --   update = update
-  -- } in
-
-  -- -- Todo: use warnings in the `compilationResult`
-  -- let compilationResult = context.compileFunc compilationArguments in
-  -- let responses = getDiagnosticsResponses uri compilationResult in
-
-  -- let environment = match compilationResult.expr with
-  --   Some expr then
-  --     getEnvironment context uri expr
-  --   else
-  --     { context.environment with files = mapRemove uri context.environment.files }
-  -- in
-
-  -- iter context.sendNotification responses;
-
-  {
-    response = None (),
-    environment = context.environment
-  }
-
-
-let emptyResponse = lam context. {
-  response = None (),
-  environment = context.environment
-}
 
 let handleCompile = lam context. lam uri. lam content. lam compilationFunction.
   let compilationParameters: CompilationParameters = {
     uri = uri,
     content = content
   } in
+
   let compilationResults = compilationFunction compilationParameters in
 
-  let responses = getDiagnosticsResponses uri (mapValues compilationResults) in
+  let responses = getDiagnosticsResponses compilationResults in
   iter context.sendNotification responses;
 
   let newFiles: [(URI, LSPFileEnvironment)] = map (lam compilationResult.
@@ -352,6 +322,7 @@ let handleCompile = lam context. lam uri. lam content. lam compilationFunction.
       }
     )
   ) (mapToSeq compilationResults) in
+
   let newFiles = mapFromSeq cmpString newFiles in
 
   {
@@ -414,16 +385,14 @@ lang LSPChange = LSPRoot
 
   sem execute context =
   | DidClose { uri = uri } ->
-    optionMap (lam onClose. onClose uri) context.parameters.onClose;
+    context.parameters.onClose uri;
     {
       response = None (),
       environment = { context.environment with files = mapRemove uri context.environment.files }
     }
   | DidOpen {uri = uri, version = version, text = text} ->
-    let result = optionMap (handleCompile context uri text) context.parameters.onOpen in
-    optionGetOr (emptyResponse context) result
+    handleCompile context uri text context.parameters.onOpen
   | DidChange {uri = uri, version = version, text = text} ->
-    let result = optionMap (handleCompile context uri text) context.parameters.onChange in
-    optionGetOr (emptyResponse context) result
+    handleCompile context uri text context.parameters.onChange
 
 end

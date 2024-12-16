@@ -30,6 +30,7 @@ import {
   LanguageClientOptions,
   ServerOptions,
 } from "vscode-languageclient/node";
+import { LIB_VERSION } from "./version";
 
 let clientActive: boolean = false;
 let client: LanguageClient;
@@ -119,18 +120,20 @@ function activateStatusBar({ subscriptions }: ExtensionContext) {
     commands.registerCommand(commandId, async () => {
       if (clientActive) {
         let error;
-        for(let i = 0; i < 5; i++) {
+        for (let i = 0; i < 5; i++) {
           try {
             await client.stop();
             window.showInformationMessage(`Stopped MCore Language Server`);
             clientActive = false;
             statusBar.text = "$(circle-outline) Start MCore LSP";
             return;
-          } catch(e) {
+          } catch (e) {
             error = e;
           }
         }
-        throw new Error(`Error stopping MCore Language Server: ${error.message}`);
+        throw new Error(
+          `Error stopping MCore Language Server: ${error.message}`
+        );
       } else {
         try {
           await client.start();
@@ -138,7 +141,9 @@ function activateStatusBar({ subscriptions }: ExtensionContext) {
           clientActive = true;
           statusBar.text = "$(check) Stop MCore LSP";
         } catch (e) {
-          window.showErrorMessage(`Error starting MCore Language Server: ${e.message}`);
+          window.showErrorMessage(
+            `Error starting MCore Language Server: ${e.message}`
+          );
         }
       }
     })
@@ -153,14 +158,16 @@ function activateStatusBar({ subscriptions }: ExtensionContext) {
 }
 
 export async function activate(context: ExtensionContext) {
-  const lspServerBin = context.asAbsolutePath(path.join("compile-and-start.sh"));
+  const lspServerBin = context.asAbsolutePath(
+    path.join("compile-and-start.sh")
+  );
   // const mcoreCompilerBin = context.asAbsolutePath(
   //   path.join("bin", "compile-mcore")
   // );
 
   const serverOptions: ServerOptions = {
     command: lspServerBin,
-    // args: [`'${mcoreCompilerBin}'`],
+    args: [LIB_VERSION],
   };
 
   context.subscriptions.push(

@@ -49,9 +49,9 @@ let defaultLSPOptions: LSPOptions = {
 }
 
 type LSPStartParameters = {
-  onOpen: Option (CompilationParameters -> Map URI CompilationResult),
-  onChange: Option (CompilationParameters -> Map URI CompilationResult),
-  onClose: Option (String -> ()),
+  onOpen: CompilationParameters -> Map URI CompilationResult,
+  onChange: CompilationParameters -> Map URI CompilationResult,
+  onClose: String -> (),
   options: LSPOptions
 }
 

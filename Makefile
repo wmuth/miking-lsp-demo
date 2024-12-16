@@ -35,8 +35,8 @@ $(LSPS):
 
 vscode-client: lsps/mcore
 	@echo "-- [Building VSCode extension] --"
-	rm -rf lsp-client/mcore
-	mkdir -p lsp-client/mcore
+	rm -rf lsp-client/mcore lsp-client/out
+	mkdir -p lsp-client/mcore lsp-client/out
 	cp -r ./{lsp-server,lib} lsp-client/mcore
 	mkdir -p lsp-client/mcore/lsps/mcore
 	cp -r lsps/mcore/*.mc lsp-client/mcore/lsps/mcore

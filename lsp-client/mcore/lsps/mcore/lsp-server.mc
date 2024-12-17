@@ -106,7 +106,7 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
 
       let parseMLangString = lam file. lam path.
         let res = result.map (populateMLangProgramInfoWithFilename path) (parseMLangString file.content) in
-        result.mapErrors (errorWithFilename path) res
+        mapErrors (errorWithFilename path) res
       in
 
       result.bind (parseMLangString file path) handleProgram

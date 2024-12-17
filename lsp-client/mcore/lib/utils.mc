@@ -1,6 +1,7 @@
 include "json.mc"
 include "mexpr/info.mc"
 include "ext/file-ext.mc"
+include "result.mc"
 
 -- returns Option content if the requested number of bytes could be read
 -- otherwise, None is returned
@@ -67,3 +68,18 @@ let infoWithFilename: String -> Info -> Info =
         Info {r with filename = filename}
       else
         info
+
+-- Map the errors, if any, inside the `Result`. Preserves all warnings.
+let mapErrors
+  : all w. all e1. all e2. all a. (e1 -> e2) -> Result w e1 a -> Result w e2 a
+  = lam f. lam start.
+    switch start
+    case ResultOk r then ResultOk r
+    case ResultErr { warnings = warnings, errors = errors } then
+      let errors = map f (mapValues errors) in
+      let f = lam acc. lam err. mapInsert (gensym ()) err acc in
+      ResultErr {
+        warnings = warnings,
+        errors = foldl f (_emptyMap ()) errors
+      }
+    end

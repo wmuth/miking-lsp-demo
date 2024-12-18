@@ -81,3 +81,37 @@ let mapErrors
         errors = mapMap f errors
       }
     end
+
+-- Clean up a file path by removing "." and ".." parts
+let normalizeFilePath : String -> String = lam filepath.
+  let _removeParentDirectories : [String] -> String -> [String] =
+    lam acc. lam part.
+      switch (part, acc)
+        case ("..", []) then
+          cons ".." acc
+        case ("..", [".."] ++ rest) then
+          cons ".." acc
+        case ("..", _) then
+          tail acc
+        case (_, _) then
+          cons part acc
+      end
+  in
+
+  let filepath = match filepath with rest ++ "/" then rest else filepath in -- Remove trailing slash
+  let parts = strSplit "/" filepath in -- Split on slashes
+  let parts = filter (neqString ".") parts in -- Remove "." parts
+  let parts = reverse (foldl _removeParentDirectories [] parts) in -- Remove ".." parts
+  strJoin "/" parts
+
+utest normalizeFilePath "a/b/c/../foo.mc" with "a/b/foo.mc"
+utest normalizeFilePath "a/b/c/../../foo.mc" with "a/foo.mc"
+utest normalizeFilePath "a/b/c/./foo.mc" with "a/b/c/foo.mc"
+utest normalizeFilePath "a/b/c/././foo.mc" with "a/b/c/foo.mc"
+utest normalizeFilePath "a/b/c/././foo.mc/.." with "a/b/c"
+utest normalizeFilePath "a/b/c/./../foo.mc" with "a/b/foo.mc"
+utest normalizeFilePath "a/b/c/.././foo.mc" with "a/b/foo.mc"
+utest normalizeFilePath "a/b/c/.././.././foo.mc" with "a/foo.mc"
+utest normalizeFilePath "a/b/../../../" with ".."
+utest normalizeFilePath "a/b/../../.." with ".."
+utest normalizeFilePath "a/b/../../../../" with "../.."

@@ -285,7 +285,7 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
     };
 
     let load = lam info. lam path.
-      let path = cleanFilePath path in
+      let path = normalizeFilePath path in
       let environment = deref mLangEnvironment in
       match mapLookup path environment.files with Some file then
         result.ok file
@@ -305,8 +305,8 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
     in
 
     let addDependency = lam parent. lam child.
-      let parent = cleanFilePath parent in
-      let child = cleanFilePath child in
+      let parent = normalizeFilePath parent in
+      let child = normalizeFilePath child in
       let environment = deref mLangEnvironment in
       let prev = match mapLookup parent environment.dependencies with Some deps then deps else setEmpty cmpString in
       let newDeps = setInsert child prev in

@@ -76,10 +76,8 @@ let mapErrors
     switch start
     case ResultOk r then ResultOk r
     case ResultErr { warnings = warnings, errors = errors } then
-      let errors = map f (mapValues errors) in
-      let f = lam acc. lam err. mapInsert (gensym ()) err acc in
       ResultErr {
         warnings = warnings,
-        errors = foldl f (_emptyMap ()) errors
+        errors = mapMap f errors
       }
     end

@@ -5,7 +5,7 @@
   "author": "Didrik Munther",
   "publisher": "didrikmunther",
   "license": "MIT",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "icon": "images/miking.jpeg",
   "repository": {
     "type": "git",
@@ -34,6 +34,14 @@
     "languages": [
       {
         "id": "MCore",
+        "aliases": [
+          "MCore",
+          "mcore"
+        ],
+        "icon": {
+          "light": "images/miking.jpeg",
+          "dark": "images/miking.jpeg"
+        },
         "extensions": [
           ".mc"
         ],
@@ -49,22 +57,13 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "Example configuration",
+      "title": "MCore",
       "properties": {
-        "languageServerExample.maxNumberOfProblems": {
+        "mcore.mcoreLibs": {
           "scope": "resource",
-          "type": "number",
-          "default": 100,
-          "description": "Controls the maximum number of problems produced by the server."
-        },
-        "languageServerExample.trace.server": {
-          "scope": "window",
           "type": "string",
-          "enum": [
-            "verbose"
-          ],
-          "default": "off",
-          "description": "Traces the communication between VS Code and the language server."
+          "default": "",
+          "description": "List of paths to MCore libraries."
         }
       }
     }

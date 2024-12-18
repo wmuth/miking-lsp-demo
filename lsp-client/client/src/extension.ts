@@ -165,6 +165,10 @@ export async function activate(context: ExtensionContext) {
   //   path.join("bin", "compile-mcore")
   // );
 
+  // throw new Error(JSON.stringify({
+  //   env: process.env["MCORE_LIBS"]
+  // }));
+
   const serverOptions: ServerOptions = {
     command: lspServerBin,
     args: [LIB_VERSION],

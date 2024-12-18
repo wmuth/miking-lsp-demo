@@ -1,6 +1,5 @@
 include "mlang/main.mc"
 include "../../lsp-server/lsp-server.mc"
-include "./parse-error.mc"
 
 type MLangFile = {
   content: String,
@@ -20,6 +19,10 @@ type FileLoader = {
   -- Mark a file as a dependency of another file
   addDependency: String -> String -> ()
 }
+
+let ssMapToString = lam m.
+  let f = lam acc. lam key. lam val. join [acc, key, " -> ", val, "\n"] in
+  mapFoldWithKey f "" m
 
 -- Set the filename of the info for an error
 let errorWithFilename: String -> Diagnostic -> Diagnostic =
@@ -41,14 +44,16 @@ type PartialResult w e a = {
 
 type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProgram
 
+lang MLangAndMExpr = MLangAst + MExprAst
+end
+
 let flattenErrors: all w. all e. all a. [Result w e a] -> Result w e [a] =
   use MLangAst in
   lam results.
     foldl (lam acc. lam val. result.map2 (lam a1. lam a2. join [a1, [a2]]) acc val) (result.ok []) results
 
-recursive let populateMLangExprInfoWithFilename: use MLangAst in String -> Expr -> Expr =
-  use MLangAst in
-  use MExprAst in
+recursive let populateMLangExprInfoWithFilename: use MLangAndMExpr in String -> Expr -> Expr =
+  use MLangAndMExpr in
   lam filename. lam expr.
     let expr = withInfo (infoWithFilename filename (infoTm expr)) expr in
     smap_Expr_Expr (populateMLangExprInfoWithFilename filename) expr
@@ -72,11 +77,27 @@ let populateMLangProgramInfoWithFilename: use MLangAst in String -> MLangProgram
       expr = expr
     }
 
+let createMultipleFilesFoundWarning = lam existingFilesAsSet.
+  let sep = "\n * " in
+  join [
+    "Multiple files found: ",
+    sep,
+    strJoin sep (setToSeq existingFilesAsSet),
+    "\nUsing: '",
+    head (setToSeq existingFilesAsSet),
+    "'"
+  ]
+
 lang MLangModularIncludeHandler = MLangAst + BootParserMLang
   sem parseAndHandleIncludes : FileLoader -> String -> MLangProgramResult
   sem parseAndHandleIncludes loader =| path -> 
     let dir = eraseFile path in 
     let libs = addCWDtoLibs (parseMCoreLibsEnv ()) in
+
+    -- eprintln "Libraries:";
+    -- eprintln (ssMapToString libs);
+    -- eprintln "End of libraries";
+
     let included = ref (setEmpty cmpString) in 
     match result.consume (loader.load testinfo_ path) with (_, Right file) in
     handleIncludesFile loader included dir libs path file
@@ -104,6 +125,7 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
         handleIncludesProgram loader included dir libs path prog
       in
 
+      -- Todo: don't rerun parseMLangString is the file is already parsed / symbolized
       let parseMLangString = lam file. lam path.
         let res = result.map (populateMLangProgramInfoWithFilename path) (parseMLangString file.content) in
         mapErrors (errorWithFilename path) res
@@ -128,10 +150,10 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
     let completePath = findPath loader dir libs info path in
     let decls = result.bind completePath consumePath in
 
-    match result.consume decls with (warnings, declsResult) in
+    match result.consume decls with (_, declsResult) in
     switch declsResult
-      case Right decls then
-        result.ok decls
+      case Right declsOk then
+        result.withAnnotations decls (result.ok declsOk)
       case Left _ then
         let additionalError = result.err (info, join [
           "File '",
@@ -144,7 +166,7 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
 
   sem findPath : FileLoader -> String -> Map String String -> Info -> String -> Result Diagnostic Diagnostic String
   sem findPath loader dir libs info =| path ->
-    let libs = mapInsert "current" dir libs in 
+    let libs = mapInsert "current" dir libs in
     let prefixes = mapValues libs in 
     let paths = map (lam prefix. filepathConcat prefix path) prefixes in 
 
@@ -160,8 +182,8 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
         -- TODO(voorberg, 09/05/2024): This happens because we dont properly
         -- deal with libraries yet. The code does not yet realise that 
         -- some absolute path is equal to some relative path.
-        warnSingle [info] "Multiple files found" ;
-        result.ok (head (setToSeq existingFilesAsSet))
+        let warning = result.warn (info, createMultipleFilesFoundWarning existingFilesAsSet) in
+        result.withAnnotations warning (result.ok (head (setToSeq existingFilesAsSet)))
     end
 end
 
@@ -189,7 +211,7 @@ end
 --       result.ok symEnv
 --   end
 
-recursive let compileMLang =
+recursive let compileMLang: FileLoader -> String -> use MLangAst in Result Diagnostic Diagnostic (MLangProgram, SymEnv) =
   lam loader. lam uri.
     use MLangPipeline in
 
@@ -199,12 +221,15 @@ recursive let compileMLang =
     let handleProgram = lam program.
       let program = constTransformProgram builtin program in
       let program = composeProgram program in
-      match symbolizeMLang symEnvDefault program with (symEnv, program) in
+
+      -- Todo: symbolizeMLang is currently crashing while encountering undefined language fragments
+      -- match symbolizeMLang symEnvDefault program with (symEnv, program) in
       match result.consume (checkComposition program) with (_, res) in
 
       switch res 
         case Left errs then 
           -- Todo: remove and report errors
+          eprintln "TODO: We reached a never in `compileMLang`";
           iter raiseError errs ;
           never
         case Right env then
@@ -213,7 +238,8 @@ recursive let compileMLang =
           match res with (_, rhs) in
           match rhs with Right expr in
           let expr = postprocess env.semSymMap expr in
-          result.ok (program, symEnv)
+          -- result.ok (program, symEnv)
+          result.ok (program, symEnvDefault)
       end
     in
 
@@ -259,6 +285,7 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
     };
 
     let load = lam info. lam path.
+      let path = cleanFilePath path in
       let environment = deref mLangEnvironment in
       match mapLookup path environment.files with Some file then
         result.ok file
@@ -278,6 +305,8 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
     in
 
     let addDependency = lam parent. lam child.
+      let parent = cleanFilePath parent in
+      let child = cleanFilePath child in
       let environment = deref mLangEnvironment in
       let prev = match mapLookup parent environment.dependencies with Some deps then deps else setEmpty cmpString in
       let newDeps = setInsert child prev in
@@ -330,11 +359,8 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
 
     let paths = join [[strippedUri], children] in
 
-    eprintln (join ["Files: ", join (map (lam path. join ["'", path, "', "]) paths)]);
-
+    eprintln (join ["Compiling files: ", join (map (lam path. join ["'", path, "', "]) paths)]);
     let res = foldl (lam acc. lam path. mapUnion acc (compileFile path)) (mapEmpty cmpString) paths in
-
-    eprintln (join ["Result: ", join (mapKeys res)]);
 
     res
 

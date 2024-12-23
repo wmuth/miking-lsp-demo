@@ -88,8 +88,6 @@ let getResultResponses: Map URI CompilationResult -> [JsonValue] =
     let errors = map (decorateDiagnosticWithSeverity (Error ())) errors in
     let warnings = map (decorateDiagnosticWithSeverity (Warning ())) warnings in
 
-    eprintln (join ["Warnings: ", int2string (length warnings)]);
-
     let diagnostics = join [errors, warnings] in
     let diagnosticsGroupedByFile = groupBy cmpString getDiagnosticFileName diagnostics in
 

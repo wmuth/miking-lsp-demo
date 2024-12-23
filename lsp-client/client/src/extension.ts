@@ -169,9 +169,18 @@ export async function activate(context: ExtensionContext) {
   //   env: process.env["MCORE_LIBS"]
   // }));
 
+  const configuration = workspace.getConfiguration("mcore");
+
   const serverOptions: ServerOptions = {
     command: lspServerBin,
     args: [LIB_VERSION],
+    options: {
+      env: {
+        ...process.env,
+        // MCORE_LIBS: "stdlib=/Users/didrik/projects/miking/miking/stdlib:coreppl=/Users/didrik/projects/miking/miking-dppl/coreppl/src",
+        MCORE_LIBS: configuration.get<string>("mcoreLibs") || process.env["MCORE_LIBS"],
+      }
+    }
   };
 
   context.subscriptions.push(

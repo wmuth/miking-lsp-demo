@@ -1,8 +1,16 @@
 include "mlang/main.mc"
 include "../../lsp-server/lsp-server.mc"
 
+lang MLangAndMExpr = MLangAst + MExprAst
+end
+
+type Diagnostic = (Info, String)
+
+type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProgram
+
 type MLangFile = {
   content: String,
+  parsed: Option MLangProgramResult,
   symEnv: Option SymEnv
 }
 
@@ -11,10 +19,11 @@ type MLangEnvironment = {
   dependencies: Map String (Set String)
 }
 
-type Diagnostic = (Info, String)
-
 type FileLoader = {
   load: Info -> String -> Result Diagnostic Diagnostic MLangFile,
+  
+  -- Store a parsed file
+  store: String -> MLangFile -> (),
 
   -- Mark a file as a dependency of another file
   addDependency: String -> String -> ()
@@ -30,22 +39,17 @@ let errorWithFilename: String -> Diagnostic -> Diagnostic =
     match err with (info, msg) in
       (infoWithFilename filename info, msg)
 
-type PartialResult w e a = {
-  warnings: Map Symbol w,
-  errors: Map Symbol e,
-  value: a
-}
+-- type PartialResult w e a = {
+--   warnings: Map Symbol w,
+--   errors: Map Symbol e,
+--   value: a
+-- }
 
 -- type MLangProgramResult = use MLangAst in {
 --   errors: [Diagnostic],
 --   warnings: [Diagnostic],
 --   program: MLangProgram
 -- }
-
-type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProgram
-
-lang MLangAndMExpr = MLangAst + MExprAst
-end
 
 let flattenErrors: all w. all e. all a. [Result w e a] -> Result w e [a] =
   use MLangAst in
@@ -108,8 +112,7 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
     let decls = flattenErrors decls in
     let consumeDecls = lam decls.
       let f = lam decls. lam decl. concat decls decl in
-        let decls: [Decl] = foldl f [] decls in
-        {prog with decls = decls}
+      {prog with decls = foldl f [] decls}
     in
     result.map consumeDecls decls
 
@@ -127,8 +130,23 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
 
       -- Todo: don't rerun parseMLangString is the file is already parsed / symbolized
       let parseMLangString = lam file. lam path.
-        let res = result.map (populateMLangProgramInfoWithFilename path) (parseMLangString file.content) in
-        mapErrors (errorWithFilename path) res
+        let orElse = lam.
+          let res = result.map (populateMLangProgramInfoWithFilename path) (parseMLangString file.content) in
+          let res = mapErrors (errorWithFilename path) res in
+          loader.store path {
+            file with
+            parsed = Some res
+          };
+          res
+        in
+
+        (
+          match file.parsed
+            with Some parsed then eprintln (join ["Already parsed: ", path])
+            else eprintln (join ["Parsing: ", path])
+        );
+        
+        optionGetOrElse orElse file.parsed
       in
 
       result.bind (parseMLangString file path) handleProgram
@@ -139,8 +157,8 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
 
     let consumePath = lam path.
       let consumeContent = lam file.
-        let consumeProgram = lam prog. prog.decls in
-        result.map consumeProgram (handleIncludesFile loader included (eraseFile path) libs path file)
+        let program = handleIncludesFile loader included (eraseFile path) libs path file in
+        result.map (lam prog. prog.decls) program
       in
       let res = result.bind (loader.load info path) consumeContent in
       loader.addDependency path parentPath;
@@ -187,30 +205,6 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
     end
 end
 
--- let addDeclToSymEnv = lam compileMLang. lam uri. lam symEnv. lam decl.
---   use MLangAst in
---   switch decl
---     case DeclInclude { path=path, info=info } then
---       let path = filepathConcat (eraseFile uri) path in
---       -- let libs = addCWDtoLibs (parseMCoreLibsEnv ()) in
---       -- let included = ref (setEmpty cmpString) in
---       eprintln (join ["Including MCore file '", path, "'"]);
---       let exists = fileExists path in
---       eprintln (join ["File '", path, "' exists: ", bool2string exists]);
---       if not exists then result.ok symEnv else
---       match optionMap fileReadString (fileReadOpen path) with Some content in
---       match result.consume (compileMLang path content) with (warnings, compileResult) in
---       switch compileResult
---         case Right (program, newSymEnv) then
---           result.ok (mergeNameEnv symEnv newSymEnv)
---         -- case compileResult with Left (_, errors) then
---         --   let errors = map (errorWithFilename path) errors in
---         --   foldl1 result.withAnnotations errors
---       end
---     case _ then
---       result.ok symEnv
---   end
-
 recursive let compileMLang: FileLoader -> String -> use MLangAst in Result Diagnostic Diagnostic (MLangProgram, SymEnv) =
   lam loader. lam uri.
     use MLangPipeline in
@@ -244,29 +238,6 @@ recursive let compileMLang: FileLoader -> String -> use MLangAst in Result Diagn
     in
 
     result.bind parseResult handleProgram
-
-    -- match result.consume (parseMLangString content) with (warnings, parseResult) in
-    -- match result.consume parseResult with (warnings, parseResult) in
-    
-    -- match parseResult with e & Left errors then
-    --   eprintln (join ["Failed to parse MCore file '", uri, "'"]);
-    --   let createFileError = compose result.err (errorWithFilename uri) in
-    --   let errors = map createFileError errors in
-    --   foldl result.withAnnotations [] errors
-
-    -- else match parseResult with Right program in
-    --   eprintln (join ["Parsed MCore file '", uri, "'"]);
-    --   let program = constTransformProgram builtin program in
-    --   let program = composeProgram program in
-
-    --   -- let symEnv = foldl (addDeclToSymEnv compileMLang uri) symEnvDefault program.decls in
-    --   -- match result.consume () -- todo: extract result from symenv
-
-    --   -- match symbolizeMLang symEnvDefault program with (_, program) in
-
-    --   use MLangPrettyPrint in eprintln (mlang2str program);
-    --   -- result.ok (program, symEnv)
-    --   result.ok (program, symEnvDefault)
 end
 
 let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String CompilationResult =
@@ -280,9 +251,20 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
       environment with
       files = mapInsert strippedUri {
         content = content,
+        parsed = None (),
         symEnv = None ()
       } environment.files
     };
+
+    let store: String -> MLangFile -> () = lam path. lam file.
+      let path = normalizeFilePath path in
+      let environment = deref mLangEnvironment in
+      modref mLangEnvironment {
+        environment with
+        files = mapInsert path file environment.files
+      };
+      ()
+    in
 
     let load = lam info. lam path.
       let path = normalizeFilePath path in
@@ -295,6 +277,7 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
         match optionMap fileReadString (fileReadOpen path) with Some content in
         let file: MLangFile = {
           content = content,
+          parsed = None (),
           symEnv = None ()
         } in
         modref mLangEnvironment {
@@ -325,6 +308,7 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
 
     let loader: FileLoader = {
       load = load,
+      store = store,
       addDependency = addDependency
     } in
 

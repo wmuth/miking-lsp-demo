@@ -11,7 +11,15 @@ type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProg
 type MLangFile = {
   content: String,
   parsed: Option MLangProgramResult,
+  includeCache: Map String (use MLangAst in Result Diagnostic Diagnostic [Decl]),
   symEnv: Option SymEnv
+}
+
+let emptyFile = {
+  content = "",
+  parsed = None (),
+  includeCache = mapEmpty cmpString,
+  symEnv = None ()
 }
 
 type MLangEnvironment = {
@@ -97,18 +105,22 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
   sem parseAndHandleIncludes loader =| path -> 
     let dir = eraseFile path in 
     let libs = addCWDtoLibs (parseMCoreLibsEnv ()) in
+    let included = ref (setEmpty cmpString) in
 
-    -- eprintln "Libraries:";
-    -- eprintln (ssMapToString libs);
-    -- eprintln "End of libraries";
-
-    let included = ref (setEmpty cmpString) in 
     match result.consume (loader.load testinfo_ path) with (_, Right file) in
     handleIncludesFile loader included dir libs path file
 
-  sem handleIncludesProgram : FileLoader -> Ref (Set String) -> String -> Map String String -> String -> MLangProgram -> MLangProgramResult 
-  sem handleIncludesProgram loader included dir libs path =| prog ->
-    let decls = map (flattenIncludes loader included dir libs path) prog.decls in
+  sem handleIncludesProgram : FileLoader -> Ref (Set String) -> String -> Map String String -> String -> MLangFile -> MLangProgram -> MLangProgramResult 
+  sem handleIncludesProgram loader included dir libs path file =| prog ->
+    let f = lam decl.
+      let result = flattenIncludes loader included dir libs file path decl in
+      -- loader.store path {
+      --   file with
+      --   includeCache = mapInsert (normalizeFilePath path) result file.includeCache
+      -- };
+      result
+    in
+    let decls = map f prog.decls in
     let decls = flattenErrors decls in
     let consumeDecls = lam decls.
       let f = lam decls. lam decl. concat decls decl in
@@ -118,6 +130,7 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
 
   sem handleIncludesFile : FileLoader -> Ref (Set String) -> String -> Map String String -> String -> MLangFile -> MLangProgramResult
   sem handleIncludesFile loader included dir libs path =| file ->
+    let path = normalizeFilePath path in
     let s = deref included in 
 
     if setMem path s then 
@@ -125,10 +138,9 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
     else 
       let handleProgram = lam prog.
         modref included (setInsert path s);
-        handleIncludesProgram loader included dir libs path prog
+        handleIncludesProgram loader included dir libs path file prog
       in
 
-      -- Todo: don't rerun parseMLangString is the file is already parsed / symbolized
       let parseMLangString = lam file. lam path.
         let orElse = lam.
           let res = result.map (populateMLangProgramInfoWithFilename path) (parseMLangString file.content) in
@@ -151,18 +163,29 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
 
       result.bind (parseMLangString file path) handleProgram
 
-  sem flattenIncludes : FileLoader -> Ref (Set String) -> String -> Map String String -> String -> Decl -> Result Diagnostic Diagnostic [Decl]
-  sem flattenIncludes loader included dir libs parentPath =
+  sem flattenIncludes : FileLoader -> Ref (Set String) -> String -> Map String String -> MLangFile -> String -> Decl -> Result Diagnostic Diagnostic [Decl]
+  sem flattenIncludes loader included dir libs file childPath =
   | DeclInclude {path = path, info = info} ->
-
     let consumePath = lam path.
-      let consumeContent = lam file.
-        let program = handleIncludesFile loader included (eraseFile path) libs path file in
-        result.map (lam prog. prog.decls) program
-      in
-      let res = result.bind (loader.load info path) consumeContent in
-      loader.addDependency path parentPath;
-      res
+      let path = normalizeFilePath path in
+      loader.addDependency path childPath;
+
+      eprintln (join ["[", childPath ,"] Including: ", path]);
+      match mapLookup path file.includeCache with Some included then
+        eprintln (join ["[", childPath ,"] Cache hit: ", path]);
+        included
+      else
+        let consumeContent = lam file.
+          let program = handleIncludesFile loader included (eraseFile path) libs path file in
+          result.map (lam prog. prog.decls) program
+        in
+        let res = result.bind (loader.load info path) consumeContent in
+        eprintln (join ["[", childPath ,"] Adding cache: ", path]);
+        loader.store (normalizeFilePath childPath) {
+          file with
+          includeCache = mapInsert path res file.includeCache
+        };
+        res
     in
 
     let completePath = findPath loader dir libs info path in
@@ -205,6 +228,8 @@ lang MLangModularIncludeHandler = MLangAst + BootParserMLang
     end
 end
 
+
+
 recursive let compileMLang: FileLoader -> String -> use MLangAst in Result Diagnostic Diagnostic (MLangProgram, SymEnv) =
   lam loader. lam uri.
     use MLangPipeline in
@@ -213,47 +238,74 @@ recursive let compileMLang: FileLoader -> String -> use MLangAst in Result Diagn
     let parseResult = (use MLangModularIncludeHandler in parseAndHandleIncludes loader uri) in
 
     let handleProgram = lam program.
-      let program = constTransformProgram builtin program in
-      let program = composeProgram program in
+      -- eprintln "Const transforming program";
+      -- let program = constTransformProgram builtin program in
+      -- eprintln "Done const transforming program";
+      -- eprintln "Composing program";
+      -- let program = composeProgram program in
+      -- eprintln "Done composing program";
 
-      -- Todo: symbolizeMLang is currently crashing while encountering undefined language fragments
-      -- match symbolizeMLang symEnvDefault program with (symEnv, program) in
-      match result.consume (checkComposition program) with (_, res) in
+      -- -- Todo: symbolizeMLang is currently crashing while encountering undefined language fragments
+      -- -- match symbolizeMLang symEnvDefault program with (symEnv, program) in
+      -- eprintln "Checking composition";
+      -- match result.consume (checkComposition program) with (_, res) in
+      -- eprintln "Done checking composition";
 
-      switch res 
-        case Left errs then 
-          -- Todo: remove and report errors
-          eprintln "TODO: We reached a never in `compileMLang`";
-          iter raiseError errs ;
-          never
-        case Right env then
-          let ctx = _emptyCompilationContext env in
-          let res = result.consume (compile ctx program) in
-          match res with (_, rhs) in
-          match rhs with Right expr in
-          let expr = postprocess env.semSymMap expr in
-          -- result.ok (program, symEnv)
-          result.ok (program, symEnvDefault)
-      end
+      -- switch res 
+      --   case Left errs then 
+      --     -- Todo: remove and report errors
+      --     eprintln "TODO: We reached a never in `compileMLang`";
+      --     iter raiseError errs ;
+      --     never
+      --   case Right env then
+      --     -- let ctx = _emptyCompilationContext env in
+      --     -- let res = result.consume (compile ctx program) in
+      --     -- match res with (_, rhs) in
+      --     -- match rhs with Right expr in
+      --     -- let expr = postprocess env.semSymMap expr in
+      --     -- result.ok (program, symEnv)
+      --     result.ok (program, symEnvDefault)
+      -- end
+
+      result.ok (program, symEnvDefault)
     in
 
     result.bind parseResult handleProgram
 end
+
+recursive let getDirtyDependencies: Map String (Set String) -> Set String -> String -> Set String =
+  lam dependencies. lam dirty. lam path.
+    if setMem path dirty then
+      dirty
+    else
+      let dirty = setInsert path dirty in
+      match mapLookup path dependencies with Some children then
+        foldl (getDirtyDependencies dependencies) dirty (setToSeq children)
+      else
+        dirty
+end
+
 
 let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String CompilationResult =
   lam mLangEnvironment. lam parameters.
     let uri = parameters.uri in
     let content = parameters.content in
     let strippedUri = stripUriProtocol uri in
-
     let environment = deref mLangEnvironment in
+
+    let dirtyPaths = getDirtyDependencies environment.dependencies (setEmpty cmpString) strippedUri in
+    eprintln (join ["Dirty paths: ", strJoin ", " (setToSeq dirtyPaths)]);
+
+    let pathClean = lam key. lam. not (setMem key dirtyPaths) in
     modref mLangEnvironment {
       environment with
-      files = mapInsert strippedUri {
-        content = content,
-        parsed = None (),
-        symEnv = None ()
-      } environment.files
+      files = mapMap (
+        lam file.
+          {
+            file with
+            includeCache = mapFilterWithKey pathClean file.includeCache
+          }  
+      ) environment.files
     };
 
     let store: String -> MLangFile -> () = lam path. lam file.
@@ -277,13 +329,11 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
         match optionMap fileReadString (fileReadOpen path) with Some content in
         let file: MLangFile = {
           content = content,
+          includeCache = mapEmpty cmpString,
           parsed = None (),
           symEnv = None ()
         } in
-        modref mLangEnvironment {
-          environment with
-          files = mapInsert path file environment.files
-        };
+        store path file;
         result.ok file
     in
 
@@ -293,24 +343,35 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
       let environment = deref mLangEnvironment in
       let prev = match mapLookup parent environment.dependencies with Some deps then deps else setEmpty cmpString in
       let newDeps = setInsert child prev in
+
       modref mLangEnvironment {
         environment with
         dependencies = mapInsert parent newDeps environment.dependencies
       }
     in
 
-    let getChildren = lam.
-      let environment = deref mLangEnvironment in
-      match mapLookup strippedUri environment.dependencies with Some deps then deps else setEmpty cmpString
-    in
-
-    let previousChildren = getChildren () in
+    -- let getChildren = lam.
+    --   let environment = deref mLangEnvironment in
+    --   match mapLookup strippedUri environment.dependencies with Some deps then deps else setEmpty cmpString
+    -- in
+    -- let previousChildren = getChildren () in
+    -- let children = getChildren () in
 
     let loader: FileLoader = {
       load = load,
       store = store,
       addDependency = addDependency
     } in
+
+    let currentFile = optionGetOr emptyFile (mapLookup strippedUri environment.files) in
+
+    -- Reset/create the file in the environment
+    loader.store strippedUri {
+      currentFile with
+      content = content,
+      parsed = None (),
+      symEnv = None ()
+    };
 
     let compileFile = lam uri.
       match result.consume (compileMLang loader uri) with (warnings, compilationResult) in
@@ -338,15 +399,15 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
       ]
     in
 
-    let newChildren = getChildren () in
-    let children = setToSeq (setUnion previousChildren newChildren) in
+    -- let newChildren = getChildren () in
+    -- let children = setToSeq (setUnion previousChildren newChildren) in
 
-    let paths = join [[strippedUri], children] in
+    -- let paths = join [[strippedUri], children] in
+    let paths = setToSeq (setOfSeq cmpString (join [[strippedUri], setToSeq dirtyPaths])) in
 
     eprintln (join ["Compiling files: ", join (map (lam path. join ["'", path, "', "]) paths)]);
-    let res = foldl (lam acc. lam path. mapUnion acc (compileFile path)) (mapEmpty cmpString) paths in
-
-    res
+    
+    foldl (lam acc. lam path. mapUnion acc (compileFile path)) (mapEmpty cmpString) paths
 
 let onClose: Ref MLangEnvironment -> String -> () =
   lam mLangEnvironment. lam uri.

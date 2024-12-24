@@ -2,6 +2,9 @@ include "mlang/main.mc"
 include "../../lsp-server/lsp-server.mc"
 include "./include-handler.mc"
 
+include "./utests.mc"
+include "./lookup.mc"
+
 type MLangEnvironment = {
   files: Map String MLangFile,
   dependencies: Map String (Set String)
@@ -188,99 +191,22 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
     let compileFile = lam uri. lam content.
       use MLangCompilation in 
       let file = parseMLang uri content in
-
-      let includesLookup: [(Info, LookupResult)] =
-        match file.kind with Parsed { includes = includes } then
-          let f: (Info, Include) -> LookupResult = lam infoInclude.
-            match infoInclude with (info, inc) in
-            let lookupDefinition = match inc
-              with ExistingFile path then Some (lam. makeInfo {filename=path, row=1, col=1} {filename=path, row=1, col=1})
-              else None ()
-            in
-            {
-              info = info,
-              pprint = lam. use MLangCompilationKind in inc2str inc,
-              lookupDefinition = lookupDefinition
-            }
-          in
-          map (lam v. (v.0, f v)) includes
-        else 
-          []
-      in
+      let lenses = use MLangUtestLenses in getUtestLenses file in
+      let lookups = use MLangLookupIncludeLookup in includesLookup file in
 
       let lookup = lam row. lam col.
-        recursive let findInclude: [(Info, LookupResult)] -> Option LookupResult =
+        recursive let findElement: [(Info, LookupResult)] -> Option LookupResult =
           lam xs.
             match xs with [x] ++ xs then
               match x with (info, lookupResult) in
               if infoCollision info uri row col then
                 Some lookupResult
               else
-                findInclude xs
+                findElement xs
             else
               None ()
         in
-        findInclude includesLookup
-      in
-
-      let lenses =
-        let parsed = match file.kind with Parsed { parsed = parsed } then Some parsed else None () in
-
-        let getDeclLens: Decl -> Option CodeLens = lam decl.
-          match decl with DeclUtest { info = info & Info r } then
-            Some {
-              title = "Run Test",
-              ideCommand = "mcore.debugSingle",
-              arguments = [
-                JsonString r.filename,
-                JsonString (info2str info)
-              ],
-              data = jsonKeyObject [
-                ("customData", JsonString "A data entry field that is preserved on a code lens item between a code lens and a code lens resolve request.")
-              ],
-              location = info
-            }
-          else
-            None ()
-        in
-
-        recursive let getExprLens: use MExprAst in Expr -> [CodeLens] =
-          lam expr.
-            use MExprAst in
-        
-            let arr = switch expr
-              case TmUtest { info = info & Info r } then
-                [{
-                  title = "Run Test",
-                  ideCommand = "mcore.debugSingle",
-                  arguments = [
-                    JsonString r.filename,
-                    JsonString (info2str info)
-                  ],
-                  data = jsonKeyObject [
-                    ("customData", JsonString "A data entry field that is preserved on a code lens item between a code lens and a code lens resolve request.")
-                  ],
-                  location = info
-                }]
-              case _ then
-                []
-            end in
-        
-            sfold_Expr_Expr (lam acc. lam e.
-              let children = getExprLens e in
-              concat acc children
-            ) arr expr
-        in
-
-        let res = optionMap (
-          lam parsed.
-            join [
-              filterOption (map getDeclLens parsed.decls),
-              getExprLens parsed.expr
-            ]
-        ) parsed in
-
-        optionGetOr [] res
+        findElement lookups
       in
 
       mapFromSeq cmpString [

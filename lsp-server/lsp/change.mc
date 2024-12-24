@@ -32,7 +32,8 @@ let handleCompile = lam context. lam uri. lam content. lam compilationFunction.
     (
       uri,
       {
-        lookup = compilationResult.lookup
+        lookup = compilationResult.lookup,
+        lenses = compilationResult.lenses
       }
     )
   ) (mapToSeq compilationResults) in

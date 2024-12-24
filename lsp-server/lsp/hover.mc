@@ -30,27 +30,22 @@ lang LSPHover = LSPRoot
       uri = uri,
       line = line,
       character = character
-    } } -> 
+    } } ->
       -- Add 1 to incoming line and character to match the 1-based indexing of LSP
       let line = addi line 1 in
       let uri = stripUriProtocol uri in
 
-      let debugText = join [
-        "Uri: ", uri, ", ",
-        "Line: ", int2string line, ", Character: ", int2string character, "\n\n"
-      ] in
-
-      match mapLookup uri context.environment.files with Some environment then
-        let response = match environment.lookup line character with Some lookupResult then
+      let environment = mapLookup uri context.environment.files in
+      let lookupResult = optionBind environment (lam environment. environment.lookup line character) in
+      let res = optionMap (
+        lam lookupResult.
           let info = getFileInfo lookupResult.info in
           let contentToJsonString = lam content. JsonString content in
           let content = optionMap contentToJsonString (lookupResult.pprint ()) in
           let contents = optionGetOrElse (lam. JsonNull ()) content in
 
           jsonKeyObject [
-            (
-              "contents", contents
-            ),
+            ("contents", contents),
             ("range", jsonKeyObject [
               ("start", jsonKeyObject [
                 ("line", JsonInt (subi info.lineStart 1)),
@@ -62,31 +57,16 @@ lang LSPHover = LSPRoot
               ])
             ])
           ]
-        else
-          eprintln "Variable not found";
-          jsonKeyObject [(
-            "contents", JsonString (join [
-              debugText,
-              "[nothing found]"
-            ])
-          )]
-        in
-          {
-            environment = context.environment,
-            response = Some(jsonKeyObject [
-              ("jsonrpc", JsonString "2.0"),
-              ("id", JsonInt id),
-              ("result", response)
-            ])
-          }
-      else
-        {
-          environment = context.environment,
-          response = Some(jsonKeyObject [
-            ("jsonrpc", JsonString "2.0"),
-            ("id", JsonInt id),
-            ("result", JsonNull ())
-          ])
-        }
+      ) lookupResult in
 
+      let response = optionGetOrElse (lam. JsonNull ()) res in
+
+      {
+        environment = context.environment,
+        response = Some(jsonKeyObject [
+          ("jsonrpc", JsonString "2.0"),
+          ("id", JsonInt id),
+          ("result", response)
+        ])
+      }
 end

@@ -5,28 +5,25 @@ include "./utils.mc"
 
 include "./root.mc"
 
-let getUtestLenses = lam environment.
-  let createLens = lam info.
-    match (infoToRange info, info) with (Some range, Info r) then
+let getUtestLenses = lam lenses.
+  let createLens: CodeLens -> Option JsonValue = lam lens.
+    match (infoToRange lens.location, lens.location) with (Some range, Info r) then
       Some (jsonKeyObject [
         range,
         ("command", jsonKeyObject [
-          ("title", JsonString "Run Test"),
-          ("command", JsonString "mcore.debugSingle"),
-          ("arguments", JsonArray [
-            JsonString (stripTempFileExtension r.filename),
-            JsonString (info2str (stripTempFileExtensionFromInfo info))
-          ])
+          ("title", JsonString lens.title),
+          ("command", JsonString lens.ideCommand),
+          ("arguments", JsonArray lens.arguments)
         ]),
-        ("data", jsonKeyObject [
-          ("customData", JsonString "A data entry field that is preserved on a code lens item between a code lens and a code lens resolve request.")
-        ])
+        ("data", lens.data)
       ])
     else
       None ()
   in
 
-  JsonArray (filterOption (map createLens environment.utestLookup))
+  eprintln (join ["Lens count: ", int2string (length lenses)]);
+
+  JsonArray (filterOption (map createLens lenses))
 
 lang LSPCodeLens = LSPRoot
   syn Message =
@@ -46,24 +43,22 @@ lang LSPCodeLens = LSPRoot
       uri = uri
     }
 
-  -- sem execute context =
-  --   | CodeLens { id = id, uri = uri } -> 
-  --     let result = match mapLookup uri context.environment.files
-  --       with Some environment then
-  --         (getUtestLenses environment, context.environment)
-  --       else
-  --         (JsonNull (), context.environment)
-  --     in
+  sem execute context =
+    | CodeLens { id = id, uri = uri } ->
+      let uri = stripUriProtocol uri in
 
-  --     match result with (result, environment) in
+      let environment = mapLookup uri context.environment.files in
+      let lenses = optionMap (lam environment. environment.lenses) environment in
+      let result = optionMap getUtestLenses lenses in
+      let result = optionGetOr (JsonNull ()) result in
 
-  --     {
-  --       environment = environment,
-  --       response = Some(jsonKeyObject [
-  --         ("jsonrpc", JsonString "2.0"),
-  --         ("id", JsonInt id),
-  --         ("result", result)
-  --       ])
-  --     }
+      {
+        environment = context.environment,
+        response = Some(jsonKeyObject [
+          ("jsonrpc", JsonString "2.0"),
+          ("id", JsonInt id),
+          ("result", result)
+        ])
+      }
 
 end

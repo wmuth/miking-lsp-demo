@@ -74,7 +74,7 @@ recursive let readJsonRPC: LSPStartParameters -> LSPEnvironment -> [String] -> (
       sleepMs debounceTimeMs;
       fileHasBytesToRead fileStdin
     else
-      headerIsReady
+      true
     in
     
     let result = if not headerIsReady then

@@ -189,7 +189,7 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
       use MLangCompilation in 
       let file = parseMLang uri content in
 
-      let includesLookup: Map Info LookupResult =
+      let includesLookup: [(Info, LookupResult)] =
         match file.kind with Parsed { includes = includes } then
           let f: (Info, Include) -> LookupResult = lam infoInclude.
             match infoInclude with (info, inc) in
@@ -203,12 +203,10 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
               lookupDefinition = lookupDefinition
             }
           in
-          mapFromSeq infoCmp (map (lam v. (v.0, f v)) includes)
+          map (lam v. (v.0, f v)) includes
         else 
-          mapEmpty infoCmp
+          []
       in
-
-      let includesLookup = mapToSeq includesLookup in
 
       let lookup = lam row. lam col.
         recursive let findInclude: [(Info, LookupResult)] -> Option LookupResult =
@@ -225,17 +223,72 @@ let compileFunc: Ref MLangEnvironment -> CompilationParameters -> Map String Com
         findInclude includesLookup
       in
 
+      let lenses =
+        let parsed = match file.kind with Parsed { parsed = parsed } then Some parsed else None () in
+
+        let getDeclLens: Decl -> Option CodeLens = lam decl.
+          match decl with DeclUtest { info = info & Info r } then
+            Some {
+              title = "Run Test",
+              ideCommand = "mcore.debugSingle",
+              arguments = [
+                JsonString r.filename,
+                JsonString (info2str info)
+              ],
+              data = jsonKeyObject [
+                ("customData", JsonString "A data entry field that is preserved on a code lens item between a code lens and a code lens resolve request.")
+              ],
+              location = info
+            }
+          else
+            None ()
+        in
+
+        recursive let getExprLens: use MExprAst in Expr -> [CodeLens] =
+          lam expr.
+            use MExprAst in
+        
+            let arr = switch expr
+              case TmUtest { info = info & Info r } then
+                [{
+                  title = "Run Test",
+                  ideCommand = "mcore.debugSingle",
+                  arguments = [
+                    JsonString r.filename,
+                    JsonString (info2str info)
+                  ],
+                  data = jsonKeyObject [
+                    ("customData", JsonString "A data entry field that is preserved on a code lens item between a code lens and a code lens resolve request.")
+                  ],
+                  location = info
+                }]
+              case _ then
+                []
+            end in
+        
+            sfold_Expr_Expr (lam acc. lam e.
+              let children = getExprLens e in
+              concat acc children
+            ) arr expr
+        in
+
+        let res = optionMap (
+          lam parsed.
+            join [
+              filterOption (map getDeclLens parsed.decls),
+              getExprLens parsed.expr
+            ]
+        ) parsed in
+
+        optionGetOr [] res
+      in
+
       mapFromSeq cmpString [
         (uri, {
           errors = file.errors,
           warnings = file.warnings,
           lookup = lookup,
-          -- lookup = lam. lam. Some ({
-          --   info = makeInfo {filename=parameters.uri, row=1, col=1} {filename=parameters.uri, row=1, col=100},
-          --   pprint = lam. "Hejsan svejsan",
-          --   lookupDefinition = None ()
-          -- }),
-          lenses = []
+          lenses = lenses
         })
       ]
     in
@@ -273,7 +326,7 @@ let lspStartParameters: LSPStartParameters = {
   onClose  = onClose mLangEnvironment,
   options  = {
     defaultLSPOptions with
-    pruneMessages = false
+    pruneMessages = true
   }
 } in
 

@@ -10,7 +10,7 @@ type Diagnostic = (Info, String)
 type CodeLens = {
   title: String,
   ideCommand: String,
-  commands: [JsonValue],
+  arguments: [JsonValue],
   data: JsonValue,
   location: Info
 }
@@ -57,7 +57,8 @@ type LSPStartParameters = {
 }
 
 type LSPFileEnvironment = {
-  lookup: Int -> Int -> Option LookupResult
+  lookup: Int -> Int -> Option LookupResult,
+  lenses: [CodeLens]
 
   -- findVariable: use MExprAst in String -> Int -> Int -> Option ((Info, Name, Type)), -- Todo: this is Mexpr specific, should be abstracted
   -- findVariable: String -> Int -> Int -> (() -> Option VariableLookupResult),

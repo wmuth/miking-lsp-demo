@@ -5,6 +5,7 @@ include "../../lib/utils.mc"
 include "../json-rpc.mc"
 
 type URI = String
+type Diagnostic = (Info, String)
 
 type CodeLens = {
   title: String,
@@ -16,7 +17,7 @@ type CodeLens = {
 
 type LookupResult = {
   info: Info,
-  pprint: () -> String,
+  pprint: () -> Option String,
   lookupDefinition: Option (() -> Info)
 }
 

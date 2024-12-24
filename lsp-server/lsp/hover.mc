@@ -31,9 +31,6 @@ lang LSPHover = LSPRoot
       line = line,
       character = character
     } } -> 
-      -- let strippedUri = "/mnt/ProbTime/examples/coin/coin.rpl" in
-      -- let strippedUri = stripUriProtocol uri in
-
       -- Add 1 to incoming line and character to match the 1-based indexing of LSP
       let line = addi line 1 in
       let uri = stripUriProtocol uri in
@@ -46,13 +43,13 @@ lang LSPHover = LSPRoot
       match mapLookup uri context.environment.files with Some environment then
         let response = match environment.lookup line character with Some lookupResult then
           let info = getFileInfo lookupResult.info in
+          let contentToJsonString = lam content. JsonString content in
+          let content = optionMap contentToJsonString (lookupResult.pprint ()) in
+          let contents = optionGetOrElse (lam. JsonNull ()) content in
 
           jsonKeyObject [
             (
-              "contents", JsonString (
-                -- join [ -- "```mikingdsl\n", nameGetStr variable, ": ", use SuperPrettyPrint in type2str ty, "\n```" ]
-                lookupResult.pprint ()
-              )
+              "contents", contents
             ),
             ("range", jsonKeyObject [
               ("start", jsonKeyObject [

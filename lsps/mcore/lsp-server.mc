@@ -1,5 +1,7 @@
 include "mlang/main.mc"
 include "../../lsp-server/lsp-server.mc"
+
+include "./compiler.mc"
 include "./include-handler.mc"
 
 include "./utests.mc"

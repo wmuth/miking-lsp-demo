@@ -88,13 +88,13 @@ function createShellTask(
   );
 }
 
-async function runUtest(url: string, info: string) {
+async function runUtest(context: ExtensionContext, url: string, info: string) {
   const target = workspace.workspaceFolders?.[0];
   const output = path.join(await createTemporaryDirectory(), "utest");
 
   const buildTask = createShellTask(
-    "mi",
-    ["run", url, "--specific-test", info, "--output", output],
+    context.asAbsolutePath(path.join("run-specific-test.sh")),
+    [url, info, output],
     "Miking",
     {
       executionOptions: {
@@ -178,16 +178,17 @@ export async function activate(context: ExtensionContext) {
       env: {
         ...process.env,
         // MCORE_LIBS: "stdlib=/Users/didrik/projects/miking/miking/stdlib:coreppl=/Users/didrik/projects/miking/miking-dppl/coreppl/src",
-        MCORE_LIBS: configuration.get<string>("mcoreLibs") || process.env["MCORE_LIBS"],
-      }
-    }
+        MCORE_LIBS:
+          configuration.get<string>("mcoreLibs") || process.env["MCORE_LIBS"],
+      },
+    },
   };
 
   context.subscriptions.push(
     commands.registerCommand(
       "mcore.debugSingle",
       async (url: string, info: string) => {
-        await runUtest(url, info);
+        await runUtest(context, url, info);
       }
     )
   );

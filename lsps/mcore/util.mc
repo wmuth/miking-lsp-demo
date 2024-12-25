@@ -45,10 +45,7 @@ let populateMLangProgramInfoWithFilename: use MLangAst in String -> MLangProgram
 
 let filterMap: all a. all b. (a -> Option b) -> [a] -> [b] =
   lam f. lam xs.
-    let f = lam x.
-      match f x with Some y then [y] else []
-    in
-    foldl (lam acc. lam x. join [acc, x]) [] (map f xs)
+    filterOption (map f xs)
 
 let flattenErrors: all w. all e. all a. [Result w e a] -> Result w e [a] =
   use MLangAst in

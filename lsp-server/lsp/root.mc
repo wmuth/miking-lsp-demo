@@ -21,31 +21,41 @@ type LookupResult = {
   lookupDefinition: Option (() -> Info)
 }
 
+type CompilationDiagnostics = {
+  errors: [Diagnostic],
+  warnings: [Diagnostic]
+}
+
 type CompilationResult = {
-  errors: [(Info, String)],
-  warnings: [(Info, String)],
+  errors: [Diagnostic],
+  warnings: [Diagnostic],
   lenses: [CodeLens],
   lookup: Int -> Int -> Option LookupResult
 }
 
 type CompilationParameters = {
   uri: URI,
-  content: String
-  -- -- URI, Result
-  -- update: String -> CompilationResult -> ()
+  content: String,
+  notify: URI -> CompilationDiagnostics -> ()
+}
+
+type LSPConfig = {
+  completion: Bool,
+  hover: Bool,
+  definition: Bool
 }
 
 type LSPOptions = {
-  completion: Bool,
-  hover: Bool,
-  definition: Bool,
+  config: LSPConfig,
   pruneMessages: Bool
 }
 
 let defaultLSPOptions: LSPOptions = {
-  completion = true,
-  hover = true,
-  definition = true,
+  config = {
+    completion = true,
+    hover = true,
+    definition = true
+  },
   pruneMessages = true
 }
 

@@ -72,7 +72,7 @@ let getDiagnosticFileName =
   lam diagnostic.
     (getFileInfo diagnostic.0).filename
 
-let getResultResponses: Map URI CompilationResult -> [JsonValue] =
+let getResultResponses: Map URI CompilationDiagnostics -> [JsonValue] =
   lam compilationResults.
     let extractDiagnostics = lam f.
       foldl

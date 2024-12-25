@@ -17,14 +17,27 @@ let emptyResponse = lam context. {
 }
 
 let handleCompile = lam context. lam uri. lam content. lam compilationFunction.
+  let notify: URI -> CompilationDiagnostics -> () =
+    lam uri. lam notification.
+      let response = getResultResponses (mapFromSeq cmpString [(uri, notification)]) in
+      iter context.sendNotification response
+  in
+
   let compilationParameters: CompilationParameters = {
     uri = uri,
-    content = content
+    content = content,
+    notify = notify
   } in
 
-  let compilationResults = compilationFunction compilationParameters in
+  let compilationResults: Map URI CompilationResult = compilationFunction compilationParameters in
+  let compilationDiagnostics: Map URI CompilationDiagnostics = mapMap (
+    lam v. {
+      errors = v.errors,
+      warnings = v.warnings
+    }
+  ) compilationResults in
 
-  let responses = getResultResponses compilationResults in
+  let responses = getResultResponses compilationDiagnostics in
   iter context.sendNotification responses;
 
   let newFiles: [(URI, LSPFileEnvironment)] = map (lam compilationResult.

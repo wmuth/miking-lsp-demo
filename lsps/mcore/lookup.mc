@@ -1,7 +1,6 @@
-lang MLangLookupIncludeLookup = MLangCompilation
+lang MLangLookupIncludeLookup = MLangFileHandler
   sem includesLookup: MLangFile -> [(Info, LookupResult)]
-  sem includesLookup =
-  | { kind = Parsed { includes = includes } } ->
+  sem includesLookup =| file ->
     let f: (Info, Include) -> LookupResult = lam infoInclude.
       match infoInclude with (info, inc) in
       let lookupDefinition = match inc
@@ -10,10 +9,9 @@ lang MLangLookupIncludeLookup = MLangCompilation
       in
       {
         info = info,
-        pprint = lam. use MLangCompilationKind in inc2str inc,
+        pprint = lam. inc2str inc,
         lookupDefinition = lookupDefinition
       }
     in
-    map (lam v. (v.0, f v)) includes
-  | _ -> []
+    map (lam v. (v.0, f v)) (getIncludes file.kind)
 end

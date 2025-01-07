@@ -31,6 +31,15 @@ type CompilationResult = {
   warnings: [Diagnostic],
   lenses: [CodeLens],
   lookup: Int -> Int -> Option LookupResult
+  -- dirtiedFiles: Set URI -- Todo: use this
+}
+
+let emptyCompilationResult = {
+  errors = [],
+  warnings = [],
+  lenses = [],
+  lookup = lam. lam. None ()
+  -- dirtiedFiles = setEmpty cmpString
 }
 
 type CompilationParameters = {

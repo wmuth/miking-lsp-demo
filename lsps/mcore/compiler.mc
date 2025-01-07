@@ -8,6 +8,8 @@ include "./symbolize.mc"
 include "./utests.mc"
 include "./lookup.mc"
 
+type MLangFile =  use MLangFileHandler in MLangFile
+
 type MLangEnvironment = {
   files: Map String MLangFile,
   dependencies: Map String (Set String)
@@ -87,52 +89,66 @@ let createLookup: [[(Info, LookupResult)]] -> Path -> Int -> Int -> Option Looku
 
     findElement (foldl (lam acc. lam lookup. join [acc, lookup]) [] lookups)
 
-type FileLoader = {
+type FileLoader =  {
   load: Path -> MLangFile,
   store: Path -> MLangFile -> ()
 }
 
 type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProgram
 
-lang MLangCompiler = MLangAst + MExprAst + MLangParser + MLangIncludeHandler + MLangFileLoader + MLangFileHandler + MLangSymbolize
-  sem upgradeFileKind: CompilationParameters -> FileLoader -> (Path -> MLangFile) -> Path -> MLangFile -> MLangFileKind -> MLangFile
-  sem upgradeFileKind parameters loader getFile path file =
-  | Loaded { content = content } ->
+lang MLangCompiler =
+  MLangAst + MExprAst + MLangParser +
+  MLangIncludeHandler + MLangFileLoader +
+  MLangFileHandler + MLangSymbolize
+
+  sem upgradeFileInner: CompilationParameters -> FileLoader -> (Path -> MLangFile) -> Path -> MLangFile -> MLangFile
+  sem upgradeFileInner parameters loader getFile path =
+  | file -> file
+  | CLoaded { content = content } ->
     let file = parseMLang path content in
     upgradeFile parameters loader getFile path file
-  | Parsed { program = program } ->
+  | file & CParsed parsed ->
     let f = lam pathInfo.
       match pathInfo with (info, path, file) in
-      if leqi (length file.errors) 0 then
+      if leqi (length (getFileErrors file)) 0 then
         None ()
       else
         Some (info, join ["File '", path, "' contains errors!"])
     in
     
-    let includes = map (lam v. (v.0, v.1, getFile v.1)) (getIncludePaths file.kind) in
-    let includeErrors = filterOption (map f includes) in
+    let links = map (lam v. (v.0, v.1, getFile v.1)) (getIncludePaths file) in
+    let linkErrors = filterOption (map f links) in
 
-    let file = {
-      file with
-      errors = join [file.errors, includeErrors]
+    let file = CLinked {
+      parsed = parsed,
+      links = links,
+      linkErrors = linkErrors,
+      warnings = []
     } in
 
-    let includedFiles = map (lam x. x.2) includes in
-    let file = symbolizeMLang path includedFiles file in
+    upgradeFile parameters loader getFile path file
+  | file & CLinked { links = links } ->
+    let linkedFiles = map (lam x. x.2) links in
+    let file = symbolizeMLang path linkedFiles file in
     
     upgradeFile parameters loader getFile path file
-  | _ -> file
 
-  sem upgradeFile : CompilationParameters -> FileLoader -> (Path -> MLangFile) -> Path -> MLangFile -> MLangFile
+  sem upgradeFile : CompilationParameters -> FileLoader -> (Path ->  MLangFile) -> Path ->  MLangFile ->  MLangFile
   sem upgradeFile parameters loader getFile path =
   | file ->
-    let file = upgradeFileKind parameters loader getFile path file file.kind in
+    let file = upgradeFileInner parameters loader getFile path file in
     loader.store path file;
     parameters.notify path {
-      errors = file.errors,
-      warnings = file.warnings
+      errors = getFileErrors file,
+      warnings = getFileWarnings file
     };
     file
+
+  sem downgradeSymbolizedFile : MLangFile -> MLangFile
+  sem downgradeSymbolizedFile =
+  | file -> file
+  | CLinked { parsed = parsed } -> CParsed parsed
+  | CSymbolized { linked = linked } -> downgradeSymbolizedFile (CLinked linked)
 
   sem compile: LSPConfig -> Ref MLangEnvironment -> CompilationParameters -> Map Path CompilationResult
   sem compile config mLangEnvironment =| parameters ->
@@ -140,68 +156,97 @@ lang MLangCompiler = MLangAst + MExprAst + MLangParser + MLangIncludeHandler + M
     let content = parameters.content in
     let environment = deref mLangEnvironment in
 
-    -- let dirtyPaths = getDirtyDependencies environment.dependencies (setEmpty cmpString) uri in
-    -- eprintln (join ["Dirty paths: ", strJoin ", " (setToSeq dirtyPaths)]);
+    -- Convert Map DependentPath (Set DependencyPaths) to Map DependencyPath (Set DependentPaths)
+    let dependencyGraph: Map Path (Set Path) = foldl (
+      lam acc. lam valueKey.
+        match valueKey with (key, values) in
+        let values = setToSeq values in
+        foldl (
+          lam acc. lam value.
+            mapInsertWith setUnion value (setOfSeq cmpString [key]) acc
+        ) acc values
+    ) (mapEmpty cmpString) (mapToSeq environment.dependencies) in
+
+    let dirtiedFiles = getDirtyDependencies dependencyGraph (setEmpty cmpString) uri in
+    eprintln (join ["Dirty paths: ", strJoin ", " (setToSeq dirtiedFiles)]);
+
+    let dirtiedFiles = setFilter (lam furi. not (eqString furi uri)) dirtiedFiles in
+    let dirtiedFiles = setToSeq dirtiedFiles in
+    let dirtiedFiles = join [[uri], dirtiedFiles] in
 
     let loader = createLoader mLangEnvironment in
 
-    -- Reset/create the file in the environment
-    -- TODO: Downgrade dependent files to Parsed
-    loader.store uri {
-      kind = Loaded { content = content },
-      errors = [],
-      warnings = []
-    };
+    iter (
+      lam uri.
+        loader.store uri (downgradeSymbolizedFile (loader.load uri))
+    ) dirtiedFiles;
 
-    let getCompilationResult: MLangFile -> CompilationResult =
-      lam file.
+    -- Reset/create the file in the environment
+    loader.store uri (CLoaded { content = content });
+
+    recursive let getFile: Path -> MLangFile = 
+      lam uri.
+        eprintln (join ["Compiling file: ", uri]);
+        let file = loader.load uri in
+        upgradeFile parameters loader getFile uri file
+    in
+
+    let getCompilationResult: Path -> CompilationResult =
+      lam uri.
+        let file = getFile uri in
         let lenses = use MLangUtestLenses in getUtestLenses file in
         let lookup = createLookup [
           use MLangLookupIncludeLookup in includesLookup file
         ] in
 
         {
-          errors = file.errors,
-          warnings = file.warnings,
+          emptyCompilationResult with
+          errors = getFileErrors file,
+          warnings = getFileWarnings file,
           lookup = lookup uri,
-          lenses = lenses
+          -- lenses = lenses
+          lenses = []
         }
     in
 
-    recursive let getFile: Path -> MLangFile = 
-      lam uri.
-        eprintln (join ["Compiling file: ", uri]);
+    let getCompilationResults: [Path] -> Map Path CompilationResult =
+      lam uris.
+        let results = map (
+          lam uri.
+            let compilationResult = getCompilationResult uri in
+            (uri, compilationResult)
+        ) uris in
 
-        let file = loader.load uri in
-        upgradeFile parameters loader getFile uri file
+        mapFromSeq cmpString results
     in
 
-    let file = getFile uri in
-    let compilationResult = getCompilationResult file in
+    -- Todo: We could possibly check dependent files in the
+    -- compile function, after having parsed, reducing traversing
+    -- the entire dependency tree every time.
+    let seenDependentFiles = ref (setEmpty cmpString) in
+    recursive let registerDependencies = lam uri.
+      -- Early return if we've already seen this file
+      if setMem uri (deref seenDependentFiles) then () else
+      modref seenDependentFiles (setInsert uri (deref seenDependentFiles));
+      let file = loader.load uri in
+      let dependencies = getIncludePathStrings file in
+      let environment = deref mLangEnvironment in
+      modref mLangEnvironment {
+        environment with
+        dependencies = mapInsert uri (setOfSeq cmpString dependencies) environment.dependencies
+      };
+      iter registerDependencies dependencies
+    in
 
-    mapFromSeq cmpString [(
-      uri,
-      compilationResult
-    )]
-    
-    -- let paths = setToSeq (setOfSeq cmpString (join [[strippedUri], setToSeq dirtyPaths])) in
-    -- eprintln (join ["Compiling files: ", join (map (lam path. join ["'", path, "', "]) paths)]);
+    let results = getCompilationResults dirtiedFiles in
+    registerDependencies uri;
+
+    iter (
+      lam v.
+        match v with (uri, file) in
+          eprintln (join ["File: ", uri, ", status: ", printFileKind file]);
+          ()
+    ) (mapToSeq (deref mLangEnvironment).files);
+
+    results
 end
-
-mexpr
-
-let emptyInfo = makeInfo {filename = "", row = 0, col = 0} {filename = "", row = 0, col = 0} in
-
-use MLangCompilationKind in
-
-utest getIncludes (
-  Loaded { content = "content" }
-) with [] in
-
-utest getIncludes (
-  Parsed { content = "content", parsed = { decls = [], expr = uunit_ }, includes = [
-    (emptyInfo, ExistingFile "path/./"), (emptyInfo, NonExistentFiles ["abc"])
-  ] }
-) with ["path"] in
-
-()

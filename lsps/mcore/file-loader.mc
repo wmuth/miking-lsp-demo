@@ -22,11 +22,7 @@ lang MLangFileLoader = MLangFileHandler
         let exists = fileExists path in
         if not exists then error "File not found!" else
         match optionMap fileReadString (fileReadOpen path) with Some content in
-        let file: MLangFile = {
-          kind = Loaded { content = content },
-          errors = [],
-          warnings = [] 
-        } in
+        let file = CLoaded { content = content } in
         store path file;
         file
     in

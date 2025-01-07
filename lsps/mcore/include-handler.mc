@@ -38,7 +38,8 @@ lang MLangPathHandler = MLangAst
       lam infoPathStatus.
         match infoPathStatus with (info, pathStatus) in
         switch pathStatus
-          case NotFound (path, searchPaths) then Some (info, join ["File not found: '", path, "'\n Tried: \n* ", strJoin "\n* " searchPaths])
+          case NotFound (path, searchPaths) then
+            Some (info, join ["File not found: '", path, "'\n Tried: \n* ", strJoin "\n* " (map normalizeFilePath searchPaths)])
           case _ then None ()
         end
     ) includes in

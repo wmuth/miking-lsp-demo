@@ -152,3 +152,8 @@ let stripTempFileExtensionFromInfo = lam info.
     Info {r with filename = stripTempFileExtension r.filename}
   else
     info
+
+let diagnostic2string: Diagnostic -> String =
+  lam diag.
+    match diag with (info, msg) in
+    join ["\"", msg, "\" at ", use MExprPrettyPrint in info2str info]

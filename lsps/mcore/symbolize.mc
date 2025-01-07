@@ -10,19 +10,15 @@ lang MLangSymbolize = MLangFileHandler
 
 	sem symbolizeMLang : Path -> [MLangFile] -> MLangFile -> MLangFile
 	sem symbolizeMLang path fileIncludes =
-  | file & { kind = Parsed { program = program, includes = includes, content = content } } ->
+  | file & CLinked linked ->
     eprintln (join ["Symbolizing: ", path]);
 
-    let symEnvs = filterMap (lam file. getSymEnv file.kind) fileIncludes in
+    let symEnvs = filterMap (lam file. getSymEnv file) fileIncludes in
     let symEnvs = foldl mergeSymEnv symEnvDefault symEnvs in
 
-    {
-      file with
-      kind = Symbolized {
-        content = content,
-        program = program,
-        includes = includes,
-        symEnv = symEnvDefault
-      }
+    CSymbolized {
+      linked = linked,
+      symEnv = symEnvDefault,
+      warnings = [] -- todo
     }
 end

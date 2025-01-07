@@ -1,63 +1,151 @@
 include "./include-handler.mc"
 
-type ParsedMLangFile = use MLangIncludeHandler in {
-  content: String,
-  program: MLangProgram,
-  includes: [(Info, Include)]
-}
-
-type SymbolizedMLangFile = use MLangIncludeHandler in {
-  content: String,
-  program: MLangProgram,
-  includes: [(Info, Include)],
-  symEnv: SymEnv
-}
-
 lang MLangFileHandler = MLangIncludeHandler
-  syn MLangFileKind =
-  | Loaded { content: String }
-  | ParseError { content: String }
-  | Parsed ParsedMLangFile
-  | Symbolized SymbolizedMLangFile
+  type Loaded = {
+    content: String
+  }
 
-  sem getContent: MLangFileKind -> String
+  type ParseError = {
+    loaded: Loaded,
+    errors: [Diagnostic],
+    warnings: [Diagnostic]
+  }
+
+  type Parsed = {
+    loaded: Loaded,
+    program: use MLangIncludeHandler in MLangProgram,
+    includes: [(Info, use MLangIncludeHandler in Include)],
+    includeErrors: [Diagnostic],
+    warnings: [Diagnostic]
+  }
+
+  -- We have loaded the included files
+  type Linked = {
+    parsed: Parsed,
+    links: [(Info, Path, MLangFile)],
+    linkErrors: [Diagnostic],
+    warnings: [Diagnostic]
+  }
+
+  type SymbolizationError = {
+    linked: Linked,
+    symEnv: SymEnv,
+    errors: [Diagnostic],
+    includeErrors: [Diagnostic],
+    warnings: [Diagnostic]
+  }
+
+  type Symbolized = {
+    linked: Linked,
+    symEnv: SymEnv,
+    warnings: [Diagnostic]
+  }
+
+  syn MLangFile =
+  | CLoaded Loaded
+  | CParseError ParseError
+  | CParsed Parsed
+  | CLinked Linked
+  | CSymbolizationError SymbolizationError
+  | CSymbolized Symbolized
+
+  sem printFileKind: MLangFile -> String
+  sem printFileKind =
+  | CLoaded _ -> "Loaded"
+  | CParseError _ -> "ParseError"
+  | CParsed _ -> "Parsed"
+  | CLinked _ -> "Linked"
+  | CSymbolizationError _ -> "SymbolizationError"
+  | CSymbolized _ -> "Symbolized"
+
+  sem getContent: MLangFile -> String
   sem getContent =
-  | Loaded { content = content }
-  | ParseError { content = content }
-  | Parsed { content = content } -> content
-  | Symbolized { content = content } -> content
+  | CLoaded { content = content }
+  | CParseError { loaded = loaded }
+  | CParsed { loaded = loaded } -> getContent (CLoaded loaded)
+  | CLinked { parsed = parsed } -> getContent (CParsed parsed)
+  | CSymbolized { linked = linked }
+  | CSymbolizationError { linked = linked } -> getContent (CLinked linked)
 
-  sem getParsed: MLangFileKind -> Option MLangProgram
+  sem getParsed: MLangFile -> Option MLangProgram
   sem getParsed =
-  | Loaded _ 
-  | ParseError _ -> None ()
-  | Parsed { program = program }
-  | Symbolized { program = program } -> Some program
+  | CLoaded _ 
+  | CParseError _ -> None ()
+  | CParsed { program = program } -> Some program
+  | CLinked { parsed = parsed } -> getParsed (CParsed parsed)
+  | CSymbolized { linked = linked }
+  | CSymbolizationError { linked = linked } -> getParsed (CLinked linked)
 
-  sem getIncludes: MLangFileKind -> [(Info, Include)]
+  sem getIncludes: MLangFile -> [(Info, Include)]
   sem getIncludes =
-  | Loaded _
-  | ParseError _ -> []
-  | Parsed { includes = includes }
-  | Symbolized { includes = includes } -> includes
+  | CLoaded _
+  | CParseError _ -> []
+  | CParsed { includes = includes } -> includes
+  | CLinked { parsed = parsed } -> getIncludes (CParsed parsed)
+  | CSymbolized { linked = linked }
+  | CSymbolizationError { linked = linked } -> getIncludes (CLinked linked)
 
-  sem getSymEnv: MLangFileKind -> Option SymEnv
+  sem getSymEnv: MLangFile -> Option SymEnv
   sem getSymEnv =
-  | Loaded _
-  | ParseError _
-  | Parsed _ -> None ()
-  | Symbolized { symEnv = symEnv } -> Some symEnv
+  | CLoaded _
+  | CParseError _
+  | CParsed _
+  | CLinked _ -> None ()
+  | CSymbolizationError { symEnv = symEnv }
+  | CSymbolized { symEnv = symEnv } -> Some symEnv
 
-  sem getIncludePaths: MLangFileKind -> [(Info, Path)]
-  sem getIncludePaths =| kind ->
-    let includes = getIncludes kind in
+  sem getFileErrors: MLangFile -> [Diagnostic]
+  sem getFileErrors =
+  | CLoaded _ -> []
+  | CParseError { errors = errors } -> errors
+  | CParsed { includeErrors = includeErrors } -> includeErrors
+  | CLinked { linkErrors = linkErrors, parsed = parsed } -> join [linkErrors, getFileErrors (CParsed parsed)]
+  | CSymbolized { linked = linked } -> getFileErrors (CLinked linked)
+  | CSymbolizationError { errors = errors, linked = linked } -> join [errors, getFileErrors (CLinked linked)]
+
+  sem getFileWarnings: MLangFile -> [Diagnostic]
+  sem getFileWarnings =
+  | CLoaded _ -> []
+  | CParseError { warnings = warnings }
+  | CParsed { warnings = warnings } -> warnings
+  | CLinked { warnings = warnings, parsed = parsed } -> join [warnings, getFileWarnings (CParsed parsed)]
+  | CSymbolized { warnings = warnings, linked = linked }
+  | CSymbolizationError { warnings = warnings, linked = linked } ->
+    join [warnings, getFileWarnings (CLinked linked)]
+
+  sem getIncludePaths: MLangFile -> [(Info, Path)]
+  sem getIncludePaths =| file ->
+    let includes = getIncludes file in
     let f = lam inc. optionMap (lam v. (inc.0, v)) (inc2str inc.1) in
     let paths = map f includes in
     filterOption paths
+
+  sem getIncludePathStrings: MLangFile -> [Path]
+  sem getIncludePathStrings =| file ->
+    map (lam v. v.1) (getIncludePaths file)
 end
 
-type MLangFile = {
-  kind: use MLangFileHandler in MLangFileKind,
-  errors: [Diagnostic],
-  warnings: [Diagnostic]
-}
+let mLangFile2string: MLangFile -> String = lam file.
+  use MLangFileHandler in
+  join [
+    "MLangFile: ", printFileKind file, " {\n",
+    "  errors = ", strJoin "\n\t" (map diagnostic2string (getFileErrors file)), "\n",
+    "  warnings = ", strJoin "\n\t" (map diagnostic2string (getFileWarnings file)), "\n",
+    "}"
+  ]
+
+mexpr
+
+let emptyInfo = makeInfo {filename = "", row = 0, col = 0} {filename = "", row = 0, col = 0} in
+
+use MLangFileHandler in
+
+let loadedFile = CLoaded { content = "content" } in
+utest getIncludes loadedFile with [] in
+
+let parsedFile = CParsed { loaded = loadedFile, parsed = { decls = [], expr = uunit_ }, includes = [
+  (emptyInfo, ExistingFile "path/./"), (emptyInfo, NonExistentFiles ["abc"])
+] } in
+utest getIncludes parsedFile with ["path"] in
+
+()

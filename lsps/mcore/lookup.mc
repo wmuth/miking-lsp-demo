@@ -13,5 +13,7 @@ lang MLangLookupIncludeLookup = MLangFileHandler
         lookupDefinition = lookupDefinition
       }
     in
-    map (lam v. (v.0, f v)) (getIncludes file.kind)
+
+    let includes = map (lam inc. (inc.0, inc.1)) (getIncludes file) in
+    map (lam v. (v.0, f v)) includes
 end

@@ -22,6 +22,7 @@ lang MLangFileHandler = MLangIncludeHandler
   -- We have loaded the included files
   type Linked = {
     parsed: Parsed,
+    program: use MLangIncludeHandler in MLangProgram, -- Without includes
     links: [(Info, Path, MLangFile)],
     linkErrors: [Diagnostic],
     warnings: [Diagnostic]
@@ -29,6 +30,7 @@ lang MLangFileHandler = MLangIncludeHandler
 
   type SymbolizationError = {
     linked: Linked,
+    program: use MLangIncludeHandler in MLangProgram,
     symEnv: SymEnv,
     errors: [Diagnostic],
     includeErrors: [Diagnostic],
@@ -36,6 +38,7 @@ lang MLangFileHandler = MLangIncludeHandler
   }
 
   type Symbolized = {
+    program: use MLangIncludeHandler in MLangProgram,
     linked: Linked,
     symEnv: SymEnv,
     warnings: [Diagnostic]
@@ -67,14 +70,14 @@ lang MLangFileHandler = MLangIncludeHandler
   | CSymbolized { linked = linked }
   | CSymbolizationError { linked = linked } -> getContent (CLinked linked)
 
-  sem getParsed: MLangFile -> Option MLangProgram
-  sem getParsed =
+  sem getProgram: MLangFile -> Option MLangProgram
+  sem getProgram =
   | CLoaded _ 
   | CParseError _ -> None ()
-  | CParsed { program = program } -> Some program
-  | CLinked { parsed = parsed } -> getParsed (CParsed parsed)
-  | CSymbolized { linked = linked }
-  | CSymbolizationError { linked = linked } -> getParsed (CLinked linked)
+  | CLinked { parsed = parsed } -> getProgram (CParsed parsed)
+  | CParsed { program = program }
+  | CSymbolized { program = program }
+  | CSymbolizationError { program = program } -> Some program
 
   sem getIncludes: MLangFile -> [(Info, Include)]
   sem getIncludes =

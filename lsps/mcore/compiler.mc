@@ -7,6 +7,7 @@ include "./parser.mc"
 include "./symbolize.mc"
 include "./utests.mc"
 include "./lookup.mc"
+include "./link.mc"
 
 type MLangFile =  use MLangFileHandler in MLangFile
 
@@ -99,7 +100,7 @@ type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProg
 lang MLangCompiler =
   MLangAst + MExprAst + MLangParser +
   MLangIncludeHandler + MLangFileLoader +
-  MLangFileHandler + MLangSymbolize
+  MLangFileHandler + MLangSymbolize + MLangLink
 
   sem upgradeFileInner: CompilationParameters -> FileLoader -> (Path -> MLangFile) -> Path -> MLangFile -> MLangFile
   sem upgradeFileInner parameters loader getFile path =
@@ -108,24 +109,7 @@ lang MLangCompiler =
     let file = parseMLang path content in
     upgradeFile parameters loader getFile path file
   | file & CParsed parsed ->
-    let f = lam pathInfo.
-      match pathInfo with (info, path, file) in
-      if leqi (length (getFileErrors file)) 0 then
-        None ()
-      else
-        Some (info, join ["File '", path, "' contains errors!"])
-    in
-    
-    let links = map (lam v. (v.0, v.1, getFile v.1)) (getIncludePaths file) in
-    let linkErrors = filterOption (map f links) in
-
-    let file = CLinked {
-      parsed = parsed,
-      links = links,
-      linkErrors = linkErrors,
-      warnings = []
-    } in
-
+    let file = linkMLang getFile file in
     upgradeFile parameters loader getFile path file
   | file & CLinked { links = links } ->
     let linkedFiles = map (lam x. x.2) links in

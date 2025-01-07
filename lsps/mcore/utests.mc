@@ -19,7 +19,7 @@ lang MLangUtestLenses = MLangAst + MExprAst + MLangFileHandler
   sem getUtestLenses: MLangFile -> [CodeLens]
   sem getUtestLenses =
   | file ->
-    let parsed = getParsed file in
+    let parsed = getProgram file in
 
     let res = optionMap (
       lam parsed.

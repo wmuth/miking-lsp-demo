@@ -1,5 +1,5 @@
-include "mlang/main.mc"
 include "../../lsp-server/lsp/root.mc"
+include "mlang/main.mc"
 include "./util.mc"
 
 type LocalPath = String

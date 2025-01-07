@@ -90,19 +90,19 @@ let fileExtMap =
         cLibraries = []
       }
     ]),
-    ("externalHasBytesToRead", [
-      { expr = "
-          (fun rc ->
-            let fd = Unix.descr_of_in_channel rc in
-            let (readable, _, _) = Unix.select [fd] [] [] 0.0 in
-            readable <> []
-          )
-        ",
-        ty = tyarrows_ [otyvarext_ "in_channel" [], tybool_],
-        libraries = [],
-        cLibraries = []
-      }
-    ]),
+    -- ("externalHasBytesToRead", [
+    --   { expr = "
+    --       (fun rc ->
+    --         let fd = Unix.descr_of_in_channel rc in
+    --         let (readable, _, _) = Unix.select [fd] [] [] 0.0 in
+    --         readable <> []
+    --       )
+    --     ",
+    --     ty = tyarrows_ [otyvarext_ "in_channel" [], tybool_],
+    --     libraries = [],
+    --     cLibraries = []
+    --   }
+    -- ]),
     ("externalExecuteCommand", [
       { expr = "
         (

@@ -1,3 +1,5 @@
+include "mlang/ast.mc"
+
 let ssMapToString = lam m.
   let f = lam acc. lam key. lam val. join [acc, key, " -> ", val, "\n"] in
   mapFoldWithKey f "" m

@@ -1,3 +1,25 @@
+include "./file.mc"
+
+-- Lookup elements depending on location,
+-- and return the element with the highest precedence (innermost contained element).
+let createLookup: [(Info, LookupResult)] -> Path -> Int -> Int -> Option LookupResult =
+  lam lookups. lam uri. lam row. lam col.
+    let foundVariables: [LookupResult] = filterMap (
+      lam lookup.
+        match lookup with (info, lookup) in
+        if infoCollision info uri row col
+          then Some lookup
+          else None ()
+    ) lookups in
+
+    match foundVariables with [x] ++ seq then
+      let f = lam var1. lam var2.
+        if infoContainsInfo var1.info var2.info then var1 else var2
+      in
+      Some (foldl f x seq)
+    else
+      None ()
+
 lang MLangLookupInclude = MLangFileHandler
   sem includesLookup: MLangFile -> [(Info, LookupResult)]
   sem includesLookup =| file ->
@@ -25,7 +47,29 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline
   | TmLet { ident=ident, ty=ty, info=info }
   | TmVar { ident=ident, ty=ty, info=info }
   | TmConApp { ident=ident, ty=ty, info=info }
+  | TmLam { ident=ident, ty=ty, info=info }
   | TmType { ident=ident, ty=ty, info=info } ->
+    [(
+      info,
+      {
+        info = info,
+        pprint = lam. Some (
+          join [
+            "`", nameGetStr ident, "`",
+            " `<",
+            type2str ty,
+            ">`"
+          ]
+        ),
+        lookupDefinition = None ()
+      }
+    )]
+  | TmMatch {
+    thn=TmVar { ident=ident },
+    ty=ty,
+    info=info,
+    pat=p & PatRecord { bindings=bindings }
+  } ->
     [(
       info,
       {
@@ -34,14 +78,6 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline
         lookupDefinition = None ()
       }
     )]
-  -- | TmMatch {
-  --     thn=TmVar { ident=ident },
-  --     ty=ty,
-  --     info=info,
-  --     pat=p & PatRecord { bindings=bindings }
-  --   } ->
-  --   -- eprintln (join ["Match: ", expr2str p]);
-  --   mapInsertVariable info (ident, ty) m
   -- | TmRecLets { bindings=bindings } ->
   --     -- The info field appears to point to just the "let" keyword??
   --     let f = lam acc. lam x.
@@ -49,25 +85,41 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline
   --     in
   --     foldl f m bindings
 
-  sem recursiveExprLookup: SymEnv -> Expr -> [(Info, LookupResult)]
-  sem recursiveExprLookup env =| expr ->
-    sfold_Expr_Expr (lam acc. lam expr.
-      let lookup = exprLookup env expr in
-      let children = recursiveExprLookup env expr in
-      join [acc, children, lookup]
-    ) [] expr
-
   sem declLookup: SymEnv -> Decl -> [(Info, LookupResult)]
   sem declLookup env =
-  | decl -> []
-  | DeclLet { body = body } -> recursiveExprLookup env body
+  | _ -> []
+
+  sem recursiveExprLookup: SymEnv -> Expr -> [(Info, LookupResult)]
+  sem recursiveExprLookup env =| expr ->
+    let lookup = exprLookup env expr in
+    let children = sfold_Expr_Expr (lam acc. lam expr.
+      let children = recursiveExprLookup env expr in
+      join [acc, children]
+    ) [] expr in
+    join [lookup, children]
+
+  sem recursiveDeclLookup: SymEnv -> Decl -> [(Info, LookupResult)]
+  sem recursiveDeclLookup env =| decl ->
+    let lookup = declLookup env decl in
+
+    let childExprs = sfold_Decl_Expr (lam acc. lam expr.
+      let children = recursiveExprLookup env expr in
+      join [acc, children]
+    ) [] decl in
+
+    let childDecls = sfold_Decl_Decl (lam acc. lam decl.
+      let children = recursiveDeclLookup env decl in
+      join [acc, children]
+    ) [] decl in
+
+    join [lookup, childExprs, childDecls]
 
   sem variablesLookup: MLangFile -> [(Info, LookupResult)]
   sem variablesLookup =| file ->
     match (getProgram file, getSymEnv file)
       with (Some program, Some env) then
         join [
-          flatMap (declLookup env) program.decls,
+          flatMap (recursiveDeclLookup env) program.decls,
           exprLookup env program.expr
         ]
       else

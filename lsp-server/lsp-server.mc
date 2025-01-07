@@ -73,19 +73,40 @@ let executeRequests: LSPStartParameters -> LSPEnvironment -> [String] -> LSPEnvi
 
 recursive let readJsonRPC: LSPStartParameters -> LSPEnvironment -> [String] -> () =
   lam parameters. lam environment. lam bufferedRequests.
-    let headerIsReady = fileHasBytesToRead fileStdin in
-    let headerIsReady = if not headerIsReady then
-      sleepMs debounceTimeMs;
-      fileHasBytesToRead fileStdin
-    else
-      true
-    in
-    
-    let result = if not headerIsReady then
+    -- -- Introduce when external fileHasBytesToRead is available
+    -- let headerIsReady = fileHasBytesToRead fileStdin in
+    -- let headerIsReady = if not headerIsReady then
+    --   sleepMs debounceTimeMs;
+    --   fileHasBytesToRead fileStdin
+    -- else
+    --   true
+    -- in
+    -- let result = if not headerIsReady then
+    --   let environment = executeRequests parameters environment bufferedRequests in
+    --   let bufferedRequests = [] in
+    --   (environment, bufferedRequests)
+    -- else
+    --   switch fileReadLine fileStdin
+    --     case None _ then error "LSP client closed stdout"
+    --     case Some header then
+    --       -- We add 2 to the content length to account for the newline characters
+    --       let contentHeaderLength = addi (getContentLength header) 2 in
+    --       switch readBytesBuffered fileStdin contentHeaderLength
+    --         case None _ then error "LSP client closed stdout"
+    --         case Some body then
+    --           let asciiBody = map int2char body in
+    --           let bufferedRequests = concat bufferedRequests [asciiBody] in
+    --           (environment, bufferedRequests)
+    --       end
+    --   end
+    -- in
+    -- let environment = result.0 in
+    -- let bufferedRequests = result.1 in
+    -- --
+
+    let getNewState = lam.
       let environment = executeRequests parameters environment bufferedRequests in
       let bufferedRequests = [] in
-      (environment, bufferedRequests)
-    else
       switch fileReadLine fileStdin
         case None _ then error "LSP client closed stdout"
         case Some header then
@@ -100,9 +121,8 @@ recursive let readJsonRPC: LSPStartParameters -> LSPEnvironment -> [String] -> (
           end
       end
     in
-
-    let environment = result.0 in
-    let bufferedRequests = result.1 in
+    
+    match getNewState () with (environment, bufferedRequests) in
     readJsonRPC parameters environment bufferedRequests
 end
 

@@ -1,3 +1,5 @@
+include "file.mc"
+
 lang MLangUtestLenses = MLangAst + MExprAst + MLangFileHandler
   sem createUtestLens: Info -> Option CodeLens
   sem createUtestLens = 

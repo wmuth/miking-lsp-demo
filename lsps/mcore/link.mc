@@ -1,3 +1,5 @@
+include "file.mc"
+
 lang MLangLink = MLangFileHandler
   sem removeIncludeDecls : use MLangIncludeHandler in [Decl] -> [Decl]
   sem removeIncludeDecls =

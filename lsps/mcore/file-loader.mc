@@ -1,4 +1,5 @@
 include "./include-handler.mc"
+include "./file.mc"
 
 lang MLangFileLoader = MLangFileHandler
   sem createLoader: Ref MLangEnvironment -> FileLoader

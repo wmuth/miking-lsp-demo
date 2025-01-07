@@ -1,5 +1,7 @@
 include "mexpr/info.mc"
 include "mexpr/ast.mc"
+include "mexpr/pprint.mc"
+
 include "json.mc"
 include "../../lib/utils.mc"
 

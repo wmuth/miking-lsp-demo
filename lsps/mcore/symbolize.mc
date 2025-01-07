@@ -1,3 +1,5 @@
+include "file.mc"
+
 lang SymbolizeMLangLSP = MLangPipeline
   type SymbolizedMLangLSP = {
     program: MLangProgram,

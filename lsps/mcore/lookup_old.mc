@@ -1,3 +1,6 @@
+include "mexpr/ast.mc"
+include "mexpr/mexpr.mc"
+
 let debugPrintDefinitionLookup = lam definitionLookup.
   let seq = mapToSeq definitionLookup in
   let f = lam x. eprintln (join ["\t", nameGetStr x.0, ": ", info2str x.1]); () in
@@ -224,3 +227,46 @@ let getEnvironment = lam context. lam uri. lam expr.
       warnings = []
     } context.environment.files
   }
+
+  -- recursive let compileMLang: FileLoader -> String -> use MLangAst in Result Diagnostic Diagnostic (MLangProgram, SymEnv) =
+--   lam loader. lam uri.
+--     use MLangPipeline in
+
+--     let uri = stripUriProtocol uri in
+    -- let parseResult = (use MLangModularIncludeHandler in parseAndHandleIncludes loader uri) in
+
+    -- let handleProgram = lam program.
+      -- eprintln "Const transforming program";
+      -- let program = constTransformProgram builtin program in
+      -- eprintln "Done const transforming program";
+      -- eprintln "Composing program";
+      -- let program = composeProgram program in
+      -- eprintln "Done composing program";
+
+      -- -- Todo: symbolizeMLang is currently crashing while encountering undefined language fragments
+      -- -- match symbolizeMLang symEnvDefault program with (symEnv, program) in
+      -- eprintln "Checking composition";
+      -- match result.consume (checkComposition program) with (_, res) in
+      -- eprintln "Done checking composition";
+
+      -- switch res 
+      --   case Left errs then 
+      --     -- Todo: remove and report errors
+      --     eprintln "TODO: We reached a never in `compileMLang`";
+      --     iter raiseError errs ;
+      --     never
+      --   case Right env then
+      --     -- let ctx = _emptyCompilationContext env in
+      --     -- let res = result.consume (compile ctx program) in
+      --     -- match res with (_, rhs) in
+      --     -- match rhs with Right expr in
+      --     -- let expr = postprocess env.semSymMap expr in
+      --     -- result.ok (program, symEnv)
+      --     result.ok (program, symEnvDefault)
+      -- end
+
+--       result.ok (program, symEnvDefault)
+--     in
+
+--     result.bind parseResult handleProgram
+-- end

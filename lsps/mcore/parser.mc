@@ -1,3 +1,5 @@
+include "file.mc"
+
 lang MLangParser = MLangFileHandler
   sem parseMLang : Path -> String -> MLangFile
   sem parseMLang path =| content ->

@@ -28,20 +28,12 @@ lang MLangFileHandler = MLangIncludeHandler
     warnings: [Diagnostic]
   }
 
-  type SymbolizationError = {
-    linked: Linked,
-    program: use MLangIncludeHandler in MLangProgram,
-    symEnv: SymEnv,
-    errors: [Diagnostic],
-    includeErrors: [Diagnostic],
-    warnings: [Diagnostic]
-  }
-
   type Symbolized = {
     program: use MLangIncludeHandler in MLangProgram,
     linked: Linked,
     symEnv: SymEnv,
-    warnings: [Diagnostic]
+    warnings: [Diagnostic],
+    errors: [Diagnostic]
   }
 
   syn MLangFile =
@@ -49,7 +41,6 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError ParseError
   | CParsed Parsed
   | CLinked Linked
-  | CSymbolizationError SymbolizationError
   | CSymbolized Symbolized
 
   sem printFileKind: MLangFile -> String
@@ -58,7 +49,6 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError _ -> "ParseError"
   | CParsed _ -> "Parsed"
   | CLinked _ -> "Linked"
-  | CSymbolizationError _ -> "SymbolizationError"
   | CSymbolized _ -> "Symbolized"
 
   sem getContent: MLangFile -> String
@@ -67,8 +57,7 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError { loaded = loaded }
   | CParsed { loaded = loaded } -> getContent (CLoaded loaded)
   | CLinked { parsed = parsed } -> getContent (CParsed parsed)
-  | CSymbolized { linked = linked }
-  | CSymbolizationError { linked = linked } -> getContent (CLinked linked)
+  | CSymbolized { linked = linked } -> getContent (CLinked linked)
 
   sem getProgram: MLangFile -> Option MLangProgram
   sem getProgram =
@@ -76,8 +65,7 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError _ -> None ()
   | CLinked { parsed = parsed } -> getProgram (CParsed parsed)
   | CParsed { program = program }
-  | CSymbolized { program = program }
-  | CSymbolizationError { program = program } -> Some program
+  | CSymbolized { program = program } -> Some program
 
   sem getIncludes: MLangFile -> [(Info, Include)]
   sem getIncludes =
@@ -85,8 +73,7 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError _ -> []
   | CParsed { includes = includes } -> includes
   | CLinked { parsed = parsed } -> getIncludes (CParsed parsed)
-  | CSymbolized { linked = linked }
-  | CSymbolizationError { linked = linked } -> getIncludes (CLinked linked)
+  | CSymbolized { linked = linked } -> getIncludes (CLinked linked)
 
   sem getSymEnv: MLangFile -> Option SymEnv
   sem getSymEnv =
@@ -94,7 +81,6 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError _
   | CParsed _
   | CLinked _ -> None ()
-  | CSymbolizationError { symEnv = symEnv }
   | CSymbolized { symEnv = symEnv } -> Some symEnv
 
   sem getFileErrors: MLangFile -> [Diagnostic]
@@ -103,8 +89,7 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError { errors = errors } -> errors
   | CParsed { includeErrors = includeErrors } -> includeErrors
   | CLinked { linkErrors = linkErrors, parsed = parsed } -> join [linkErrors, getFileErrors (CParsed parsed)]
-  | CSymbolized { linked = linked } -> getFileErrors (CLinked linked)
-  | CSymbolizationError { errors = errors, linked = linked } -> join [errors, getFileErrors (CLinked linked)]
+  | CSymbolized { linked = linked, errors = errors } -> join [errors, getFileErrors (CLinked linked)]
 
   sem getFileWarnings: MLangFile -> [Diagnostic]
   sem getFileWarnings =
@@ -112,9 +97,7 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParseError { warnings = warnings }
   | CParsed { warnings = warnings } -> warnings
   | CLinked { warnings = warnings, parsed = parsed } -> join [warnings, getFileWarnings (CParsed parsed)]
-  | CSymbolized { warnings = warnings, linked = linked }
-  | CSymbolizationError { warnings = warnings, linked = linked } ->
-    join [warnings, getFileWarnings (CLinked linked)]
+  | CSymbolized { warnings = warnings, linked = linked } -> join [warnings, getFileWarnings (CLinked linked)]
 
   sem getIncludePaths: MLangFile -> [(Info, Path)]
   sem getIncludePaths =| file ->

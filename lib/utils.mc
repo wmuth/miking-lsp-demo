@@ -115,3 +115,7 @@ utest normalizeFilePath "a/b/c/.././.././foo.mc" with "a/foo.mc"
 utest normalizeFilePath "a/b/../../../" with ".."
 utest normalizeFilePath "a/b/../../.." with ".."
 utest normalizeFilePath "a/b/../../../../" with "../.."
+
+let flatMap: all a. all b. (a -> [b]) -> [a] -> [b] = lam f. lam xs.
+  let f2: a -> [b] = lam x. f x in
+  foldl (lam acc. lam x. join [acc, f2 x]) [] xs

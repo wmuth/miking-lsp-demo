@@ -40,4 +40,9 @@ vscode-client: lsps/mcore
 	cp -r ./{lsp-server,lib} lsp-client/mcore
 	mkdir -p lsp-client/mcore/lsps/mcore
 	cp -r lsps/mcore/*.mc lsp-client/mcore/lsps/mcore
+
+	rm -rf lsp-client/stdlib
+	mkdir -p lsp-client/stdlib
+	cp -r ../miking/stdlib lsp-client
+
 	make -C lsp-client

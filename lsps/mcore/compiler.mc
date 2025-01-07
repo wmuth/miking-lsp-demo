@@ -160,12 +160,14 @@ lang MLangCompiler =
 
     let loader = createLoader mLangEnvironment in
 
+    -- Downgrade all dependent symbolized files, to trigger
+    -- re-symbolization of all dependent files.
     iter (
       lam uri.
         loader.store uri (downgradeSymbolizedFile (loader.load uri))
     ) dirtiedFiles;
 
-    -- Reset/create the file in the environment
+    -- Reset/create the file in the environment.
     loader.store uri (CLoaded { content = content });
 
     recursive let getFile: Path -> MLangFile = 
@@ -180,7 +182,8 @@ lang MLangCompiler =
         let file = getFile uri in
         let lenses = use MLangUtestLenses in getUtestLenses file in
         let lookup = createLookup [
-          use MLangLookupIncludeLookup in includesLookup file
+          use MLangLookupInclude in includesLookup file,
+          use MLangLookupVariable in variablesLookup file
         ] in
 
         {
@@ -188,8 +191,7 @@ lang MLangCompiler =
           errors = getFileErrors file,
           warnings = getFileWarnings file,
           lookup = lookup uri,
-          -- lenses = lenses
-          lenses = []
+          lenses = lenses
         }
     in
 

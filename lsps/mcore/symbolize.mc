@@ -1,4 +1,5 @@
 include "file.mc"
+include "definition.mc"
 
 lang SymbolizeMLangLSP = MLangPipeline
   type SymbolizedMLangLSP = {
@@ -10,6 +11,8 @@ lang SymbolizeMLangLSP = MLangPipeline
 
   sem symbolizeMLangLSP : SymEnv -> MLangProgram -> SymbolizedMLangLSP
   sem symbolizeMLangLSP symEnv =| program ->
+    -- Ugly hacking to not make symbolizeExpr
+    -- crash in the MLang pipeline
     modref __LSP__SOFT_ERROR true;
     modref __LSP__BUFFERED_ERRORS [];
     modref __LSP__BUFFERED_WARNINGS [];
@@ -80,9 +83,16 @@ lang MLangSymbolize = MLangFileHandler
     eprintln (env2str symEnv);
     eprintln "Done symbolizing MLang file.";
 
+    let definitions = use MLangDefinition in generateDefinitions program in
+    let definitions = foldl (
+      lam definitions. lam file.
+        mapUnion definitions (getDefinitions file)
+    ) definitions fileIncludes in
+
     CSymbolized {
       program = program,
       linked = linked,
+      definitions = definitions,
       symEnv = symEnv,
       warnings = warnings,
       errors = errors

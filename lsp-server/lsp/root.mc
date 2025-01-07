@@ -18,7 +18,7 @@ type CodeLens = {
 type LookupResult = {
   info: Info,
   pprint: () -> Option String,
-  lookupDefinition: Option (() -> Info)
+  lookupDefinition: Option (() -> Option Info)
 }
 
 type CompilationDiagnostics = {

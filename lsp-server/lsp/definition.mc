@@ -55,7 +55,7 @@ lang LSPGotoDefinition = LSPRoot
     let environment = mapLookup uri context.environment.files in
     let lookupResult = optionBind environment (lam environment. environment.lookup line character) in
     let lookupDefinition = optionBind lookupResult (lam lookupResult. lookupResult.lookupDefinition) in
-    let definition = optionMap (lam lookupDefinition. lookupDefinition ()) lookupDefinition in
+    let definition = optionBind lookupDefinition (lam lookupDefinition. lookupDefinition ()) in
     let response = getLSPResponse context id definition in
 
     {

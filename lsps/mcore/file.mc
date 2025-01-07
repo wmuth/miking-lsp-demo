@@ -1,6 +1,8 @@
 include "./include-handler.mc"
 
 lang MLangFileHandler = MLangIncludeHandler
+  type Definitions = Map Name Info
+
   type Loaded = {
     content: String
   }
@@ -31,6 +33,7 @@ lang MLangFileHandler = MLangIncludeHandler
   type Symbolized = {
     program: use MLangIncludeHandler in MLangProgram,
     linked: Linked,
+    definitions: Definitions,
     symEnv: SymEnv,
     warnings: [Diagnostic],
     errors: [Diagnostic]
@@ -53,7 +56,7 @@ lang MLangFileHandler = MLangIncludeHandler
 
   sem getContent: MLangFile -> String
   sem getContent =
-  | CLoaded { content = content }
+  | CLoaded { content = content } -> content
   | CParseError { loaded = loaded }
   | CParsed { loaded = loaded } -> getContent (CLoaded loaded)
   | CLinked { parsed = parsed } -> getContent (CParsed parsed)
@@ -63,7 +66,7 @@ lang MLangFileHandler = MLangIncludeHandler
   sem getProgram =
   | CLoaded _ 
   | CParseError _ -> None ()
-  | CLinked { parsed = parsed } -> getProgram (CParsed parsed)
+  | CLinked { program = program }
   | CParsed { program = program }
   | CSymbolized { program = program } -> Some program
 
@@ -82,6 +85,14 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParsed _
   | CLinked _ -> None ()
   | CSymbolized { symEnv = symEnv } -> Some symEnv
+
+  sem getDefinitions: MLangFile -> Definitions
+  sem getDefinitions =
+  | CLoaded _
+  | CParseError _
+  | CParsed _
+  | CLinked _ -> mapEmpty nameCmp
+  | CSymbolized { definitions = definitions } -> definitions
 
   sem getFileErrors: MLangFile -> [Diagnostic]
   sem getFileErrors =

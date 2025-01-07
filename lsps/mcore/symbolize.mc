@@ -79,9 +79,9 @@ lang MLangSymbolize = MLangFileHandler
     match use SymbolizeMLangLSP in symbolizeMLangLSP symEnv (linked.program)
     with { program = program, symEnv = symEnv, warnings = warnings, errors = errors } in
 
-    eprintln (join ["Symbolized ", path]);
-    eprintln (env2str symEnv);
-    eprintln "Done symbolizing MLang file.";
+    -- eprintln (join ["Symbolized ", path]);
+    -- eprintln (env2str symEnv);
+    -- eprintln "Done symbolizing MLang file.";
 
     let definitions = use MLangDefinition in generateDefinitions program in
     let definitions = foldl (

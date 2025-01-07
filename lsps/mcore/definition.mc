@@ -17,6 +17,8 @@ lang MLangDefinition = MLangFileHandler + MLangPipeline
   | TmLet { ident=ident, ty=ty, info=info }
   | TmLam { ident=ident, ty=ty, info=info } ->
     [(ident, info)]
+  | TmRecLets { bindings=bindings } ->
+    map (lam binding. (binding.ident, binding.info)) bindings
 
   sem declDefinitions: Decl -> DefinitionSeq
   sem declDefinitions =
@@ -28,6 +30,18 @@ lang MLangDefinition = MLangFileHandler + MLangPipeline
   | DeclExt { ident=ident, info=info }
   | DeclLang { ident=ident, info=info } ->
     [(ident, info)]
+  | DeclRecLets { bindings=bindings, info=Info info } ->
+    -- Ugly hack to keep the filename of the bindings
+    -- the same as the filename of the decl.
+    filterMap (lam binding.
+      match binding.info with Info r then
+        Some (binding.ident, Info {
+          r with
+          filename = info.filename
+        })
+      else 
+        None ()
+    ) bindings
   | DeclSem { ident=ident, info=info, args = args } ->
     -- Simply refer to the position of the sem, since
     -- we have no way to knowing the position of the args
@@ -60,15 +74,4 @@ lang MLangDefinition = MLangFileHandler + MLangPipeline
     ) [] decl in
 
     join [lookup, childExprs, childDecls]
-
-  -- sem variablesLookup: MLangFile -> [(Info, LookupResult)]
-  -- sem variablesLookup =| file ->
-  --   match (getProgram file, getSymEnv file)
-  --     with (Some program, Some env) then
-  --       join [
-  --         flatMap (recursiveDeclLookup file env) program.decls,
-  --         exprLookup file env program.expr
-  --       ]
-  --     else
-  --       []
 end

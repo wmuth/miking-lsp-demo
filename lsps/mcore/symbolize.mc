@@ -83,11 +83,14 @@ lang MLangSymbolize = MLangFileHandler
     -- eprintln (env2str symEnv);
     -- eprintln "Done symbolizing MLang file.";
 
-    let definitions = use MLangDefinition in generateDefinitions program in
+    let fileDefinitions = use MLangDefinition in generateDefinitions program in
     let definitions = foldl (
       lam definitions. lam file.
         mapUnion definitions (getDefinitions file)
-    ) definitions fileIncludes in
+    ) fileDefinitions fileIncludes in
+
+    -- let undefinedVariables = 
+    -- let unusedDefinitions =
 
     CSymbolized {
       program = program,

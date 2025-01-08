@@ -41,15 +41,15 @@ lang MLangUtestLenses = MLangAst + MExprAst + MLangFileHandler
   sem getExprLens: Expr -> [CodeLens]
   sem getExprLens =
   | expr ->
-      let arr = switch expr
-        case TmUtest { info = info } then
-          optionGetOr [] (optionMap (lam v. [v]) (createUtestLens info))
-        case _ then
-          []
-      end in
-  
-      sfold_Expr_Expr (lam acc. lam e.
-        let children = getExprLens e in
-        concat acc children
-      ) arr expr
+    let arr = switch expr
+      case TmUtest { info = info } then
+        optionGetOr [] (optionMap (lam v. [v]) (createUtestLens info))
+      case _ then
+        []
+    end in
+
+    sfold_Expr_Expr (lam acc. lam e.
+      let children = getExprLens e in
+      concat acc children
+    ) arr expr
 end

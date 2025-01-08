@@ -1,5 +1,16 @@
 include "./file.mc"
 
+-- Basically do this:
+-- let childTypes = sfold_Decl_Type (lam acc. lam ty.
+--   join [acc, recursiveTypeLookup file env ty]
+-- ) [] decl
+-- But with less boilerplate.
+let createAccumulator: all a. all b. all acc. (([acc] -> a -> [acc]) -> [acc] -> b -> [acc]) -> (a -> [acc]) -> b -> [acc] =
+  lam sfold. lam generator. lam item.
+    sfold (lam acc. lam pat.
+      join [acc, generator pat]
+    ) [] item
+
 -- This is very crude and wrong,
 -- it doesn't even handle columns.
 let getContentInSection: String -> Info -> String =
@@ -32,6 +43,13 @@ let createLookup: [(Info, LookupResult)] -> Path -> Int -> Int -> Option LookupR
     else
       None ()
 
+let setLookupResultFilename: Path -> [(Info, LookupResult)] -> [(Info, LookupResult)] =
+  lam filename. lam lookups.
+    map (lam lookup.
+      match lookup with (info, lookup) in
+      (infoWithFilename filename info, lookup)
+    ) lookups
+
 lang MLangLookupInclude = MLangFileHandler
   sem includesLookup: MLangFile -> [(Info, LookupResult)]
   sem includesLookup =| file ->
@@ -57,6 +75,26 @@ end
 lang MLangLookupVariable = MLangFileHandler + MLangPipeline
   sem getDefinitionLookup: MLangFile -> Name -> (() -> Option Info)
   sem getDefinitionLookup file =| name -> lam. mapLookup name (getDefinitions file)
+
+  sem typeLookup: MLangFile -> SymEnv -> Type -> [(Info, LookupResult)]
+  sem typeLookup file env =
+  | _ -> []
+  | TyCon { ident=ident, info=info }
+  | TyVar { ident=ident, info=info }
+  | TyAll { ident=ident, info=info } ->
+    [(
+      info,
+      {
+        info = info,
+        pprint = lam. Some (
+          join [
+            "`", nameGetStr ident, "`",
+            " (type)"
+          ]
+        ),
+        lookupDefinition = Some (getDefinitionLookup file ident)
+      }
+    )]
 
   sem exprLookup: MLangFile -> SymEnv -> Expr -> [(Info, LookupResult)]
   sem exprLookup file env =
@@ -96,26 +134,27 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline
         lookupDefinition = Some (getDefinitionLookup file ident)
       }
     )]
-  | TmMatch {
-    thn=TmVar { ident=ident },
-    ty=ty,
-    info=info,
-    pat=p & PatRecord { bindings=bindings }
-  } ->
+
+  sem patLookup: MLangFile -> SymEnv -> Path -> Pat -> [(Info, LookupResult)]
+  sem patLookup file env filename =
+  | _ -> []
+  | pat & PatSeqEdge { middle=PName ident, info=info }
+  | pat & PatNamed { ident=PName ident, info=info }
+  | pat & PatCon { ident=ident, info=info } ->
+    let info = infoWithFilename filename info in
     [(
       info,
       {
         info = info,
-        pprint = lam. Some (nameGetStr ident),
-        lookupDefinition = None ()
+        pprint = lam. Some (join [
+          nameGetStr ident,
+          "\n",
+          -- TODO: We need to store the defined types.
+          match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
+        ]),
+        lookupDefinition = Some (getDefinitionLookup file ident)
       }
     )]
-  -- | TmRecLets { bindings=bindings } ->
-  --     -- The info field appears to point to just the "let" keyword??
-  --     let f = lam acc. lam x.
-  --       mapInsertVariable x.info (x.ident, x.tyAnnot) acc
-  --     in
-  --     foldl f m bindings
 
   sem declLookup: MLangFile -> SymEnv -> Decl -> [(Info, LookupResult)]
   sem declLookup file env =
@@ -137,36 +176,91 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline
         lookupDefinition = None ()
       }
     )]
+  | DeclSem { ident=ident, info=info, args=args, cases=cases, info=info } ->
+    let patterns = map (lam cas. cas.pat) cases in
+
+    join [
+      [(
+        info,
+        {
+          info = info,
+          pprint = lam. Some (nameGetStr ident),
+          lookupDefinition = None ()
+        }
+      )]
+    ]
+
+  sem recursiveTypeLookup: MLangFile -> SymEnv -> Path -> Type -> [(Info, LookupResult)]
+  sem recursiveTypeLookup file env filename =| ty ->
+    let self = typeLookup file env ty in
+
+    let childTypes = sfold_Type_Type (lam acc. lam ty.
+      let types = recursiveTypeLookup file env filename ty in
+      let types = setLookupResultFilename filename types in
+      join [acc, types]
+    ) [] ty in
+
+    join [self, childTypes]
+
+  sem recursivePatLookup: MLangFile -> SymEnv -> Path -> Pat -> [(Info, LookupResult)]
+  sem recursivePatLookup file env filename =| pat ->
+    let self = patLookup file env filename pat in
+
+    let childTypes = sfold_Pat_Type (lam acc. lam ty.
+      join [acc, recursiveTypeLookup file env filename ty]
+    ) [] pat in
+
+    let childPatterns = sfold_Pat_Pat (
+      lam acc. lam pat.
+        join [acc, recursivePatLookup file env filename pat]
+    ) [] pat in
+
+    join [self, childTypes, childPatterns]
 
   sem recursiveExprLookup: MLangFile -> SymEnv -> Expr -> [(Info, LookupResult)]
   sem recursiveExprLookup file env =| expr ->
-    let lookup = exprLookup file env expr in
-    let children = sfold_Expr_Expr (lam acc. lam expr.
-      let children = recursiveExprLookup file env expr in
-      join [acc, children]
+    let filename = getFilename (infoTm expr) in
+    let self = exprLookup file env expr in
+
+    let childTypes = sfold_Expr_Type (lam acc. lam ty.
+      join [acc, recursiveTypeLookup file env filename ty]
     ) [] expr in
-    join [lookup, children]
+
+    let childExprs = sfold_Expr_Expr (lam acc. lam expr.
+      join [acc, recursiveExprLookup file env expr]
+    ) [] expr in
+
+    let childPatterns = sfold_Expr_Pat (lam acc. lam pat.
+      join [acc, recursivePatLookup file env filename pat]
+    ) [] expr in
+
+    join [self, childExprs, childPatterns, childTypes]
 
   sem recursiveDeclLookup: MLangFile -> SymEnv -> Decl -> [(Info, LookupResult)]
   sem recursiveDeclLookup file env =| decl ->
-    let lookup = declLookup file env decl in
+    let filename = (getFilename (infoDecl decl)) in
+    let self = declLookup file env decl in
+
+    let childPatterns = sfold_Decl_Pat (lam acc. lam pat.
+      join [acc, recursivePatLookup file env filename pat]
+    ) [] decl in
+
+    let childTypes = sfold_Decl_Type (lam acc. lam ty.
+      join [acc, recursiveTypeLookup file env filename ty]
+    ) [] decl in
 
     let childExprs = sfold_Decl_Expr (lam acc. lam expr.
-      let children = recursiveExprLookup file env expr in
-      join [acc, children]
+      join [acc, recursiveExprLookup file env expr]
     ) [] decl in
 
     let childDecls = sfold_Decl_Decl (lam acc. lam decl.
-      let children = recursiveDeclLookup file env decl in
-      join [acc, children]
+      join [acc, recursiveDeclLookup file env decl]
     ) [] decl in
 
-    join [lookup, childExprs, childDecls]
+    join [self, childExprs, childDecls, childTypes, childPatterns]
 
   sem variablesLookup: MLangFile -> [(Info, LookupResult)]
   sem variablesLookup =| file ->
-    eprintln "Looking up variables";
-    eprintln (printFileKind file);
     match (getProgram file, getSymEnv file)
       with (Some program, Some env) then
         join [

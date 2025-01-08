@@ -24,12 +24,17 @@ lang MLangDefinition = MLangFileHandler + MLangPipeline
   sem declDefinitions =
   | _ -> []
   | DeclLet { ident=ident, info=info }
-  | DeclSyn { ident=ident, info=info }
   | DeclType { ident=ident, info=info }
   | DeclConDef { ident=ident, info=info }
   | DeclExt { ident=ident, info=info }
   | DeclLang { ident=ident, info=info } ->
     [(ident, info)]
+  | DeclSyn { ident=ident, info=info, defs=defs } ->
+    join [
+      [(ident, info)],
+      map (lam def. (def.ident, info)) defs
+      -- flatMap (lam def. recursiveTypeDefinitions def.tyIdent) defs
+    ]
   | DeclRecLets { bindings=bindings, info=Info info } ->
     -- Ugly hack to keep the filename of the bindings
     -- the same as the filename of the decl.
@@ -42,7 +47,7 @@ lang MLangDefinition = MLangFileHandler + MLangPipeline
       else 
         None ()
     ) bindings
-  | DeclSem { ident=ident, info=info, args = args } ->
+  | DeclSem { ident=ident, info=info, args=args, cases=cases } ->
     -- Simply refer to the position of the sem, since
     -- we have no way to knowing the position of the args
     join [
@@ -50,18 +55,52 @@ lang MLangDefinition = MLangFileHandler + MLangPipeline
       map (lam arg. (arg.ident, info)) (optionGetOr [] args)
     ]
 
+  -- TODO: Something is wrong here
+  sem typeDefinitions: Type -> DefinitionSeq
+  sem typeDefinitions =
+  | _ -> []
+  -- | TyCon { ident=ident, info=info }
+  -- | TyVar { ident=ident, info=info }
+  -- | TyAll { ident=ident, info=info } ->
+  --   [(ident, info)]
+
+  sem recursiveTypeDefinitions: Path -> Type -> DefinitionSeq
+  sem recursiveTypeDefinitions filename =| ty ->
+    let self = map (lam def. (def.0, infoWithFilename filename def.1)) (typeDefinitions ty) in
+
+    let childTypes = sfold_Type_Type (lam acc. lam ty.
+      let children = recursiveTypeDefinitions filename ty in
+      join [acc, children]
+    ) [] ty in
+
+    join [self, childTypes]
+
   sem recursiveExprDefinitions: Expr -> DefinitionSeq
   sem recursiveExprDefinitions =| expr ->
-    let lookup = exprDefinitions expr in
-    let children = sfold_Expr_Expr (lam acc. lam expr.
+    let filename = getFilename (infoTm expr) in
+    let self = exprDefinitions expr in
+
+    let childTypes = sfold_Expr_TypeLabel (lam acc. lam ty.
+      let children = recursiveTypeDefinitions filename ty in
+      join [acc, children]
+    ) [] expr in
+
+    let childExprs = sfold_Expr_Expr (lam acc. lam expr.
       let children = recursiveExprDefinitions expr in
       join [acc, children]
     ) [] expr in
-    join [lookup, children]
+
+    join [self, childTypes, childExprs]
 
   sem recursiveDeclDefinitions: Decl -> DefinitionSeq
   sem recursiveDeclDefinitions =| decl ->
-    let lookup = declDefinitions decl in
+    let filename = (getFilename (infoDecl decl)) in
+    let self = declDefinitions decl in
+
+    -- let childTypes = sfold_Decl_Type (lam acc. lam ty.
+    --   let children = recursiveTypeDefinitions filename ty in
+    --   join [acc, children]
+    -- ) [] decl in
 
     let childExprs = sfold_Decl_Expr (lam acc. lam expr.
       let children = recursiveExprDefinitions expr in
@@ -73,5 +112,5 @@ lang MLangDefinition = MLangFileHandler + MLangPipeline
       join [acc, children]
     ) [] decl in
 
-    join [lookup, childExprs, childDecls]
+    join [self, childExprs, childDecls]
 end

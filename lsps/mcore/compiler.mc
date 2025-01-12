@@ -18,11 +18,6 @@ type MLangEnvironment = {
   dependencies: Map String (Set String)
 }
 
-type FileLoader =  {
-  load: Path -> MLangFile,
-  store: Path -> MLangFile -> ()
-}
-
 type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProgram
 
 lang MLangCompiler =
@@ -31,37 +26,53 @@ lang MLangCompiler =
   MLangIncludeHandler + MLangFileLoader +
   MLangFileHandler + MLangUpgradeFile
 
-  sem compile: LSPConfig -> Ref MLangEnvironment -> CompilationParameters -> Map Path [LanguageServerPayload]
+  sem getFileLanguageSupport: Ref MLangEnvironment -> Path -> [LanguageServerPayload]
+  sem getFileLanguageSupport mLangEnvironment =| uri ->
+    let loader = createLoader mLangEnvironment in
+    let uri = stripUriProtocol uri in
+    let file = loader.load uri in
+    getLanguageSupport file
+
+  sem compile: LSPConfig -> Ref MLangEnvironment -> CompilationParameters -> CompilationResult
   sem compile config mLangEnvironment =| parameters ->
     let uri = stripUriProtocol parameters.uri in
     let content = parameters.content in
     let environment = deref mLangEnvironment in
-
-    -- Convert Map DependentPath (Set DependencyPaths) to Map DependencyPath (Set DependentPaths)
-    let dependencyGraph: Map Path (Set Path) = foldl (
-      lam acc. lam valueKey.
-        match valueKey with (key, values) in
-        let values = setToSeq values in
-        foldl (
-          lam acc. lam value.
-            mapInsertWith setUnion value (setOfSeq cmpString [key]) acc
-        ) acc values
-    ) (mapEmpty cmpString) (mapToSeq environment.dependencies) in
-
-    let dirtiedFiles = getDirtyDependencies dependencyGraph (setEmpty cmpString) uri in
-    -- eprintln (join ["Dirty paths: ", strJoin ", " (setToSeq dirtiedFiles)]);
-
-    let dirtiedFiles = setFilter (lam furi. not (eqString furi uri)) dirtiedFiles in
-    let dirtiedFiles = setToSeq dirtiedFiles in
-
     let loader = createLoader mLangEnvironment in
 
-    -- Downgrade all dependent symbolized files, to trigger
-    -- re-symbolization of all dependent files.
-    iter (
-      lam uri.
-        loader.store uri (downgradeSymbolizedFile (loader.load uri))
-    ) dirtiedFiles;
+    eprintln (join ["Compiling: ", uri]);
+    eprintln (join ["Loader has: ", bool2string (loader.has uri)]);
+    eprintln (join ["Loader content is equal: ", bool2string (eqString (getContent (loader.load uri)) content)]);
+
+    let dirtiedFiles = if and (loader.has uri) (eqString (getContent (loader.load uri)) content) then
+      []
+    else
+      -- Convert Map DependentPath (Set DependencyPaths) to Map DependencyPath (Set DependentPaths)
+      let dependencyGraph: Map Path (Set Path) = foldl (
+        lam acc. lam valueKey.
+          match valueKey with (key, values) in
+          let values = setToSeq values in
+          foldl (
+            lam acc. lam value.
+              mapInsertWith setUnion value (setOfSeq cmpString [key]) acc
+          ) acc values
+      ) (mapEmpty cmpString) (mapToSeq environment.dependencies) in
+
+      let dirtiedFiles = getDirtyDependencies dependencyGraph (setEmpty cmpString) uri in
+      -- eprintln (join ["Dirty paths: ", strJoin ", " (setToSeq dirtiedFiles)]);
+
+      let dirtiedFiles = setFilter (lam furi. not (eqString furi uri)) dirtiedFiles in
+      let dirtiedFiles = setToSeq dirtiedFiles in
+
+      -- Downgrade all dependent symbolized files, to trigger
+      -- re-symbolization of all dependent files.
+      iter (
+        lam uri.
+          loader.store uri (downgradeSymbolizedFile (loader.load uri))
+      ) dirtiedFiles;
+
+      dirtiedFiles
+    in
 
     -- Reset/create the file in the environment.
     loader.store uri (CLoaded { content = content, filename = nameSym uri });
@@ -69,7 +80,7 @@ lang MLangCompiler =
     recursive let getFile: Path -> MLangFile = 
       lam uri.
         let file = loader.load uri in
-        upgradeFile parameters loader getFile uri file
+        upgradeFile loader getFile uri file
     in
 
     let getCompilationResults: [Path] -> [(Path, [LanguageServerPayload])] =
@@ -95,16 +106,16 @@ lang MLangCompiler =
       };
       iter registerDependencies dependencies
     in
-
-    let file = getFile uri in
-    let dependencies = setToSeq (getDependencies getFile (ref (setEmpty cmpString)) file) in
     
-    let results = mapFromSeq cmpString (join [
+    let languageSupport = mapFromSeq cmpString (join [
       getCompilationResults [uri],
-      getCompilationResults dirtiedFiles,
-      getCompilationResults dependencies
+      getCompilationResults dirtiedFiles
+      -- getCompilationResults dependencies
     ]) in
     registerDependencies uri;
+
+    let file = getFile uri in
+    let dependencies = setToSeq (getDependencies loader.load (ref (setEmpty cmpString)) file) in
 
     -- iter (
     --   lam v.
@@ -113,5 +124,8 @@ lang MLangCompiler =
     --       ()
     -- ) (mapToSeq (deref mLangEnvironment).files);
 
-    results
+    {
+      languageSupport = languageSupport,
+      dependencies = dependencies
+    }
 end

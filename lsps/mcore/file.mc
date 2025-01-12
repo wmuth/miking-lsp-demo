@@ -119,9 +119,7 @@ lang MLangFileHandler = MLangIncludeHandler + LanguageServer
 
   sem getDependencies: (Path -> MLangFile) -> Ref (Set Path) -> MLangFile -> Set Path
   sem getDependencies getFile seen =| file ->
-    eprintln (join ["getDependencies before: ", getFilename file]);
     if setMem (getFilename file) (deref seen) then setEmpty cmpString else
-    eprintln (join ["getDependencies after: ", getFilename file]);
     let immediate = getImmediateDependencies file in
     modref seen (setInsert (getFilename file) (deref seen));
     foldl (lam acc. lam dep. setUnion acc (getDependencies getFile seen (getFile dep))) immediate (setToSeq immediate)

@@ -32,26 +32,43 @@ lang LSPChange = LSPRoot
     uri: String
   }
 
-  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> Map URI [LanguageServerPayload]) -> LSPResult
-  sem handleCompile context uri content =| compilationFunction ->
+  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> CompilationResult) -> (URI -> [LanguageServerPayload]) -> LSPResult
+  sem handleCompile context uri content compilationFunction =| languageSupportFunction ->
+    let files = context.environment.files in
+
     let compilationParameters: CompilationParameters = {
       uri = uri,
       content = content
     } in
   
-    let filePayloads: Map URI [LanguageServerPayload] = compilationFunction compilationParameters in
+    let compilationResults: CompilationResult = compilationFunction compilationParameters in
+    let dependencies: [URI] = compilationResults.dependencies in
+    let filePayloads: Map URI [LanguageServerPayload] = compilationResults.languageSupport in
+
     let compilationResults: Map URI LanguageServerContext = mapMap (
       foldl populateContext emptyLanguageServerContext
     ) filePayloads in
   
     let responses = getResultResponses compilationResults in
     iter context.sendNotification responses;
+
+    let files = mapUnion files compilationResults in
+
+    -- Handle dependencies which have not yet been included
+    let nonExistingDependencies = filter (lam dependency. not (mapMem dependency files)) dependencies in
+    let dependencyFiles = mapFromSeq cmpString (map (lam path. (path, languageSupportFunction path)) nonExistingDependencies) in
+    -- eprintln (join ["Non-existing dependencies: ", strJoin ", " nonExistingDependencies]);
+    let dependencyCompilationResults: Map URI LanguageServerContext = mapMap (
+      foldl populateContext emptyLanguageServerContext
+    ) dependencyFiles in
+
+    let files = mapUnion files dependencyCompilationResults in
   
     {
       response = None (),
       environment = {
         context.environment with
-        files = mapUnion context.environment.files compilationResults
+        files = files
       }
     }
 
@@ -97,8 +114,10 @@ lang LSPChange = LSPRoot
       environment = { context.environment with files = mapRemove uri context.environment.files }
     }
   | DidOpen {uri = uri, version = version, text = text} ->
-    handleCompile context uri text context.parameters.onOpen
+    eprintln (join ["Opened: ", uri]);
+    handleCompile context uri text context.parameters.onOpen context.parameters.getLanguageSupport
   | DidChange {uri = uri, version = version, text = text} ->
-    handleCompile context uri text context.parameters.onChange
+    eprintln (join ["Changed: ", uri]);
+    handleCompile context uri text context.parameters.onChange context.parameters.getLanguageSupport
 
 end

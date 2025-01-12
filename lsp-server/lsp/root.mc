@@ -145,6 +145,11 @@ lang LanguageServer =
     content: String
   }
 
+  type CompilationResult = {
+    languageSupport: Map URI [LanguageServerPayload],
+    dependencies: [URI]
+  }
+
   type LSPConfig = {
     completion: Bool,
     hover: Bool,
@@ -157,8 +162,9 @@ lang LanguageServer =
   }
 
   type LSPStartParameters = {
-    onOpen: CompilationParameters -> Map URI [LanguageServerPayload],
-    onChange: CompilationParameters -> Map URI [LanguageServerPayload],
+    getLanguageSupport: URI -> [LanguageServerPayload],
+    onOpen: CompilationParameters -> CompilationResult,
+    onChange: CompilationParameters -> CompilationResult,
     onClose: String -> (),
     options: LSPOptions
   }
@@ -178,14 +184,6 @@ lang LanguageServer =
     environment: LSPEnvironment
   }
 end
-
-let emptyCompilationResult = {
-  errors = [],
-  warnings = [],
-  lenses = [],
-  lookup = lam. lam. None ()
-  -- dirtiedFiles = setEmpty cmpString
-}
 
 let defaultLSPOptions: use LanguageServer in LSPOptions = {
   config = {

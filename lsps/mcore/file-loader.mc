@@ -2,6 +2,12 @@ include "./include-handler.mc"
 include "./file.mc"
 
 lang MLangFileLoader = MLangFileHandler
+  type FileLoader =  {
+    load: Path -> MLangFile,
+    store: Path -> MLangFile -> (),
+    has: Path -> Bool
+  }
+
   sem createLoader: Ref MLangEnvironment -> FileLoader
   sem createLoader =| mLangEnvironment ->
     let store: Path -> MLangFile -> () = lam path. lam file.
@@ -12,6 +18,12 @@ lang MLangFileLoader = MLangFileHandler
         files = mapInsert path file environment.files
       };
       ()
+    in
+
+    let has = lam path.
+      let path = normalizeFilePath path in
+      let environment = deref mLangEnvironment in
+      optionIsSome (mapLookup path environment.files)
     in
 
     let load = lam path.
@@ -30,7 +42,8 @@ lang MLangFileLoader = MLangFileHandler
 
     let loader: FileLoader = {
       load = load,
-      store = store
+      store = store,
+      has = has
     } in
 
     loader

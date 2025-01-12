@@ -6,6 +6,7 @@ include "./hover.mc"
 include "./definition.mc"
 include "./misc.mc"
 include "./codelens.mc"
+include "./implementation.mc"
 
 lang LSP =
 LSPInitialize
@@ -15,6 +16,7 @@ LSPInitialize
 + LSPCompletion
 + LSPHover
 + LSPGotoDefinition
++ LSPImplementation
 + LSPMisc
 end
 

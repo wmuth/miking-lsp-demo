@@ -33,11 +33,19 @@ lang MLangFileHandler = LanguageServer
     warnings: [Diagnostic]
   }
 
+  type TypeChecked = {
+    expr: use MLangPipeline in Expr,
+    symbolized: Symbolized,
+    errors: [Diagnostic],
+    warnings: [Diagnostic]
+  }
+
   syn MLangFile =
   | CLoaded Loaded
   | CParseError ParseError
   | CParsed Parsed
   | CSymbolized Symbolized
+  | CTypeChecked TypeChecked
 
   sem printFileKind: MLangFile -> String
   sem printFileKind =
@@ -45,6 +53,7 @@ lang MLangFileHandler = LanguageServer
   | CParseError _ -> "ParseError"
   | CParsed _ -> "Parsed"
   | CSymbolized _ -> "Symbolized"
+  | CTypeChecked _ -> "TypeChecked"
 
   sem getFilename: MLangFile -> String
   sem getFilename =
@@ -52,6 +61,7 @@ lang MLangFileHandler = LanguageServer
   | CParseError { loaded = loaded }
   | CParsed { loaded = loaded } -> getFilename (CLoaded loaded)
   | CSymbolized { parsed = parsed } -> getFilename (CParsed parsed)
+  | CTypeChecked { symbolized = symbolized } -> getFilename (CSymbolized symbolized)
 
   sem getContent: MLangFile -> String
   sem getContent =
@@ -59,6 +69,7 @@ lang MLangFileHandler = LanguageServer
   | CParseError { loaded = loaded }
   | CParsed { loaded = loaded } -> getContent (CLoaded loaded)
   | CSymbolized { parsed = parsed } -> getContent (CParsed parsed)
+  | CTypeChecked { symbolized = symbolized } -> getContent (CSymbolized symbolized)
 
   sem getProgram: MLangFile -> Option MLangProgram
   sem getProgram =
@@ -66,13 +77,7 @@ lang MLangFileHandler = LanguageServer
   | CParseError _ -> None ()
   | CParsed { program = program }
   | CSymbolized { program = program } -> Some program
-
-  sem getIncludes: MLangFile -> [(Info, Include)]
-  sem getIncludes =
-  | CLoaded _
-  | CParseError _ -> []
-  | CParsed { includes = includes } -> includes
-  | CSymbolized { parsed = parsed } -> getIncludes (CParsed parsed)
+  | CTypeChecked { symbolized = symbolized } -> getProgram (CSymbolized symbolized)
 
   sem getSymEnv: MLangFile -> Option SymEnv
   sem getSymEnv =
@@ -80,6 +85,7 @@ lang MLangFileHandler = LanguageServer
   | CParseError _
   | CParsed _ -> None ()
   | CSymbolized { symEnv = symEnv } -> Some symEnv
+  | CTypeChecked { symbolized = symbolized } -> getSymEnv (CSymbolized symbolized)
 
   sem getFileErrors: MLangFile -> [Diagnostic]
   sem getFileErrors =
@@ -87,6 +93,7 @@ lang MLangFileHandler = LanguageServer
   | CParseError { errors = errors } -> errors
   | CParsed { errors = errors } -> errors
   | CSymbolized { parsed = parsed, errors = errors } -> join [errors, getFileErrors (CParsed parsed)]
+  | CTypeChecked { errors = errors, symbolized = symbolized } -> join [errors, getFileErrors (CSymbolized symbolized)]
 
   sem getFileWarnings: MLangFile -> [Diagnostic]
   sem getFileWarnings =
@@ -94,4 +101,5 @@ lang MLangFileHandler = LanguageServer
   | CParseError { warnings = warnings }
   | CParsed { warnings = warnings } -> warnings
   | CSymbolized { warnings = warnings, parsed = parsed } -> join [warnings, getFileWarnings (CParsed parsed)]
+  | CTypeChecked { warnings = warnings, symbolized = symbolized } -> join [warnings, getFileWarnings (CSymbolized symbolized)]
 end

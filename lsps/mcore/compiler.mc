@@ -14,8 +14,8 @@ lang MLangCompiler =
   MLangIncludeHandler +
   MLangFileHandler + MLangUpgradeFile
 
-  sem compile: LSPConfig -> CompilationParameters -> CompilationResult
-  sem compile config =| parameters ->
+  sem compileMLangLSP: LSPConfig -> CompilationParameters -> CompilationResult
+  sem compileMLangLSP config =| parameters ->
     let uri = stripUriProtocol parameters.uri in
     let content = parameters.content in
 

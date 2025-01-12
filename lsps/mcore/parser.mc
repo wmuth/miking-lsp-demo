@@ -29,7 +29,7 @@ lang MLangParser = MLangFileHandler
       }
       case Right program then
         let includes = use MLangIncludeChecker in filterMap getDeclIncludes program.decls in
-        if geqi (length includes) 0 then
+        if geqi (length includes) 1 then
           CParseError {
             loaded = { content = content, filename = getFilename file },
             errors = map (lam info. (info, "Includes are not allowed in this MCore language server version (sorry)")) includes,

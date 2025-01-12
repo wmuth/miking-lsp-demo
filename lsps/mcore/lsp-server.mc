@@ -17,8 +17,8 @@ let options = {
 } in
 
 let lspStartParameters: use LSPRoot in LSPStartParameters = {
-  onOpen   = use MLangCompiler in compile config,
-  onChange = use MLangCompiler in compile config,
+  onOpen   = use MLangCompiler in compileMLangLSP config,
+  onChange = use MLangCompiler in compileMLangLSP config,
   onClose  = onClose,
   options  = options
 } in

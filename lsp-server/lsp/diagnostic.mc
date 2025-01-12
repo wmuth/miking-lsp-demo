@@ -1,5 +1,11 @@
 include "root.mc"
 
+let mini: Int -> Int -> Int =
+  lam a. lam b. if leqi a b then a else b
+
+let maxi: Int -> Int -> Int =
+  lam a. lam b. if leqi a b then b else a
+
 lang LSPDiagnosticSeverity
   -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
   syn DiagnosticSeverity =

@@ -37,17 +37,17 @@ let getFileInfo: Info -> ProdPosition = lam fi.
   match fi with NoInfo () then
     {
       filename = "",
-      lineStart = 0,
+      lineStart = 1,
       colStart = 0,
-      lineEnd = 0,
+      lineEnd = 1,
       colEnd = 0
     }
   else match fi with Info (r & {row1 = 0}) then
     {
       filename = r.filename,
-      lineStart = 0,
+      lineStart = 1,
       colStart = 0,
-      lineEnd = 0,
+      lineEnd = 1,
       colEnd = 0
     }
   else match fi with Info r then

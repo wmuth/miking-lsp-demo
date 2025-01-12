@@ -30,8 +30,6 @@ lang LSPGotoDefinition = LSPRoot
     locations: [Info]
   }
 
-  -- Todo: Return multiple Location[]
-  -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition
   sem generateLocationLinks: Int -> Option [DefinitionInformation] -> JsonValue
   sem generateLocationLinks id =
   | definitions ->
@@ -58,22 +56,6 @@ lang LSPGotoDefinition = LSPRoot
       ("id", JsonInt id),
       ("result", result)
     ]
-
-    -- match (definition, optionBind definition infoToRange) with (Some (Info r), Some range) then
-    --   jsonKeyObject [
-    --     ("jsonrpc", JsonString "2.0"),
-    --     ("id", JsonInt id),
-    --     ("result", jsonKeyObject [
-    --       ("uri", JsonString r.filename),
-    --       range
-    --     ])
-    --   ]
-    -- else
-    --   jsonKeyObject [
-    --     ("jsonrpc", JsonString "2.0"),
-    --     ("id", JsonInt id),
-    --     ("result", JsonNull ())
-    --   ]
 
   sem findUsageLinearly: URI -> Map Info [Name] -> Int -> Int -> Option UsageInformation
   sem findUsageLinearly uri usages line =| character ->
@@ -114,7 +96,6 @@ lang LSPGotoDefinition = LSPRoot
     let line = addi line 1 in
     let uri = stripUriProtocol uri in
 
-    -- let environment = mapLookup uri context.environment.files in
     let files = mapValues context.environment.files in
 
     let usages = foldl (
@@ -122,7 +103,6 @@ lang LSPGotoDefinition = LSPRoot
         mapUnionWith concat acc file.usages
     ) (mapEmpty infoCmp) files in
 
-    -- definitions: Map Name [Info],
     let definitions = foldl (
       lam acc. lam file.
         mapUnionWith concat acc file.definitions
@@ -138,18 +118,6 @@ lang LSPGotoDefinition = LSPRoot
       response = Some response,
       environment = context.environment
     }
-
-    -- let response = getLSPResponse context id definition in
-
-    -- {
-    --   response = Some response,
-    --   environment = context.environment
-    -- }
-
-    -- {
-    --   response = None (),
-    --   environment = context.environment
-    -- }
 
     -- TODO: if definition and variable overlap,
     -- truncate the definition position to end

@@ -64,8 +64,8 @@ lang TypeCheckMExpr = MLangPipeline
 end
 
 lang MLangCompileMExpr = MLangFileHandler
-	sem compileMLang : MLangFile -> MLangFile
-	sem compileMLang =
+	sem compileMLangToMExpr : Path -> MLangFile -> MLangFile
+	sem compileMLangToMExpr filename =
   | file & CSymbolized (symbolized & { program = program }) ->
     use MLangPipeline in
     eprintln (join ["Mexprering file"]);
@@ -88,7 +88,7 @@ lang MLangCompileMExpr = MLangFileHandler
           errors = errors
         } in
 
-        CCompiled {
+        CTypeChecked {
           symbolized = symbolized,
           expr = expr,
           errors = errors,

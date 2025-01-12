@@ -60,7 +60,7 @@ let getDiagnostic: String -> String -> [use LSPDiagnosticSeverity in DiagnosticW
       ])
     ]
 
-let getDiagnostics: String -> Map String [use LSPDiagnosticSeverity in DiagnosticWithSeverity] -> [JsonValue] =
+let getDiagnostics: String -> Map URI [use LSPDiagnosticSeverity in DiagnosticWithSeverity] -> [JsonValue] =
   lam source. lam diagnosticsGroupedByFile.
     let createDiagnosticsFromGroupedDiagnostics = lam groupedDiagnostic.
       let uri = groupedDiagnostic.0 in
@@ -74,27 +74,32 @@ let getDiagnosticFileName =
   lam diagnostic.
     (getFileInfo diagnostic.0).filename
 
-let getResultResponses: use LSPRoot in Map URI LanguageServerContext -> [JsonValue] =
-  lam compilationResults.
-    let extractDiagnostics = lam f.
-      foldl
-        (lam acc: [(Info, String)]. lam diagnostic: [(Info, String)]. join [acc, diagnostic])
-        []
-        (map f (mapValues compilationResults))
-    in
+let getResultResponses: URI -> use LSPRoot in LanguageServerContext -> [JsonValue] =
+  lam uri. lam compilationResult.
+    -- let extractDiagnostics = lam f.
+    --   foldl
+    --     (lam acc: [(Info, String)]. lam diagnostic: [(Info, String)]. join [acc, diagnostic])
+    --     []
+    --     (map f (mapValues compilationResults))
+    -- in
 
-    let errors = extractDiagnostics (lam compilationResult. compilationResult.errors) in
-    let warnings = extractDiagnostics (lam compilationResult. compilationResult.warnings) in
+    -- let errors = extractDiagnostics (lam compilationResult. compilationResult.errors) in
+    -- let warnings = extractDiagnostics (lam compilationResult. compilationResult.warnings) in
+
+    let errors = compilationResult.errors in
+    let warnings = compilationResult.warnings in
 
     use LSPDiagnosticSeverity in
     let errors = map (decorateDiagnosticWithSeverity (Error ())) errors in
     let warnings = map (decorateDiagnosticWithSeverity (Warning ())) warnings in
 
     let diagnostics = join [errors, warnings] in
-    let diagnosticsGroupedByFile = groupBy cmpString getDiagnosticFileName diagnostics in
+    -- let diagnosticsGroupedByFile = groupBy cmpString getDiagnosticFileName diagnostics in
 
-    -- If there are no errors for this file, we need to include an empty list to reset the errors in the IDE.
-    let emptyDiagnosticsForThisFile = mapFromSeq cmpString (map (lam uri. (uri, [])) (mapKeys compilationResults)) in
-    let diagnosticsGroupedByFile = mapUnionWith concat diagnosticsGroupedByFile emptyDiagnosticsForThisFile in
+    -- -- If there are no errors for this file, we need to include an empty list to reset the errors in the IDE.
+    -- let emptyDiagnosticsForThisFile = mapFromSeq cmpString (map (lam uri. (uri, [])) (mapKeys compilationResults)) in
+    -- let diagnosticsGroupedByFile = mapUnionWith concat diagnosticsGroupedByFile emptyDiagnosticsForThisFile in
+
+    let diagnosticsGroupedByFile = mapInsert uri diagnostics (mapEmpty cmpString) in
 
     getDiagnostics "MCore" diagnosticsGroupedByFile

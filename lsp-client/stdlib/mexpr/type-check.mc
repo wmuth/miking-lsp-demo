@@ -31,6 +31,13 @@ include "mexpr/type.mc"
 include "mexpr/unify.mc"
 include "mexpr/repr-ast.mc"
 
+let createSingleError : [Info] -> String -> () = 
+  lam infos. lam msg.
+    let errs = deref __LSP__BUFFERED_ERRORS in
+    let nerrs = map (lam info. (info, msg)) infos in
+    modref __LSP__BUFFERED_ERRORS (concat errs nerrs);
+    ()
+
 type ReprSubst = use Ast in {vars : [Name], pat : Type, repr : Type}
 
 type TCEnv = {
@@ -323,7 +330,7 @@ lang TCUnify = Unify + AliasTypeAst + MetaVarTypeAst + DataKindAst + PrettyPrint
       "* (errors: ", strJoin ", " errors, ")\n",
       "* When type checking the expression\n"
     ] in
-    errorSingle info msg
+    createSingleError info msg
 end
 
 lang VarTypeTCUnify = TCUnify + VarTypeAst
@@ -337,7 +344,7 @@ lang VarTypeTCUnify = TCUnify + VarTypeAst
           "* Perhaps the annotation of the associated let-binding is too general?\n",
           "* When type checking the expression\n"
         ] in
-        errorSingle info msg
+        createSingleError info msg
       else ()
     else ()
 end
@@ -360,11 +367,11 @@ lang DataTypeTCUnify = TCUnify + DataTypeAst + DataKindAst
     iter
       (lam tks.
         if optionMapOr true (lam r. lti tv.level r.0) (mapLookup tks.0 tyConEnv) then
-          errorSingle info (mkMsg "type constructor" tks.0)
+          createSingleError info (mkMsg "type constructor" tks.0)
         else
           iter (lam k.
             if optionMapOr true (lam r. lti tv.level r.0) (mapLookup k conEnv) then
-              errorSingle info (mkMsg "constructor" k)
+              createSingleError info (mkMsg "constructor" k)
             else ())
                (setToSeq tks.1))
       (mapBindings data)
@@ -653,10 +660,11 @@ lang ResolveType = ConTypeAst + AppTypeAst + AliasTypeAst + VariantTypeAst +
               mkTypeApp conTy args
             end
       else
-        errorSingle [t.info] (join [
+        createSingleError [t.info] (join [
           "* Encountered an unknown type constructor: ", nameGetStr t.ident, "\n",
           "* When checking the annotation"
-        ])
+        ]);
+        tyunknown_
     else
       mkTypeApp (resolveType info env closeDatas constr) args
 
@@ -976,7 +984,8 @@ lang VarTypeCheck = TypeCheck + VarAst
         nameGetStr t.ident, "\n",
         "* When type checking the expression\n"
       ] in
-      errorSingle [t.info] msg
+      createSingleError [t.info] msg;
+      TmVar {t with ty = tyunknown_}
 end
 
 lang OpVarTypeCheck = TypeCheck + OpVarAst + RepTypesHelpers + SubstituteNewReprs + NeverAst + NamedPat + RecordPat + VarAst + MatchAst
@@ -1406,8 +1415,18 @@ lang DataTypeCheck = TypeCheck + DataAst + FunTypeAst + ResolveType + Substitute
                  , ident = x
                  , kind = data
                  , ty = newTy })
-      else errorSingle [info] (msg ())
-    else errorSingle [info] (msg ())
+      else createSingleError [info] (msg ());
+        (
+          nameNoSym "Unknown tmp",
+          setEmpty nameCmp,
+          tyunknown_
+        )
+    else createSingleError [info] (msg ());
+      (
+        nameNoSym "Unknown tmp",
+        setEmpty nameCmp,
+        tyunknown_
+      )
 
   sem typeCheckExpr env =
   | TmConDef t ->
@@ -1452,7 +1471,7 @@ lang DataTypeCheck = TypeCheck + DataAst + FunTypeAst + ResolveType + Substitute
         nameGetStr t.ident, "\n",
         "* When type checking the expression\n"
       ] in
-      errorSingle [t.info] msg
+      TmConApp {t with body = body, ty = tyunknown_}
 end
 
 lang UtestTypeCheck = TypeCheck + UtestAst
@@ -1488,7 +1507,7 @@ end
 
 lang NeverTypeCheck = TypeCheck + NeverAst + IsEmpty
   sem typeCheckExpr env =
-  | TmNever t ->
+  | expr & TmNever t ->
     if env.disableConstructorTypes then
       TmNever {t with ty = newpolyvar env.currentLvl t.info}
     else
@@ -1536,7 +1555,8 @@ lang NeverTypeCheck = TypeCheck + NeverAst + IsEmpty
             altstr,
             "* When type checking the expression\n"
           ] in
-          errorSingle [t.info] msg
+          createSingleError [t.info] msg;
+          expr
       case Right m then
         let matchstr =
           if mapIsEmpty m then ""
@@ -1559,7 +1579,8 @@ lang NeverTypeCheck = TypeCheck + NeverAst + IsEmpty
           matchstr,
           "* When type checking the expression\n"
         ] in
-        errorSingle [t.info] msg
+        createSingleError [t.info] msg;
+        expr
       end
 end
 
@@ -1665,7 +1686,8 @@ lang DataPatTypeCheck = PatTypeCheck + DataPat + FunTypeAst + Generalize
         nameGetStr t.ident, "\n",
         "* When type checking the pattern\n"
       ] in
-      errorSingle [t.info] msg
+      createSingleError [t.info] msg;
+      (patEnv, PatCon {t with ty = newpolyvar env.currentLvl t.info})
 end
 
 lang ConPatIsEmpty = IsEmpty + ConNormPat + FunTypeAst + Generalize

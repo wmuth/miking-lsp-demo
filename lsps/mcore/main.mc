@@ -1,3 +1,5 @@
+include "mlang/main.mc"
+
 include "./file.mc"
 
 -- Basically do this:
@@ -22,53 +24,6 @@ let getContentInSection: String -> Info -> String =
       let lines = subsequence lines start endd in
       strJoin "\n" lines
     else content
-
-lang MLangLookupInclude = MLangFileHandler + LanguageServer
-  sem includesLookup: (Path -> MLangFile) -> MLangFile -> [LanguageServerPayload]
-  sem includesLookup getFile =| file ->
-    let filename = getFilename file in
-
-    let f: (Info, Include) -> [LanguageServerPayload] = lam infoInclude.
-      match infoInclude with (info, inc) in
-      let info = infoWithFilename filename info in
-
-      let path = match inc
-        with ExistingFile path then Some path
-        else None ()
-      in
-
-      join [
-        [
-          LsHover {
-            location = info,
-            toString = lam. path
-          }
-        ],
-        optionGetOr [] (optionMap (
-          lam path. [
-            LsUsage {
-              location = info,
-              name = getFilenameName (getFile path)
-            }
-          ]
-        ) path)
-      ]
-    in
-
-    let includes = flatMap f (getIncludes file) in
-
-    join [
-      includes,
-      [
-        -- Add the file as a "definition", so that includes
-        -- can refer to it.
-        LsDefinition {
-          location = makeInfo {filename = filename, row = 1, col = 0} {filename = filename, row = 1, col = 0},
-          name = getFilenameName file
-        }
-      ]
-    ]
-end
 
 lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
   sem typeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]

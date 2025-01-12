@@ -65,40 +65,22 @@ lang MLangSymbolize = MLangFileHandler
     namespaceEnv = mapUnion a.namespaceEnv b.namespaceEnv
   }
 
-	sem symbolizeMLang : Path -> [MLangFile] -> (Path -> MLangFile) -> MLangFile -> MLangFile
-	sem symbolizeMLang path fileIncludes getFile =
-  | file & CLinked linked ->
+	sem symbolizeMLangLanguageSupport : Path -> MLangFile -> MLangFile
+	sem symbolizeMLangLanguageSupport path =
+  | file & CParsed parsed ->
     let symEnvDefault = {
       symEnvDefault with
       allowFree = true
     } in
 
-    let symEnvs = filterMap (lam file. getSymEnv file) fileIncludes in
-    let symEnv = foldl mergeSymEnv symEnvDefault symEnvs in
-
-    match use SymbolizeMLangLSP in symbolizeMLangLSP symEnv (linked.program)
+    match use SymbolizeMLangLSP in symbolizeMLangLSP symEnvDefault parsed.program
     with { program = program, symEnv = symEnv, warnings = warnings, errors = errors } in
 
-    let filePayload = {
+    CSymbolized {
       program = program,
-      linked = linked,
+      parsed = parsed,
       symEnv = symEnv,
-      languageSupport = [],
       warnings = warnings,
       errors = errors
-    } in
-
-    let file = CSymbolized filePayload in
-
-    let languageSupport = join [
-      use MLangLookupInclude in includesLookup getFile file,
-      use MLangLookupVariable in fileToLanguageSupport file,
-      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Error () }) (getFileErrors file),
-      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Warning () }) (getFileWarnings file)
-    ] in
-
-    CSymbolized {
-      filePayload with
-      languageSupport = languageSupport
     }
 end

@@ -3,14 +3,9 @@ include "../../lsp-server/lsp-server.mc"
 
 include "./compiler.mc"
 
-let onClose: Ref MLangEnvironment -> String -> () =
-  lam mLangEnvironment. lam uri.
-    let dereffed = deref mLangEnvironment in
-    let newMLangEnvironment = {
-      dereffed with
-      files = mapRemove uri dereffed.files
-    } in
-    modref mLangEnvironment newMLangEnvironment
+let onClose: String -> () =
+  lam path.
+    eprintln (join ["Closing file ", path])
 
 mexpr
 
@@ -21,18 +16,10 @@ let options = {
   pruneMessages = true
 } in
 
-let mLangEnvironment = {
-  files = mapEmpty cmpString,
-  dependencies = mapEmpty cmpString
-} in
-
-let environment = ref mLangEnvironment in
-
 let lspStartParameters: use LSPRoot in LSPStartParameters = {
-  getLanguageSupport = use MLangCompiler in getFileLanguageSupport environment,
-  onOpen   = use MLangCompiler in compile config environment,
-  onChange = use MLangCompiler in compile config environment,
-  onClose  = onClose environment,
+  onOpen   = use MLangCompiler in compile config,
+  onChange = use MLangCompiler in compile config,
+  onClose  = onClose,
   options  = options
 } in
 

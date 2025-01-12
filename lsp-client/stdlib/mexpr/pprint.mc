@@ -224,6 +224,7 @@ lang PrettyPrint = IdentifierPrettyPrint
   sem getPatStringCode (indent : Int) (env: PprintEnv) =
   -- Intentionally left blank
   sem getTypeStringCode (indent : Int) (env : PprintEnv) =
+  sem getTypeStringCode (indent : Int) (env: PprintEnv) =
   -- Intentionally left blank
   sem getKindStringCode (indent : Int) (env : PprintEnv) =
   -- Intentionally left blank

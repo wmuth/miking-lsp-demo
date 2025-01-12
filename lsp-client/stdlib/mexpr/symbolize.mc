@@ -17,10 +17,6 @@ include "error.mc"
 include "pprint.mc"
 include "repr-ast.mc"
 
-let __LSP__SOFT_ERROR: Ref Bool = ref false
-let __LSP__BUFFERED_ERRORS: Ref [(Info, String)] = ref []
-let __LSP__BUFFERED_WARNINGS: Ref [(Info, String)] = ref []
-
 ---------------------------
 -- SYMBOLIZE ENVIRONMENT --
 ---------------------------

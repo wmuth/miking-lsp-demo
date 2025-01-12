@@ -135,20 +135,12 @@ lang LanguageServer =
   LanguageServerDiagnostic +
   LanguageServerCodeLens
 
-  -- type CompilationDiagnostics = {
-  --   errors: [Diagnostic],
-  --   warnings: [Diagnostic]
-  -- }
-
   type CompilationParameters = {
     uri: URI,
     content: String
   }
 
-  type CompilationResult = {
-    languageSupport: Map URI [LanguageServerPayload],
-    dependencies: [URI]
-  }
+  type CompilationResult = [LanguageServerPayload]
 
   type LSPConfig = {
     completion: Bool,
@@ -162,7 +154,6 @@ lang LanguageServer =
   }
 
   type LSPStartParameters = {
-    getLanguageSupport: URI -> [LanguageServerPayload],
     onOpen: CompilationParameters -> CompilationResult,
     onChange: CompilationParameters -> CompilationResult,
     onClose: String -> (),

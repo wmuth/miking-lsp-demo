@@ -1,3 +1,4 @@
+include "mlang/main.mc"
 include "file.mc"
 
 lang MLangUtestLenses = MLangAst + MExprAst + MLangFileHandler

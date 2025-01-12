@@ -32,8 +32,8 @@ lang LSPChange = LSPRoot
     uri: String
   }
 
-  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> CompilationResult) -> (URI -> [LanguageServerPayload]) -> LSPResult
-  sem handleCompile context uri content compilationFunction =| languageSupportFunction ->
+  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> CompilationResult) -> LSPResult
+  sem handleCompile context uri content =| compilationFunction ->
     let files = context.environment.files in
 
     let compilationParameters: CompilationParameters = {
@@ -41,28 +41,13 @@ lang LSPChange = LSPRoot
       content = content
     } in
   
-    let compilationResults: CompilationResult = compilationFunction compilationParameters in
-    let dependencies: [URI] = compilationResults.dependencies in
-    let filePayloads: Map URI [LanguageServerPayload] = compilationResults.languageSupport in
-
-    let compilationResults: Map URI LanguageServerContext = mapMap (
-      foldl populateContext emptyLanguageServerContext
-    ) filePayloads in
+    let languageSupport: CompilationResult = compilationFunction compilationParameters in
+    let compilationResults: LanguageServerContext = foldl populateContext emptyLanguageServerContext languageSupport in
   
-    let responses = getResultResponses compilationResults in
+    let responses = getResultResponses uri compilationResults in
     iter context.sendNotification responses;
 
-    let files = mapUnion files compilationResults in
-
-    -- Handle dependencies which have not yet been included
-    let nonExistingDependencies = filter (lam dependency. not (mapMem dependency files)) dependencies in
-    let dependencyFiles = mapFromSeq cmpString (map (lam path. (path, languageSupportFunction path)) nonExistingDependencies) in
-    -- eprintln (join ["Non-existing dependencies: ", strJoin ", " nonExistingDependencies]);
-    let dependencyCompilationResults: Map URI LanguageServerContext = mapMap (
-      foldl populateContext emptyLanguageServerContext
-    ) dependencyFiles in
-
-    let files = mapUnion files dependencyCompilationResults in
+    let files = mapInsert uri compilationResults files in
   
     {
       response = None (),
@@ -115,9 +100,9 @@ lang LSPChange = LSPRoot
     }
   | DidOpen {uri = uri, version = version, text = text} ->
     eprintln (join ["Opened: ", uri]);
-    handleCompile context uri text context.parameters.onOpen context.parameters.getLanguageSupport
+    handleCompile context uri text context.parameters.onOpen
   | DidChange {uri = uri, version = version, text = text} ->
     eprintln (join ["Changed: ", uri]);
-    handleCompile context uri text context.parameters.onChange context.parameters.getLanguageSupport
+    handleCompile context uri text context.parameters.onChange
 
 end

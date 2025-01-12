@@ -49,6 +49,10 @@ include "map.mc"
 include "mexpr/info.mc"
 include "common.mc"
 
+let __LSP__SOFT_ERROR: Ref Bool = ref false
+let __LSP__BUFFERED_ERRORS: Ref [(Info, String)] = ref []
+let __LSP__BUFFERED_WARNINGS: Ref [(Info, String)] = ref []
+
 type Highlight
 -- A section of the code inside the area to be highlighted, but that
 -- is itself irrelevant. Optional, sections between other highlighted

@@ -1,3 +1,5 @@
+include "root.mc"
+
 lang LSPDiagnosticSeverity
   -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
   syn DiagnosticSeverity =
@@ -72,7 +74,7 @@ let getDiagnosticFileName =
   lam diagnostic.
     (getFileInfo diagnostic.0).filename
 
-let getResultResponses: Map URI CompilationDiagnostics -> [JsonValue] =
+let getResultResponses: use LSPRoot in Map URI LanguageServerContext -> [JsonValue] =
   lam compilationResults.
     let extractDiagnostics = lam f.
       foldl

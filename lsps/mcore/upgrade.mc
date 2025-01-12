@@ -7,15 +7,15 @@ lang MLangUpgradeFile = MLangFileHandler + MLangSymbolize + MLangLink + MLangPar
   sem upgradeFileInner: CompilationParameters -> FileLoader -> (Path -> MLangFile) -> Path -> MLangFile -> MLangFile
   sem upgradeFileInner parameters loader getFile path =
   | file -> file
-  | CLoaded { content = content } ->
-    let file = parseMLang path content in
+  | file & CLoaded { content = content } ->
+    let file = parseMLang file path content in
     upgradeFile parameters loader getFile path file
   | file & CParsed parsed ->
     let file = linkMLang getFile file in
     upgradeFile parameters loader getFile path file
   | file & CLinked { links = links } ->
     let linkedFiles = map (lam x. x.2) links in
-    let file = symbolizeMLang path linkedFiles file in
+    let file = symbolizeMLang path linkedFiles getFile file in
     
     upgradeFile parameters loader getFile path file
 
@@ -24,10 +24,6 @@ lang MLangUpgradeFile = MLangFileHandler + MLangSymbolize + MLangLink + MLangPar
   | file ->
     let file = upgradeFileInner parameters loader getFile path file in
     loader.store path file;
-    parameters.notify path {
-      errors = getFileErrors file,
-      warnings = getFileWarnings file
-    };
     file
 
   sem downgradeSymbolizedFile : MLangFile -> MLangFile

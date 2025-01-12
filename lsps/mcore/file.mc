@@ -1,9 +1,12 @@
 include "./include-handler.mc"
 
-lang MLangFileHandler = MLangIncludeHandler
+lang MLangFileHandler = MLangIncludeHandler + LanguageServer
   type Definitions = Map Name Info
 
   type Loaded = {
+    -- The filename is a Name, in order to be able to refere to the file
+    -- as a "definition" in e.g. go to definition in includes.
+    filename: Name,
     content: String
   }
 
@@ -33,8 +36,8 @@ lang MLangFileHandler = MLangIncludeHandler
   type Symbolized = {
     program: use MLangIncludeHandler in MLangProgram,
     linked: Linked,
-    definitions: Definitions,
     symEnv: SymEnv,
+    languageSupport: [LanguageServerPayload],
     warnings: [Diagnostic],
     errors: [Diagnostic]
   }
@@ -54,6 +57,17 @@ lang MLangFileHandler = MLangIncludeHandler
   | CLinked _ -> "Linked"
   | CSymbolized _ -> "Symbolized"
 
+  sem getFilenameName: MLangFile -> Name
+  sem getFilenameName =
+  | CLoaded { filename = filename } -> filename
+  | CParseError { loaded = loaded }
+  | CParsed { loaded = loaded } -> getFilenameName (CLoaded loaded)
+  | CLinked { parsed = parsed } -> getFilenameName (CParsed parsed)
+  | CSymbolized { linked = linked } -> getFilenameName (CLinked linked)
+
+  sem getFilename: MLangFile -> Path
+  sem getFilename =| file -> nameGetStr (getFilenameName file)
+
   sem getContent: MLangFile -> String
   sem getContent =
   | CLoaded { content = content } -> content
@@ -61,6 +75,7 @@ lang MLangFileHandler = MLangIncludeHandler
   | CParsed { loaded = loaded } -> getContent (CLoaded loaded)
   | CLinked { parsed = parsed } -> getContent (CParsed parsed)
   | CSymbolized { linked = linked } -> getContent (CLinked linked)
+
 
   sem getProgram: MLangFile -> Option MLangProgram
   sem getProgram =
@@ -86,13 +101,30 @@ lang MLangFileHandler = MLangIncludeHandler
   | CLinked _ -> None ()
   | CSymbolized { symEnv = symEnv } -> Some symEnv
 
-  sem getDefinitions: MLangFile -> Definitions
-  sem getDefinitions =
+  sem getLanguageSupport: MLangFile -> [LanguageServerPayload]
+  sem getLanguageSupport =
   | CLoaded _
   | CParseError _
   | CParsed _
-  | CLinked _ -> mapEmpty nameCmp
-  | CSymbolized { definitions = definitions } -> definitions
+  | CLinked _ -> []
+  | CSymbolized { languageSupport = languageSupport } -> languageSupport
+
+  sem getImmediateDependencies: MLangFile -> Set Path
+  sem getImmediateDependencies =
+  | CLoaded _
+  | CParseError _ -> setEmpty cmpString
+  | CParsed { includes = includes } -> setOfSeq cmpString (filterMap (lam x. inc2str x.1) includes)
+  | CLinked { links = links } -> setOfSeq cmpString (map (lam x. x.1) links)
+  | CSymbolized { linked = linked } -> getImmediateDependencies (CLinked linked)
+
+  sem getDependencies: (Path -> MLangFile) -> Ref (Set Path) -> MLangFile -> Set Path
+  sem getDependencies getFile seen =| file ->
+    eprintln (join ["getDependencies before: ", getFilename file]);
+    if setMem (getFilename file) (deref seen) then setEmpty cmpString else
+    eprintln (join ["getDependencies after: ", getFilename file]);
+    let immediate = getImmediateDependencies file in
+    modref seen (setInsert (getFilename file) (deref seen));
+    foldl (lam acc. lam dep. setUnion acc (getDependencies getFile seen (getFile dep))) immediate (setToSeq immediate)
 
   sem getFileErrors: MLangFile -> [Diagnostic]
   sem getFileErrors =

@@ -5,9 +5,8 @@ include "../../lib/utils.mc"
 include "./utils.mc"
 
 include "./root.mc"
--- include "coreppl::parser.mc"
 
-lang SuperPrettyPrint = MExprPrettyPrint --+ DPPLParser
+lang SuperPrettyPrint = MExprPrettyPrint
 end
 
 lang LSPHover = LSPRoot
@@ -25,6 +24,33 @@ lang LSPHover = LSPRoot
       textDocument = getTextDocumentPositionParams request.params
     }
 
+  type HoverInformation = {
+    location: Info,
+    toString: [() -> Option String]
+  }
+
+  -- Todo: create middleware which bakes the linear information into a searchable tree
+  sem findHoverLinearly: URI -> LanguageServerContext -> Int -> Int -> Option HoverInformation
+  sem findHoverLinearly uri context line =| character ->
+    let hovers = mapToSeq context.hover in
+
+    let foundHovers = filterMap (
+      lam hover.
+        match hover with (info, toString) in
+        if infoCollision info uri line character
+          then Some { location = info, toString = toString }
+          else None ()
+    ) hovers in
+
+    match foundHovers with [first] ++ rest then
+      let f = lam hover1. lam hover2.
+        if infoContainsInfo hover1.location hover2.location then hover1 else hover2
+      in
+
+      Some (foldl f first rest)
+    else
+      None()
+
   sem execute context =
     | Hover { id = id, textDocument = {
       uri = uri,
@@ -36,13 +62,16 @@ lang LSPHover = LSPRoot
       let uri = stripUriProtocol uri in
 
       let environment = mapLookup uri context.environment.files in
-      let lookupResult = optionBind environment (lam environment. environment.lookup line character) in
+      let lookupResult = optionBind environment (lam environment. findHoverLinearly uri environment line character) in
+
       let res = optionMap (
         lam lookupResult.
-          let info = getFileInfo lookupResult.info in
           let contentToJsonString = lam content. JsonString content in
-          let content = optionMap contentToJsonString (lookupResult.pprint ()) in
-          let contents = optionGetOrElse (lam. JsonNull ()) content in
+
+          let info = getFileInfo lookupResult.location in
+
+          let contents = filterMap (lam toString. toString ()) lookupResult.toString in
+          let contents = JsonArray (map contentToJsonString contents) in
 
           jsonKeyObject [
             ("contents", contents),

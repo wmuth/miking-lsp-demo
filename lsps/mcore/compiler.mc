@@ -1,13 +1,15 @@
 include "mlang/main.mc"
-include "../../lib/utils.mc"
 
 include "./file.mc"
 include "./file-loader.mc"
 include "./include-handler.mc"
 include "./utests.mc"
-include "./lookup.mc"
+include "./main.mc"
 include "./dependencies.mc"
 include "./upgrade.mc"
+
+include "../../lib/utils.mc"
+include "../../lsp-server/lsp/root.mc"
 
 type MLangFile = use MLangFileHandler in MLangFile
 
@@ -24,11 +26,12 @@ type FileLoader =  {
 type MLangProgramResult = use MLangAst in Result Diagnostic Diagnostic MLangProgram
 
 lang MLangCompiler =
+  LanguageServer +
   MLangAst + MExprAst +
   MLangIncludeHandler + MLangFileLoader +
   MLangFileHandler + MLangUpgradeFile
 
-  sem compile: LSPConfig -> Ref MLangEnvironment -> CompilationParameters -> Map Path CompilationResult
+  sem compile: LSPConfig -> Ref MLangEnvironment -> CompilationParameters -> Map Path [LanguageServerPayload]
   sem compile config mLangEnvironment =| parameters ->
     let uri = stripUriProtocol parameters.uri in
     let content = parameters.content in
@@ -46,11 +49,10 @@ lang MLangCompiler =
     ) (mapEmpty cmpString) (mapToSeq environment.dependencies) in
 
     let dirtiedFiles = getDirtyDependencies dependencyGraph (setEmpty cmpString) uri in
-    eprintln (join ["Dirty paths: ", strJoin ", " (setToSeq dirtiedFiles)]);
+    -- eprintln (join ["Dirty paths: ", strJoin ", " (setToSeq dirtiedFiles)]);
 
     let dirtiedFiles = setFilter (lam furi. not (eqString furi uri)) dirtiedFiles in
     let dirtiedFiles = setToSeq dirtiedFiles in
-    let dirtiedFiles = join [[uri], dirtiedFiles] in
 
     let loader = createLoader mLangEnvironment in
 
@@ -62,42 +64,18 @@ lang MLangCompiler =
     ) dirtiedFiles;
 
     -- Reset/create the file in the environment.
-    loader.store uri (CLoaded { content = content });
+    loader.store uri (CLoaded { content = content, filename = nameSym uri });
 
     recursive let getFile: Path -> MLangFile = 
       lam uri.
-        eprintln (join ["Compiling file: ", uri]);
         let file = loader.load uri in
         upgradeFile parameters loader getFile uri file
     in
 
-    let getCompilationResult: Path -> CompilationResult =
-      lam uri.
-        let file = getFile uri in
-        let lenses = use MLangUtestLenses in getUtestLenses file in
-        let lookup = createLookup (join [
-          use MLangLookupInclude in includesLookup file,
-          use MLangLookupVariable in variablesLookup file
-        ]) in
-
-        {
-          emptyCompilationResult with
-          errors = getFileErrors file,
-          warnings = getFileWarnings file,
-          lookup = lookup uri,
-          lenses = lenses
-        }
-    in
-
-    let getCompilationResults: [Path] -> Map Path CompilationResult =
+    let getCompilationResults: [Path] -> [(Path, [LanguageServerPayload])] =
       lam uris.
-        let results = map (
-          lam uri.
-            let compilationResult = getCompilationResult uri in
-            (uri, compilationResult)
-        ) uris in
-
-        mapFromSeq cmpString results
+        let files = map getFile uris in
+        map (lam file. (getFilename file, getLanguageSupport file)) files
     in
 
     -- Todo: We could possibly check dependent files in the
@@ -118,15 +96,22 @@ lang MLangCompiler =
       iter registerDependencies dependencies
     in
 
-    let results = getCompilationResults dirtiedFiles in
+    let file = getFile uri in
+    let dependencies = setToSeq (getDependencies getFile (ref (setEmpty cmpString)) file) in
+    
+    let results = mapFromSeq cmpString (join [
+      getCompilationResults [uri],
+      getCompilationResults dirtiedFiles,
+      getCompilationResults dependencies
+    ]) in
     registerDependencies uri;
 
-    iter (
-      lam v.
-        match v with (uri, file) in
-          eprintln (join ["File: ", uri, ", status: ", printFileKind file]);
-          ()
-    ) (mapToSeq (deref mLangEnvironment).files);
+    -- iter (
+    --   lam v.
+    --     match v with (uri, file) in
+    --       eprintln (join ["File: ", uri, ", status: ", printFileKind file]);
+    --       ()
+    -- ) (mapToSeq (deref mLangEnvironment).files);
 
     results
 end

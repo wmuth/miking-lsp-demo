@@ -1,9 +1,9 @@
 include "file.mc"
 
 lang MLangParser = MLangFileHandler
-  sem parseMLang : Path -> String -> MLangFile
-  sem parseMLang path =| content ->
-    eprintln (join ["Parsing: ", path]);
+  sem parseMLang : MLangFile -> Path -> String -> MLangFile
+  sem parseMLang file path =| content ->
+    let filename = getFilenameName file in
 
     let path = normalizeFilePath path in
     let dir = eraseFile path in
@@ -15,7 +15,7 @@ lang MLangParser = MLangFileHandler
     match result.consume res with (warnings, parsedResult) in
     switch parsedResult
       case Left errors then CParseError {
-        loaded = { content = content },
+        loaded = { content = content, filename = filename },
         errors = errors,
         warnings = warnings
       }
@@ -25,7 +25,7 @@ lang MLangParser = MLangFileHandler
         let includes = map (lam v. (v.0, getIncludeFromPathStatus v.1)) includes in
 
         CParsed {
-          loaded = { content = content },
+          loaded = { content = content, filename = filename },
           program = program,
           includes = includes,
           includeErrors = includeErrors,

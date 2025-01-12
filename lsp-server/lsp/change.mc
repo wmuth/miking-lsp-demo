@@ -16,51 +16,6 @@ let emptyResponse = lam context. {
   environment = context.environment
 }
 
-let handleCompile = lam context. lam uri. lam content. lam compilationFunction.
-  let notify: URI -> CompilationDiagnostics -> () =
-    lam uri. lam notification.
-      let response = getResultResponses (mapFromSeq cmpString [(uri, notification)]) in
-      iter context.sendNotification response
-  in
-
-  let compilationParameters: CompilationParameters = {
-    uri = uri,
-    content = content,
-    notify = notify
-  } in
-
-  let compilationResults: Map URI CompilationResult = compilationFunction compilationParameters in
-  let compilationDiagnostics: Map URI CompilationDiagnostics = mapMap (
-    lam v. {
-      errors = v.errors,
-      warnings = v.warnings
-    }
-  ) compilationResults in
-
-  let responses = getResultResponses compilationDiagnostics in
-  iter context.sendNotification responses;
-
-  let newFiles: [(URI, LSPFileEnvironment)] = map (lam compilationResult.
-    match compilationResult with (uri, compilationResult) in
-    (
-      uri,
-      {
-        lookup = compilationResult.lookup,
-        lenses = compilationResult.lenses
-      }
-    )
-  ) (mapToSeq compilationResults) in
-
-  let newFiles = mapFromSeq cmpString newFiles in
-
-  {
-    response = None (),
-    environment = {
-      context.environment with
-      files = mapUnion context.environment.files newFiles
-    }
-  }
-
 lang LSPChange = LSPRoot
   syn Message =
   | DidChange {
@@ -76,6 +31,29 @@ lang LSPChange = LSPRoot
   | DidClose {
     uri: String
   }
+
+  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> Map URI [LanguageServerPayload]) -> LSPResult
+  sem handleCompile context uri content =| compilationFunction ->
+    let compilationParameters: CompilationParameters = {
+      uri = uri,
+      content = content
+    } in
+  
+    let filePayloads: Map URI [LanguageServerPayload] = compilationFunction compilationParameters in
+    let compilationResults: Map URI LanguageServerContext = mapMap (
+      foldl populateContext emptyLanguageServerContext
+    ) filePayloads in
+  
+    let responses = getResultResponses compilationResults in
+    iter context.sendNotification responses;
+  
+    {
+      response = None (),
+      environment = {
+        context.environment with
+        files = mapUnion context.environment.files compilationResults
+      }
+    }
 
   sem getMessage request =
   | "textDocument/didChange" ->

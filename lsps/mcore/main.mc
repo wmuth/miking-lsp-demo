@@ -1,5 +1,16 @@
 include "./file.mc"
 
+-- Basically do this:
+-- let childTypes = sfold_Decl_Type (lam acc. lam ty.
+--   join [acc, recursiveTypeLookup file env ty]
+-- ) [] decl
+-- But with less boilerplate.
+let createAccumulator: all a. all b. all acc. (([acc] -> a -> [acc]) -> [acc] -> b -> [acc]) -> (a -> [acc]) -> b -> [acc] =
+  lam sfold. lam generator. lam item.
+    sfold (lam acc. lam pat.
+      join [acc, generator pat]
+    ) [] item
+
 -- This is very crude and wrong,
 -- it doesn't even handle columns.
 let getContentInSection: String -> Info -> String =
@@ -12,78 +23,185 @@ let getContentInSection: String -> Info -> String =
       strJoin "\n" lines
     else content
 
--- lang LSPLang
---   syn LSPInfo =
---   | Hover { info: Info, value: () -> String }
---   | Definition { info: Info, location: Info }
--- end
+lang MLangLookupInclude = MLangFileHandler + LanguageServer
+  sem includesLookup: (Path -> MLangFile) -> MLangFile -> [LanguageServerPayload]
+  sem includesLookup getFile =| file ->
+    let filename = getFilename file in
 
-lang MLangLSP = MLangFileHandler + MLangPipeline
-  sem getDefinitionLookup: MLangFile -> Name -> (() -> Option Info)
-  sem getDefinitionLookup file =| name -> lam. mapLookup name (getDefinitions file)
+    let f: (Info, Include) -> [LanguageServerPayload] = lam infoInclude.
+      match infoInclude with (info, inc) in
+      let info = infoWithFilename filename info in
 
-  sem exprLookup: MLangFile -> SymEnv -> Expr -> [(Info, LookupResult)]
+      let path = match inc
+        with ExistingFile path then Some path
+        else None ()
+      in
+
+      join [
+        [
+          LsHover {
+            location = info,
+            toString = lam. path
+          }
+        ],
+        optionGetOr [] (optionMap (
+          lam path. [
+            LsUsage {
+              location = info,
+              name = getFilenameName (getFile path)
+            }
+          ]
+        ) path)
+      ]
+    in
+
+    let includes = flatMap f (getIncludes file) in
+
+    join [
+      includes,
+      [
+        -- Add the file as a "definition", so that includes
+        -- can refer to it.
+        LsDefinition {
+          location = makeInfo {filename = filename, row = 1, col = 0} {filename = filename, row = 1, col = 0},
+          name = getFilenameName file
+        }
+      ]
+    ]
+end
+
+lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
+  sem typeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
+  sem typeLookup file env =
+  | _ -> []
+  | TyCon { ident=ident, info=info }
+  | TyVar { ident=ident, info=info }
+  | TyAll { ident=ident, info=info }
+  | TyUse { ident=ident, info=info } ->
+    let filename = getFilename file in
+    let info = infoWithFilename filename info in
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` (type)"])
+      },
+      LsUsage {
+        location = info,
+        name = ident
+      }
+    ]
+
+  sem exprLookup: MLangFile -> SymEnv -> Expr -> [LanguageServerPayload]
   sem exprLookup file env =
   | _ -> []
+  | TmUse { ident=ident, ty=ty, info=info } ->
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`"])
+      },
+      LsUsage {
+        location = info,
+        name = ident
+      }
+    ]
+  | TmRecLets { bindings=bindings } ->
+    map (lam binding.
+      LsDefinition {
+        location = binding.info,
+        name = binding.ident
+      }
+    ) bindings
   | TmLet { ident=ident, ty=ty, info=info }
   | TmLam { ident=ident, ty=ty, info=info }
   | TmType { ident=ident, ty=ty, info=info } ->
-    [(
-      info,
-      {
-        info = info,
-        pprint = lam. Some (
-          join [
-            "`", nameGetStr ident, "`",
-            " `<",
-            type2str ty,
-            ">` (definition)"
-          ]
-        ),
-        lookupDefinition = None ()
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)"])
+      },
+      LsDefinition {
+        location = info,
+        name = ident
       }
-    )]
+    ]
   | TmVar { ident=ident, ty=ty, info=info }
   | TmConApp { ident=ident, ty=ty, info=info } ->
-    [(
-      info,
-      {
-        info = info,
-        pprint = lam. Some (
-          join [
-            "`", nameGetStr ident, "`",
-            " `<",
-            type2str ty,
-            ">`"
-          ]
-        ),
-        lookupDefinition = Some (getDefinitionLookup file ident)
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`"])
+      },
+      LsUsage {
+        location = info,
+        name = ident
       }
-    )]
-  | TmMatch {
-    thn=TmVar { ident=ident },
-    ty=ty,
-    info=info,
-    pat=p & PatRecord { bindings=bindings }
-  } ->
-    [(
-      info,
-      {
-        info = info,
-        pprint = lam. Some (nameGetStr ident),
-        lookupDefinition = None ()
-      }
-    )]
-  -- | TmRecLets { bindings=bindings } ->
-  --     -- The info field appears to point to just the "let" keyword??
-  --     let f = lam acc. lam x.
-  --       mapInsertVariable x.info (x.ident, x.tyAnnot) acc
-  --     in
-  --     foldl f m bindings
+    ]
 
-  sem declLookup: MLangFile -> SymEnv -> Decl -> [(Info, LookupResult)]
+  sem patLookup: MLangFile -> SymEnv -> Path -> Pat -> [LanguageServerPayload]
+  sem patLookup file env filename =
+  | _ -> []
+  | pat & PatSeqEdge { middle=PName ident, info=info }
+  | pat & PatNamed { ident=PName ident, info=info }
+  | pat & PatCon { ident=ident, info=info } ->
+    let info = infoWithFilename filename info in
+
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` (pattern)"])
+        -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
+      },
+      LsDefinition {
+        location = info,
+        name = ident
+      }
+    ]
+
+  sem declLookup: MLangFile -> SymEnv -> Decl -> [LanguageServerPayload]
   sem declLookup file env =
   | _ -> []
+  | DeclLet { ident=ident, info=info }
+  | DeclType { ident=ident, info=info }
+  | DeclConDef { ident=ident, info=info }
+  | DeclExt { ident=ident, info=info }
+  | DeclLang { ident=ident, info=info } ->
+    [
+      LsDefinition {
+        location = info,
+        name = ident
+      }
+    ]
+  | DeclSyn { ident=ident, info=info, defs=defs } ->
+    let filename = getFilename file in
+    join [
+      [
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` (syn)"])
+        },
+        LsDefinition {
+          location = info,
+          name = ident
+        }
+      ],
+      flatMap (lam def.
+        [
+          LsDefinition {
+            location = info,
+            name = def.ident
+          }
+        ]
+      ) defs
+    ]
+  | DeclRecLets { bindings=bindings, info=info } ->
+    let filename = getFilename file in
+    map (lam binding.
+      LsDefinition {
+        location = infoWithFilename filename info,
+        name = binding.ident
+      }
+    ) bindings
   | DeclLang { ident=ident, includes=includes, info=info } ->
     -- Here we extract the languages from the DeclLang includes.
     -- In a very crude way by looking at the original source code.
@@ -93,44 +211,105 @@ lang MLangLSP = MLangFileHandler + MLangPipeline
     let languages = map strTrim (strSplit "+" content) in
     -- eprintln (join ["Languages: ", strJoin "," languages]);
 
-    [(
-      info,
-      {
-        info = info,
-        pprint = lam. Some (nameGetStr ident),
-        lookupDefinition = None ()
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (nameGetStr ident)
       }
-    )]
+    ]
+  | DeclSem { ident=ident, info=info, args=args, cases=cases, info=info } ->
+    let patterns = map (lam cas. cas.pat) cases in
+    join [
+      [
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` (sem)"])
+        },
+        LsDefinition {
+          location = info,
+          name = ident
+        }
+      ],
+      map (lam arg. 
+        LsDefinition {
+          location = info,
+          name = arg.ident
+        }  
+      ) (optionGetOr [] args)
+    ]
 
-  sem recursiveExprLookup: MLangFile -> SymEnv -> Expr -> [(Info, LookupResult)]
+  sem recursiveTypeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
+  sem recursiveTypeLookup file env =| ty ->
+    let filename = getFilename file in
+    let self = typeLookup file env ty in
+
+    let childTypes = sfold_Type_Type (lam acc. lam ty.
+      let types = recursiveTypeLookup file env ty in
+      join [acc, types]
+    ) [] ty in
+
+    join [self, childTypes]
+
+  sem recursivePatLookup: MLangFile -> SymEnv -> Pat -> [LanguageServerPayload]
+  sem recursivePatLookup file env =| pat ->
+    let filename = getFilename file in
+    let self = patLookup file env filename pat in
+
+    let childTypes = sfold_Pat_Type (lam acc. lam ty.
+      join [acc, recursiveTypeLookup file env ty]
+    ) [] pat in
+
+    let childPatterns = sfold_Pat_Pat (
+      lam acc. lam pat.
+        join [acc, recursivePatLookup file env pat]
+    ) [] pat in
+
+    join [self, childTypes, childPatterns]
+
+  sem recursiveExprLookup: MLangFile -> SymEnv -> Expr -> [LanguageServerPayload]
   sem recursiveExprLookup file env =| expr ->
-    let lookup = exprLookup file env expr in
-    let children = sfold_Expr_Expr (lam acc. lam expr.
-      let children = recursiveExprLookup file env expr in
-      join [acc, children]
-    ) [] expr in
-    join [lookup, children]
+    let filename = getFilename file in
+    let self = exprLookup file env expr in
 
-  sem recursiveDeclLookup: MLangFile -> SymEnv -> Decl -> [(Info, LookupResult)]
+    let childTypes = sfold_Expr_Type (lam acc. lam ty.
+      join [acc, recursiveTypeLookup file env ty]
+    ) [] expr in
+
+    let childExprs = sfold_Expr_Expr (lam acc. lam expr.
+      join [acc, recursiveExprLookup file env expr]
+    ) [] expr in
+
+    let childPatterns = sfold_Expr_Pat (lam acc. lam pat.
+      join [acc, recursivePatLookup file env pat]
+    ) [] expr in
+
+    join [self, childExprs, childPatterns, childTypes]
+
+  sem recursiveDeclLookup: MLangFile -> SymEnv -> Decl -> [LanguageServerPayload]
   sem recursiveDeclLookup file env =| decl ->
-    let lookup = declLookup file env decl in
+    let filename = getFilename file in
+    let self = declLookup file env decl in
+
+    let childPatterns = sfold_Decl_Pat (lam acc. lam pat.
+      join [acc, recursivePatLookup file env pat]
+    ) [] decl in
+
+    let childTypes = sfold_Decl_Type (lam acc. lam ty.
+      join [acc, recursiveTypeLookup file env ty]
+    ) [] decl in
 
     let childExprs = sfold_Decl_Expr (lam acc. lam expr.
-      let children = recursiveExprLookup file env expr in
-      join [acc, children]
+      join [acc, recursiveExprLookup file env expr]
     ) [] decl in
 
     let childDecls = sfold_Decl_Decl (lam acc. lam decl.
-      let children = recursiveDeclLookup file env decl in
-      join [acc, children]
+      join [acc, recursiveDeclLookup file env decl]
     ) [] decl in
 
-    join [lookup, childExprs, childDecls]
+    join [self, childExprs, childDecls, childTypes, childPatterns]
 
-  sem variablesLookup: MLangFile -> [(Info, LookupResult)]
-  sem variablesLookup =| file ->
-    eprintln "Looking up variables";
-    eprintln (printFileKind file);
+  sem fileToLanguageSupport: MLangFile -> [LanguageServerPayload]
+  sem fileToLanguageSupport =| file ->
     match (getProgram file, getSymEnv file)
       with (Some program, Some env) then
         join [

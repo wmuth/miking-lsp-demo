@@ -28,7 +28,7 @@ let mLangEnvironment = {
 
 let environment = ref mLangEnvironment in
 
-let lspStartParameters: LSPStartParameters = {
+let lspStartParameters: use LSPRoot in LSPStartParameters = {
   onOpen   = use MLangCompiler in compile config environment,
   onChange = use MLangCompiler in compile config environment,
   onClose  = onClose environment,

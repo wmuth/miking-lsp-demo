@@ -1,5 +1,5 @@
 include "file.mc"
-include "definition.mc"
+include "main.mc"
 
 lang SymbolizeMLangLSP = MLangPipeline
   type SymbolizedMLangLSP = {
@@ -65,8 +65,8 @@ lang MLangSymbolize = MLangFileHandler
     namespaceEnv = mapUnion a.namespaceEnv b.namespaceEnv
   }
 
-	sem symbolizeMLang : Path -> [MLangFile] -> MLangFile -> MLangFile
-	sem symbolizeMLang path fileIncludes =
+	sem symbolizeMLang : Path -> [MLangFile] -> (Path -> MLangFile) -> MLangFile -> MLangFile
+	sem symbolizeMLang path fileIncludes getFile =
   | file & CLinked linked ->
     let symEnvDefault = {
       symEnvDefault with
@@ -79,25 +79,26 @@ lang MLangSymbolize = MLangFileHandler
     match use SymbolizeMLangLSP in symbolizeMLangLSP symEnv (linked.program)
     with { program = program, symEnv = symEnv, warnings = warnings, errors = errors } in
 
-    -- eprintln (join ["Symbolized ", path]);
-    -- eprintln (env2str symEnv);
-    -- eprintln "Done symbolizing MLang file.";
-
-    let fileDefinitions = use MLangDefinition in generateDefinitions program in
-    let definitions = foldl (
-      lam definitions. lam file.
-        mapUnion definitions (getDefinitions file)
-    ) fileDefinitions fileIncludes in
-
-    -- let undefinedVariables = 
-    -- let unusedDefinitions =
-
-    CSymbolized {
+    let filePayload = {
       program = program,
       linked = linked,
-      definitions = definitions,
       symEnv = symEnv,
+      languageSupport = [],
       warnings = warnings,
       errors = errors
+    } in
+
+    let file = CSymbolized filePayload in
+
+    let languageSupport = join [
+      use MLangLookupInclude in includesLookup getFile file,
+      use MLangLookupVariable in fileToLanguageSupport file,
+      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Error () }) (getFileErrors file),
+      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Warning () }) (getFileWarnings file)
+    ] in
+
+    CSymbolized {
+      filePayload with
+      languageSupport = languageSupport
     }
 end

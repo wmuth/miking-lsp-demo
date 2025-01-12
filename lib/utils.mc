@@ -61,7 +61,7 @@ let jsonKeyObject: [(String, JsonValue)] -> JsonValue = lam content.
     mapFromSeq cmpString content
   )
 
-let getFilename: Info -> String = lam info.
+let getInfoFilename: Info -> String = lam info.
   match info with Info r then r.filename else ""
       
 let infoWithFilename: String -> Info -> Info =

@@ -16,7 +16,7 @@ let sendNotification: JsonValue -> () =
     eprintln "";
     rpcprint (json2string notification)
 
-let executeRequest: LSPStartParameters -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
+let executeRequest: use LSPRoot in LSPStartParameters -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
   lam parameters. lam environment. lam message.
 
     let executionContext = {
@@ -39,7 +39,7 @@ let executeRequest: LSPStartParameters -> LSPEnvironment -> use LSP in Message -
 
     result.environment
 
-let executeRequests: LSPStartParameters -> LSPEnvironment -> [String] -> LSPEnvironment =
+let executeRequests: use LSPRoot in LSPStartParameters -> LSPEnvironment -> [String] -> LSPEnvironment =
   lam parameters. lam environment. lam bodies.
     let debugPrintMessages = lam messages.
       let messages = map
@@ -71,7 +71,7 @@ let executeRequests: LSPStartParameters -> LSPEnvironment -> [String] -> LSPEnvi
       let messages = map (lam message. message.message) messages in
       reduce (executeRequest parameters) environment messages
 
-recursive let readJsonRPC: LSPStartParameters -> LSPEnvironment -> [String] -> () =
+recursive let readJsonRPC: use LSPRoot in LSPStartParameters -> LSPEnvironment -> [String] -> () =
   lam parameters. lam environment. lam bufferedRequests.
     -- -- Introduce when external fileHasBytesToRead is available
     -- let headerIsReady = fileHasBytesToRead fileStdin in
@@ -126,52 +126,13 @@ recursive let readJsonRPC: LSPStartParameters -> LSPEnvironment -> [String] -> (
     readJsonRPC parameters environment bufferedRequests
 end
 
-let startLSPServer: LSPStartParameters -> () =
+let startLSPServer: use LSPRoot in LSPStartParameters -> () =
   lam parameters.
-    let environment: LSPEnvironment = {
+    let environment: use LSPRoot in LSPEnvironment = {
       files = mapEmpty cmpString
     } in
     readJsonRPC parameters environment []
 mexpr
-
--- let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] (Expr, LSPImplementations) =
---   lam uri. lam code.
---     use Complete in
---     switch parseCalc uri code
---       case Right file then
---         let context = {} in
---         let lspResult = (stmtToLSP context (fileToStatements file)) in
---         let implementations = foldl (
---           lam acc. lam x.
---             {
---               hover=join [acc.hover, x.hover]
---             }
---         ) lsp lspResult in
---         let expr = compileStatementsToMexpr (fileToStatements file) in
---         Right (expr, implementations)
---       case Left errors then
---         Left errors
---     end
--- in
-
--- -- let compileFunc: use MExprAst in String -> String -> Either [(Info, String)] Expr =
--- --   lam uri. lam code.
--- --     use Complete in
--- --     switch parseCalc uri code
--- --       case Right file then
--- --         Right (compileStatementsToMexpr (fileToStatements file))
--- --       case Left errors then
--- --         Left errors
--- --     end
--- -- in
-
--- let environment: LSPEnvironment = {
---   files = mapEmpty cmpString
--- } in
-
--- eprintln "Miking LSP started";
--- readJsonRPC compileFunc environment;
--- eprintln "Miking LSP ended"
 
 ()
 

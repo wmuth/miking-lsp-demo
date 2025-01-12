@@ -79,6 +79,18 @@ let infoToRange = lam info: Info.
     else
       None ()
 
+let infoToRangeUnwrap = lam r: {filename: String, row1: Int, col1: Int, row2: Int, col2: Int}.
+  ("range", jsonKeyObject [
+    ("start", jsonKeyObject [
+      ("line", JsonInt (subi r.row1 1)),
+      ("character", JsonInt r.col1)
+    ]),
+    ("end", jsonKeyObject [
+      ("line", JsonInt (subi r.row2 1)),
+      ("character", JsonInt r.col2)
+    ])
+  ])
+
 let stripUriProtocol = lam uri. match uri
   with "file://" ++ rest then rest
   else uri
@@ -159,3 +171,7 @@ let diagnostic2string: Diagnostic -> String =
   lam diag.
     match diag with (info, msg) in
     join ["\"", msg, "\" at ", use MExprPrettyPrint in info2str info]
+
+let filterMap: all a. all b. (a -> Option b) -> [a] -> [b] =
+  lam f. lam xs.
+    filterOption (map f xs)

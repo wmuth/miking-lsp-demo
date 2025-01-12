@@ -30,7 +30,7 @@ lang MLangPathHandler = MLangAst
   | NotFound (String, [Path]) -- (path, searchPaths)
   | MultipleFound [String]
 
-  sem findPaths : String -> Map String String -> [(Info, LocalPath)] -> ([Diagnostic], [Diagnostic], [(Info, PathStatus)])
+  sem findPaths : Path -> Map String String -> [(Info, LocalPath)] -> ([Diagnostic], [Diagnostic], [(Info, PathStatus)])
   sem findPaths dir libs =| includes ->
     let includes = map (findMLangPath dir libs) includes in
 
@@ -55,7 +55,7 @@ lang MLangPathHandler = MLangAst
 
     (errors, warnings, includes)
 
-  sem findMLangPath : String -> Map String String -> (Info, LocalPath) -> (Info, PathStatus)
+  sem findMLangPath : Path -> Map String String -> (Info, LocalPath) -> (Info, PathStatus)
   sem findMLangPath dir libs =| infoPath ->
     match infoPath with (info, path) in
     let libs = mapInsert "current" dir libs in

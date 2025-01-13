@@ -32,28 +32,32 @@ lang LSPChange = LSPRoot
     uri: String
   }
 
-  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> [LanguageServerPayload]) -> LSPResult
+  sem handleCompile: LSPExecutionContext -> URI -> String -> (LSPCompilationParameters -> LSPCompilationResult) -> LSPResult
   sem handleCompile context uri content =| compilationFunction ->
     let files = context.environment.files in
 
-    let compilationParameters: CompilationParameters = {
+    let compilationParameters: LSPCompilationParameters = {
       uri = uri,
       content = content
     } in
   
-    let languageSupport: [LanguageServerPayload] = compilationFunction compilationParameters in
-    let compilationResults: LanguageServerContext = foldl populateContext emptyLanguageServerContext languageSupport in
+    let compilationResults: Map URI [LanguageServerPayload]  = compilationFunction compilationParameters in
+    let compilationResults: Map URI LanguageServerContext = mapMap (foldl populateContext emptyLanguageServerContext) compilationResults in
   
-    let responses = getResultResponses uri compilationResults in
+    let responses = getResultResponses compilationResults in
     iter context.sendNotification responses;
 
-    let files = mapInsert uri compilationResults files in
+    let newFiles: [(URI, LanguageServerContext)] = map (lam compilationResult.
+      match compilationResult with (uri, context) in (uri, context)
+    ) (mapToSeq compilationResults) in
+  
+    let newFiles = mapFromSeq cmpString newFiles in
   
     {
       response = None (),
       environment = {
         context.environment with
-        files = files
+        files = mapUnion context.environment.files newFiles
       }
     }
 

@@ -23,7 +23,7 @@ let getContentInSection: String -> Info -> String =
       strJoin "\n" lines
     else content
 
-lang MLangLookupVariable = MLangRoot
+lang MLangLanguageServerCompiler = MLangRoot
   sem typeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
   sem typeLookup file env =
   | _ -> []
@@ -128,6 +128,13 @@ lang MLangLookupVariable = MLangRoot
   sem declLookup: MLangFile -> SymEnv -> Decl -> [LanguageServerPayload]
   sem declLookup file env =
   | _ -> []
+  | DeclInclude { path=path, info=info } ->
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", path, "` (include)"])
+      }
+    ]
   | DeclLet { ident=ident, info=info }
   | DeclType { ident=ident, info=info }
   | DeclConDef { ident=ident, info=info }
@@ -289,7 +296,7 @@ lang MLangLookupVariable = MLangRoot
 
   sem fileToLanguageSupport: MLangFile -> [LanguageServerPayload]
   sem fileToLanguageSupport =| file ->
-    match (file.program, file.symEnv)
+    let languageSupport = match (file.program, file.symEnv)
       with (Some program, Some env) then
         join [
           flatMap (recursiveDeclLookup file env) program.decls,
@@ -297,4 +304,11 @@ lang MLangLookupVariable = MLangRoot
         ]
       else
         []
+    in
+
+    join [
+      languageSupport,
+      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Error () }) (file.errors),
+      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Warning () }) (file.warnings)
+    ]
 end

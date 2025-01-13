@@ -15,9 +15,11 @@ let options = {
   pruneMessages = true
 } in
 
+let fileLoader = use MLangCompiler in createFileLoader () in
+
 let lspStartParameters: use LSPRoot in LSPStartParameters = {
-  onOpen   = use MLangCompiler in compileMLangLSP,
-  onChange = use MLangCompiler in compileMLangLSP,
+  onOpen   = fileLoader,
+  onChange = fileLoader,
   onClose  = onClose,
   options  = options
 } in

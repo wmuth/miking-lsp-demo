@@ -19,7 +19,7 @@ let sendNotification: JsonValue -> () =
 let executeRequest: use LSPRoot in LSPStartParameters -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
   lam parameters. lam environment. lam message.
 
-    let executionContext = {
+    let executionContext: use LSPRoot in LSPExecutionContext = {
       parameters = parameters,
       environment = environment,
       sendNotification = sendNotification

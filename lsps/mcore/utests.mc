@@ -1,7 +1,6 @@
-include "mlang/main.mc"
-include "file.mc"
+include "./root.mc"
 
-lang MLangUtestLenses = MLangAst + MExprAst + MLangFileHandler
+lang MLangUtestLenses = MLangRoot
   sem createUtestLens: Info -> Option CodeLens
   sem createUtestLens = 
   | info & Info r ->
@@ -22,7 +21,7 @@ lang MLangUtestLenses = MLangAst + MExprAst + MLangFileHandler
   sem getUtestLenses: MLangFile -> [CodeLens]
   sem getUtestLenses =
   | file ->
-    let parsed = getProgram file in
+    let parsed = file.program in
 
     let res = optionMap (
       lam parsed.

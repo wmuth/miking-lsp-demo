@@ -32,7 +32,7 @@ lang LSPChange = LSPRoot
     uri: String
   }
 
-  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> CompilationResult) -> LSPResult
+  sem handleCompile: LSPExecutionContext -> URI -> String -> (CompilationParameters -> [LanguageServerPayload]) -> LSPResult
   sem handleCompile context uri content =| compilationFunction ->
     let files = context.environment.files in
 
@@ -41,7 +41,7 @@ lang LSPChange = LSPRoot
       content = content
     } in
   
-    let languageSupport: CompilationResult = compilationFunction compilationParameters in
+    let languageSupport: [LanguageServerPayload] = compilationFunction compilationParameters in
     let compilationResults: LanguageServerContext = foldl populateContext emptyLanguageServerContext languageSupport in
   
     let responses = getResultResponses uri compilationResults in

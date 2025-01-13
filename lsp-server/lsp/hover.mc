@@ -57,11 +57,12 @@ lang LSPHover = LSPRoot
       line = line,
       character = character
     } } ->
+      let environment = mapLookup uri context.environment.files in
+
       -- Add 1 to incoming line and character to match the 1-based indexing of LSP
       let line = addi line 1 in
       let uri = stripUriProtocol uri in
 
-      let environment = mapLookup uri context.environment.files in
       let lookupResult = optionBind environment (lam environment. findHoverLinearly uri environment line character) in
 
       let res = optionMap (

@@ -7,15 +7,15 @@ include "../json-rpc.mc"
 type URI = String
 type Diagnostic = (Info, String)
 
-type CodeLens = {
-  title: String,
-  ideCommand: String,
-  arguments: [JsonValue],
-  data: JsonValue,
-  location: Info
-}
-
 lang LanguageServerRoot
+  type CodeLens = {
+    title: String,
+    ideCommand: String,
+    arguments: [JsonValue],
+    data: Option JsonValue,
+    location: Info
+  }
+
   type LanguageServerContext = {
     errors: [Diagnostic],
     warnings: [Diagnostic],
@@ -96,8 +96,7 @@ lang LanguageServerUsage = LanguageServerRoot
 
   sem populateContext context =
   | LsUsage { location=location, name=name } ->
-    { context with usages = mapInsertWith concat location [name] context.usages }
-    
+    { context with usages = mapInsertWith concat location [name] context.usages } 
 end
 
 lang LanguageServerDefinition = LanguageServerRoot
@@ -115,16 +114,12 @@ lang LanguageServerDefinition = LanguageServerRoot
 end
 
 lang LanguageServerCodeLens = LanguageServerRoot
-  type CodeLens = {
-    title: String,
-    ideCommand: String,
-    arguments: [JsonValue],
-    data: JsonValue,
-    location: Info
-  }
-
   syn LanguageServerPayload =
   | LsCodeLens CodeLens
+
+  sem populateContext context =
+  | LsCodeLens lens ->
+    { context with lenses = join [context.lenses, [lens]] }
 end
 
 lang LanguageServer =
@@ -140,8 +135,6 @@ lang LanguageServer =
     content: String
   }
 
-  type CompilationResult = [LanguageServerPayload]
-
   type LSPConfig = {
     completion: Bool,
     hover: Bool,
@@ -154,8 +147,8 @@ lang LanguageServer =
   }
 
   type LSPStartParameters = {
-    onOpen: CompilationParameters -> CompilationResult,
-    onChange: CompilationParameters -> CompilationResult,
+    onOpen: CompilationParameters -> [LanguageServerPayload],
+    onChange: CompilationParameters -> [LanguageServerPayload],
     onClose: String -> (),
     options: LSPOptions
   }

@@ -6,7 +6,9 @@ include "./utils.mc"
 include "./root.mc"
 
 let getUtestLenses = lam lenses.
-  let createLens: CodeLens -> Option JsonValue = lam lens.
+  eprintln (join ["Lens count: ", int2string (length lenses)]);
+
+  let createLens: use LanguageServer in CodeLens -> Option JsonValue = lam lens.
     match (infoToRange lens.location, lens.location) with (Some range, Info r) then
       Some (jsonKeyObject [
         range,
@@ -15,13 +17,11 @@ let getUtestLenses = lam lenses.
           ("command", JsonString lens.ideCommand),
           ("arguments", JsonArray lens.arguments)
         ]),
-        ("data", lens.data)
+        ("data", optionGetOr (JsonNull ()) lens.data)
       ])
     else
       None ()
   in
-
-  eprintln (join ["Lens count: ", int2string (length lenses)]);
 
   JsonArray (filterOption (map createLens lenses))
 
@@ -44,21 +44,25 @@ lang LSPCodeLens = LSPRoot
     }
 
   sem execute context =
-    | CodeLens { id = id, uri = uri } ->
-      let uri = stripUriProtocol uri in
+  | CodeLens { id = id, uri = uri } ->
+    let environment = mapLookup uri context.environment.files in
+    let uri = stripUriProtocol uri in
 
-      let environment = mapLookup uri context.environment.files in
-      let lenses = optionMap (lam environment. environment.lenses) environment in
-      let result = optionMap getUtestLenses lenses in
-      let result = optionGetOr (JsonNull ()) result in
+    eprintln (join ["CodeLens: ", uri]);
+    eprintln (join ["Environment: ", bool2string (optionIsSome environment)]);
+    eprintln (join ["Files: ", strJoin "," (map (lam file. match file with (path, value) in path) (mapToSeq context.environment.files))]);
 
-      {
-        environment = context.environment,
-        response = Some(jsonKeyObject [
-          ("jsonrpc", JsonString "2.0"),
-          ("id", JsonInt id),
-          ("result", result)
-        ])
-      }
+    let lenses = optionMap (lam environment. environment.lenses) environment in
+    let result = optionMap getUtestLenses lenses in
+    let result = optionGetOr (JsonNull ()) result in
+
+    {
+      environment = context.environment,
+      response = Some(jsonKeyObject [
+        ("jsonrpc", JsonString "2.0"),
+        ("id", JsonInt id),
+        ("result", result)
+      ])
+    }
 
 end

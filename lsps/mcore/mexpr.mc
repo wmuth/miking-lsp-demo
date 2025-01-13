@@ -14,7 +14,7 @@ include "jvm/compile.mc"
 include "mlang/main.mc"
 include "peval/compile.mc"
 
-include "file.mc"
+include "./root.mc"
 
 lang MCoreCompile =
   BootParser +
@@ -29,7 +29,7 @@ lang MCoreCompile =
   PprintTyAnnot + HtmlAnnotator
 end
 
-lang TypeCheckMExpr = MLangPipeline
+lang TypeCheckMExpr = MLangRoot
   type TypeCheckedMExprLSP = {
     expr: Expr,
     warnings: [Diagnostic],
@@ -63,36 +63,35 @@ lang TypeCheckMExpr = MLangPipeline
     }
 end
 
-lang MLangCompileMExpr = MLangFileHandler
-	sem compileMLangToMExpr : Path -> MLangFile -> MLangFile
-	sem compileMLangToMExpr filename =
-  | file & CSymbolized (symbolized & { program = program }) ->
-    use MLangPipeline in
-    eprintln (join ["Mexprering file"]);
+lang MLangMExprCompiler = MLangRoot
+	-- sem compileMLangToMExpr : Path -> MLangFile -> MLangFile
+	-- sem compileMLangToMExpr filename =
+  -- | file & CSymbolized (symbolized & { program = program }) ->
+  --   eprintln (join ["Mexprering file"]);
 
-    match result.consume (checkComposition program) with (warnings, res) in 
-    switch res 
-      case Left errs then 
-        iter raiseError errs ;
-        never
-      case Right env then
-        let ctx = _emptyCompilationContext env in 
-        let res = result.consume (compile ctx program) in 
-        match res with (_, rhs) in 
-        match rhs with Right expr in
+  --   match result.consume (checkComposition program) with (warnings, res) in 
+  --   switch res 
+  --     case Left errs then 
+  --       iter raiseError errs ;
+  --       never
+  --     case Right env then
+  --       let ctx = _emptyCompilationContext env in 
+  --       let res = result.consume (compile ctx program) in 
+  --       match res with (_, rhs) in 
+  --       match rhs with Right expr in
 
-        let expr = postprocess env.semSymMap expr in 
-        match use TypeCheckMExpr in typeCheckMExprLSP expr with {
-          expr = expr,
-          warnings = warnings,
-          errors = errors
-        } in
+  --       let expr = postprocess env.semSymMap expr in 
+  --       match use TypeCheckMExpr in typeCheckMExprLSP expr with {
+  --         expr = expr,
+  --         warnings = warnings,
+  --         errors = errors
+  --       } in
 
-        CTypeChecked {
-          symbolized = symbolized,
-          expr = expr,
-          errors = errors,
-          warnings = warnings
-        }
-    end
+  --       CTypeChecked {
+  --         symbolized = symbolized,
+  --         expr = expr,
+  --         errors = errors,
+  --         warnings = warnings
+  --       }
+  --   end
 end

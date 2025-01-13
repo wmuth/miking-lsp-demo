@@ -1,4 +1,3 @@
-include "mlang/main.mc"
 include "../../lsp-server/lsp-server.mc"
 
 include "./compiler.mc"
@@ -17,8 +16,8 @@ let options = {
 } in
 
 let lspStartParameters: use LSPRoot in LSPStartParameters = {
-  onOpen   = use MLangCompiler in compileMLangLSP config,
-  onChange = use MLangCompiler in compileMLangLSP config,
+  onOpen   = use MLangCompiler in compileMLangLSP,
+  onChange = use MLangCompiler in compileMLangLSP,
   onClose  = onClose,
   options  = options
 } in

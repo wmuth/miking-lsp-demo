@@ -1,6 +1,4 @@
-include "mlang/main.mc"
-
-include "./file.mc"
+include "./root.mc"
 
 -- Basically do this:
 -- let childTypes = sfold_Decl_Type (lam acc. lam ty.
@@ -25,7 +23,7 @@ let getContentInSection: String -> Info -> String =
       strJoin "\n" lines
     else content
 
-lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
+lang MLangLookupVariable = MLangRoot
   sem typeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
   sem typeLookup file env =
   | _ -> []
@@ -33,7 +31,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
   | TyVar { ident=ident, info=info }
   | TyAll { ident=ident, info=info }
   | TyUse { ident=ident, info=info } ->
-    let filename = getFilename file in
+    let filename = file.filename in
     let info = infoWithFilename filename info in
     [
       LsHover {
@@ -92,6 +90,20 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
         name = ident
       }
     ]
+  | TmUtest { info = info & Info r } ->
+    eprintln (join ["Utest: ", info2str info]);
+    [
+      LsCodeLens {
+        title = "Run Test (expr)",
+        ideCommand = "mcore.debugSingle",
+        arguments = [
+          JsonString r.filename,
+          JsonString (info2str info)
+        ],
+        data = None (),
+        location = info
+      }
+    ]
 
   sem patLookup: MLangFile -> SymEnv -> Path -> Pat -> [LanguageServerPayload]
   sem patLookup file env filename =
@@ -119,8 +131,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
   | DeclLet { ident=ident, info=info }
   | DeclType { ident=ident, info=info }
   | DeclConDef { ident=ident, info=info }
-  | DeclExt { ident=ident, info=info }
-  | DeclLang { ident=ident, info=info } ->
+  | DeclExt { ident=ident, info=info } ->
     [
       LsDefinition {
         location = info,
@@ -128,7 +139,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
       }
     ]
   | DeclSyn { ident=ident, info=info, defs=defs } ->
-    let filename = getFilename file in
+    let filename = file.filename in
     join [
       [
         LsHover {
@@ -150,7 +161,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
       ) defs
     ]
   | DeclRecLets { bindings=bindings, info=info } ->
-    let filename = getFilename file in
+    let filename = file.filename in
     map (lam binding.
       LsDefinition {
         location = infoWithFilename filename info,
@@ -161,7 +172,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
     -- Here we extract the languages from the DeclLang includes.
     -- In a very crude way by looking at the original source code.
     -- CURRENTLY NOT USED
-    let content = getContent file in
+    let content = file.content in
     let content = getContentInSection content info in
     let languages = map strTrim (strSplit "+" content) in
     -- eprintln (join ["Languages: ", strJoin "," languages]);
@@ -192,10 +203,23 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
         }  
       ) (optionGetOr [] args)
     ]
+  | DeclUtest { info = info & Info r } ->
+    [
+      LsCodeLens {
+        title = "Run Test (decl)",
+        ideCommand = "mcore.debugSingle",
+        arguments = [
+          JsonString r.filename,
+          JsonString (info2str info)
+        ],
+        data = None (),
+        location = info
+      }
+    ]
 
   sem recursiveTypeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
   sem recursiveTypeLookup file env =| ty ->
-    let filename = getFilename file in
+    let filename = file.filename in
     let self = typeLookup file env ty in
 
     let childTypes = sfold_Type_Type (lam acc. lam ty.
@@ -207,7 +231,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
 
   sem recursivePatLookup: MLangFile -> SymEnv -> Pat -> [LanguageServerPayload]
   sem recursivePatLookup file env =| pat ->
-    let filename = getFilename file in
+    let filename = file.filename in
     let self = patLookup file env filename pat in
 
     let childTypes = sfold_Pat_Type (lam acc. lam ty.
@@ -223,7 +247,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
 
   sem recursiveExprLookup: MLangFile -> SymEnv -> Expr -> [LanguageServerPayload]
   sem recursiveExprLookup file env =| expr ->
-    let filename = getFilename file in
+    let filename = file.filename in
     let self = exprLookup file env expr in
 
     let childTypes = sfold_Expr_Type (lam acc. lam ty.
@@ -242,7 +266,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
 
   sem recursiveDeclLookup: MLangFile -> SymEnv -> Decl -> [LanguageServerPayload]
   sem recursiveDeclLookup file env =| decl ->
-    let filename = getFilename file in
+    let filename = file.filename in
     let self = declLookup file env decl in
 
     let childPatterns = sfold_Decl_Pat (lam acc. lam pat.
@@ -265,7 +289,7 @@ lang MLangLookupVariable = MLangFileHandler + MLangPipeline + LanguageServer
 
   sem fileToLanguageSupport: MLangFile -> [LanguageServerPayload]
   sem fileToLanguageSupport =| file ->
-    match (getProgram file, getSymEnv file)
+    match (file.program, file.symEnv)
       with (Some program, Some env) then
         join [
           flatMap (recursiveDeclLookup file env) program.decls,

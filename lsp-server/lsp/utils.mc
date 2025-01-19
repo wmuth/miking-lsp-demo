@@ -175,3 +175,25 @@ let diagnostic2string: Diagnostic -> String =
 let filterMap: all a. all b. (a -> Option b) -> [a] -> [b] =
   lam f. lam xs.
     filterOption (map f xs)
+
+let findInfo: all a. Map Info a -> URI -> Int -> Int -> Option (Info, a) =
+  lam m. lam uri. lam line. lam character.
+    let m = mapToSeq m in
+
+    let found = filterMap (
+      lam v.
+        match v with (info, value) in
+        if infoCollision info uri line character
+          then Some (info, value)
+          else None ()
+    ) m in
+
+    match found with [first] ++ rest then
+      let f = lam v1. lam v2.
+        match (v1, v2) with ((info1, _), (info2, _)) in
+        if infoContainsInfo info1 info2 then v1 else v2
+      in
+
+      Some (foldl f first rest)
+    else
+      None()

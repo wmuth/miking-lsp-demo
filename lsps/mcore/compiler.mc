@@ -245,7 +245,7 @@ lang MLangCompiler =
           let languageSupport = fileToLanguageSupport file in
   
           let dirtyFiles = mapLookupOr (setEmpty cmpString) path (deref reversedDependencies) in
-          eprintln (join ["Dirty files: ", strJoin ", " (setToSeq dirtyFiles)]);
+          -- eprintln (join ["Dirty files: ", strJoin ", " (setToSeq dirtyFiles)]);
           let newDependencies = optionMapOr [] (lam linked. linked.links) file.linked in
           let newDependencies: Set Path = setOfSeq cmpString (map getPathFromLink newDependencies) in
 

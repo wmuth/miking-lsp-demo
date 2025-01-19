@@ -30,16 +30,15 @@ lang LSPGotoDefinition = LSPRoot
     locations: [Info]
   }
 
-  sem generateLocationLinks: Int -> Option [DefinitionInformation] -> JsonValue
+  sem generateLocationLinks: Int -> [Info] -> JsonValue
   sem generateLocationLinks id =
-  | definitions ->
+  | locations ->
     -- TODO: if definition and variable overlap,
     -- truncate the definition position to end
     -- at the start of the variable position.
     -- Otherwise, LSP will return no result.
     
-    let result = match definitions with Some definitions then
-      let definitions = flatMap (lam definition. definition.locations) definitions in
+    let result = if geqi (length locations) 1 then
       let locations = filterMap (
         lam definition.
           match definition with Info r then
@@ -49,7 +48,7 @@ lang LSPGotoDefinition = LSPRoot
             ])
           else
             None ()
-      ) definitions in
+      ) locations in
 
       JsonArray locations
     else
@@ -64,24 +63,11 @@ lang LSPGotoDefinition = LSPRoot
 
   sem findUsageLinearly: URI -> Map Info [Name] -> Int -> Int -> Option UsageInformation
   sem findUsageLinearly uri usages line =| character ->
-    let usages = mapToSeq usages in
-
-    let foundUsages = filterMap (
-      lam usage.
-        match usage with (info, names) in
-        if infoCollision info uri line character
-          then Some { location = info, names = names }
-          else None ()
-    ) usages in
-
-    match foundUsages with [first] ++ rest then
-      let f = lam v1. lam v2.
-        if infoContainsInfo v1.location v2.location then v1 else v2
-      in
-
-      Some (foldl f first rest)
-    else
-      None()
+    optionMap (
+      lam res.
+        match res with (info, value) in
+        { location = info, names = value }
+    ) (findInfo usages uri line character)
 
   sem findDefinitions: Map Name [Info] -> Name -> Option DefinitionInformation
   sem findDefinitions definitions =| name ->
@@ -90,6 +76,14 @@ lang LSPGotoDefinition = LSPRoot
       name = name,
       locations = locations
     }) definitions
+
+  sem findGotosLinearly: Map Info [Info] -> URI -> Int -> Int -> Option [Info]
+  sem findGotosLinearly gotos uri line =| character ->
+  optionMap (
+    lam res.
+      match res with (info, location) in
+      location
+  ) (findInfo gotos uri line character)
 
   sem execute context =
   | GotoDefinition { id = id, textDocument = {
@@ -102,6 +96,7 @@ lang LSPGotoDefinition = LSPRoot
     let uri = stripUriProtocol uri in
 
     let files = mapValues context.environment.files in
+    let environment = mapLookup uri context.environment.files in
 
     let usages = foldl (
       lam acc. lam file.
@@ -113,11 +108,22 @@ lang LSPGotoDefinition = LSPRoot
         mapUnionWith concat acc file.definitions
     ) (mapEmpty nameSymCmp) files in
     
+    let gotos = optionBind environment (
+      lam environment.
+        findGotosLinearly environment.gotos uri line character
+    ) in
 
     let usageResult = findUsageLinearly uri usages line character in
     let names = optionMap (lam usageResult. usageResult.names) usageResult in
     let definitions = optionMap (filterMap (findDefinitions definitions)) names in
-    let response = generateLocationLinks id definitions in
+    let definitions = optionMap (flatMap (lam definition. definition.locations)) definitions in
+
+    let locations = flatten (filterOption [
+      definitions,
+      gotos
+    ]) in
+
+    let response = generateLocationLinks id locations in
 
     {
       response = Some response,

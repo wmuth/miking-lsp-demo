@@ -7,6 +7,7 @@ include "../../lib/utils.mc"
 include "./utils.mc"
 include "./root.mc"
 include "./diagnostic.mc"
+include "./compile.mc"
 
 -- Print debug information
 let __debug = false
@@ -16,7 +17,7 @@ let emptyResponse = lam context. {
   environment = context.environment
 }
 
-lang LSPChange = LSPRoot
+lang LSPChange = LSPRoot + LSPCompileUtility
   syn Message =
   | DidChange {
     uri: String,
@@ -31,38 +32,6 @@ lang LSPChange = LSPRoot
   | DidClose {
     uri: String
   }
-
-  -- TODO: Keep track of what diagnostics we have sent, so that we don't spam the client
-  -- with the same diagnostics over and over again.
-  sem handleCompile: EventType -> LSPExecutionContext -> URI -> String -> (LSPCompilationParameters -> LSPCompilationResult) -> LSPResult
-  sem handleCompile eventType context uri content =| compilationFunction ->
-    let files = context.environment.files in
-
-    let compilationParameters: LSPCompilationParameters = {
-      uri = uri,
-      content = content,
-      typ = eventType
-    } in
-  
-    let compilationResults: Map URI [LanguageServerPayload]  = compilationFunction compilationParameters in
-    let compilationResults: Map URI LanguageServerContext = mapMap (foldl populateContext emptyLanguageServerContext) compilationResults in
-  
-    let responses = getResultResponses compilationResults in
-    iter context.sendNotification responses;
-
-    let newFiles: [(URI, LanguageServerContext)] = map (lam compilationResult.
-      match compilationResult with (uri, context) in (uri, context)
-    ) (mapToSeq compilationResults) in
-  
-    let newFiles = mapFromSeq cmpString newFiles in
-  
-    {
-      response = None (),
-      environment = {
-        context.environment with
-        files = mapUnion context.environment.files newFiles
-      }
-    }
 
   sem getMessage request =
   | "textDocument/didChange" ->
@@ -100,13 +69,20 @@ lang LSPChange = LSPRoot
 
   sem execute context =
   | DidClose { uri = uri } ->
+    eprintln (join ["Closed: ", uri]);
     context.parameters.onClose uri;
     emptyResponse context
   | DidOpen {uri = uri, version = version, text = text} ->
     eprintln (join ["Opened: ", uri]);
-    handleCompile (Open ()) context uri text context.parameters.onOpen
+    {
+      response = None (),
+      environment = handleCompile (Open ()) context uri text context.parameters.onOpen
+    }
   | DidChange {uri = uri, version = version, text = text} ->
     eprintln (join ["Changed: ", uri]);
-    handleCompile (Change ()) context uri text context.parameters.onChange
+    {
+      response = None (),
+      environment = handleCompile (Change ()) context uri text context.parameters.onChange
+    }
 
 end

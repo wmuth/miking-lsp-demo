@@ -166,6 +166,7 @@ lang LanguageServer =
 
   type LSPOptions = {
     config: LSPConfig,
+    extension: String,
     pruneMessages: Bool
   }
 
@@ -178,6 +179,7 @@ lang LanguageServer =
 
   type LSPEnvironment = {
     rootUri: Option URI,
+    extension: String,
     files: Map URI LanguageServerContext
   }
 
@@ -199,6 +201,7 @@ let defaultLSPOptions: use LanguageServer in LSPOptions = {
     hover = true,
     definition = true
   },
+  extension = "mc",
   pruneMessages = true
 }
 

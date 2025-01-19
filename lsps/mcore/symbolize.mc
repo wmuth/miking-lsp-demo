@@ -1,4 +1,3 @@
-include "file.mc"
 include "main.mc"
 
 lang SymbolizeMLangLSP = MLangPipeline
@@ -65,22 +64,22 @@ lang MLangSymbolize
     namespaceEnv = mapUnion a.namespaceEnv b.namespaceEnv
   }
 
-	-- sem symbolizeMLangLanguageSupport : Path -> MLangFile -> MLangFile
-	-- sem symbolizeMLangLanguageSupport path =
-  -- | file & CParsed parsed ->
-  --   let symEnvDefault = {
-  --     symEnvDefault with
-  --     allowFree = true
-  --   } in
+	sem symbolizeMLangLanguageSupport : Path -> MLangFile -> MLangFile
+	sem symbolizeMLangLanguageSupport path =
+  | file & CParsed parsed ->
+    let symEnvDefault = {
+      symEnvDefault with
+      allowFree = true
+    } in
 
-  --   match use SymbolizeMLangLSP in symbolizeMLangLSP symEnvDefault parsed.program
-  --   with { program = program, symEnv = symEnv, warnings = warnings, errors = errors } in
+    match use SymbolizeMLangLSP in symbolizeMLangLSP symEnvDefault parsed.program
+    with { program = program, symEnv = symEnv, warnings = warnings, errors = errors } in
 
-  --   CSymbolized {
-  --     program = program,
-  --     parsed = parsed,
-  --     symEnv = symEnv,
-  --     warnings = warnings,
-  --     errors = errors
-  --   }
+    CSymbolized {
+      program = program,
+      parsed = parsed,
+      symEnv = symEnv,
+      warnings = warnings,
+      errors = errors
+    }
 end

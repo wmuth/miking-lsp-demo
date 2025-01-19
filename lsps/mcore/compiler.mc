@@ -61,8 +61,14 @@ lang MLangParser = MLangRoot
 end
 
 lang MLangLinker = MLangRoot + MLangPathHandler
-  sem lsLinkMLang : Path -> [Link] -> MLangLinkedFile
-  sem lsLinkMLang filename =| includes ->
+  sem clearDeclIncludes : [Decl] -> [Decl]
+  sem clearDeclIncludes =
+  | [] -> []
+  | [DeclInclude _] ++ rest -> clearDeclIncludes rest
+  | [decl] ++ rest -> concat [decl] (clearDeclIncludes rest)
+
+  sem lsLinkMLang : Path -> [Link] -> Option MLangProgram -> MLangLinkedFile
+  sem lsLinkMLang filename includes =| program ->
     let currentPath = normalizeFilePath filename in
     let dir = eraseFile currentPath in
 
@@ -70,7 +76,7 @@ lang MLangLinker = MLangRoot + MLangPathHandler
       lam inc.
         match inc with (info, path) in
         let path = findLocalPath dir inc in
-        result.map (lam path. (info, path)) path
+        result.map (lam path. (info, normalizeFilePath path)) path
     ) includes in
 
     let results = map result.consume includedFiles in
@@ -79,13 +85,19 @@ lang MLangLinker = MLangRoot + MLangPathHandler
     let errors = flatten (eitherLefts results) in
     let files = eitherRights results in
 
+    let program = optionMap (lam program. {
+      program with
+      decls = clearDeclIncludes program.decls
+    }) program in
+
     let diagnostics = join [
       map (addSeverity (Error ())) errors,
       map (addSeverity (Warning ())) warnings
     ] in
 
     {
-      includes = files,
+      program = program,
+      links = files,
       diagnostics = diagnostics
     }
 end
@@ -98,7 +110,6 @@ lang MLangSymbolizer = MLangRoot + MLangLinker
 
   sem getIncludedFiles : (Path -> Option MLangFile) -> [Link] -> IncludeResult
   sem getIncludedFiles getFile =| includes ->
-
     let files = map (
       lam inc.
         match inc with (info, path) in
@@ -131,18 +142,55 @@ lang MLangSymbolizer = MLangRoot + MLangLinker
 
     linkerResult
 
+  sem mergeSymEnv : SymEnv -> SymEnv -> SymEnv
+  sem mergeSymEnv a =| b -> {
+    allowFree = b.allowFree,
+    ignoreExternals = b.ignoreExternals,
+    currentEnv = mergeNameEnv a.currentEnv b.currentEnv,
+    langEnv = mapUnionWith mergeNameEnv a.langEnv b.langEnv,
+    namespaceEnv = mapUnion a.namespaceEnv b.namespaceEnv
+  }
+
+  sem getSymEnv : SymEnv -> MLangFile -> SymEnv
+  sem getSymEnv default =
+  | { status=Symbolized (), symbolized=Some symbolized } -> symbolized.symEnv
+  | _ -> default
+
   sem lsSymbolizeMLang : (Path -> Option MLangFile) -> Path -> [Link] -> Option MLangProgram -> MLangSymbolizedFile
   sem lsSymbolizeMLang getFile filename includes =| program ->
-    let linkerResult = getIncludedFiles getFile includes in
+    let symEnvEmpty = {
+      symEnvEmpty with
+      allowFree = true
+    } in
 
-    let symEnv = symEnvEmpty in
-    let symbolizedProgram = program in -- todo
+    let linkerResult = getIncludedFiles getFile includes in
+    let symEnvs = map (getSymEnv symEnvEmpty) linkerResult.files in
+    let symEnv = foldl mergeSymEnv symEnvEmpty symEnvs in
+
+    -- Ugly hacking to not make symbolizeExpr
+    -- crash in the MLang pipeline
+    modref __LSP__SOFT_ERROR true;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
+
+    let res = optionMap (symbolizeMLang symEnv) program in
+    let res = optionMap (lam res. match res with (symEnv, program) in (symEnv, Some program)) res in
+    match optionGetOr (symEnvEmpty, None ()) res with (symEnv, program) in
+
+    let errors = deref __LSP__BUFFERED_ERRORS in
+    let warnings = deref __LSP__BUFFERED_WARNINGS in
+
+    modref __LSP__SOFT_ERROR false;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
 
     {
-      program = symbolizedProgram,
+      program = program,
       symEnv = symEnv,
       diagnostics = join [
-        linkerResult.diagnostics
+        linkerResult.diagnostics,
+        map (addSeverity (Error ())) errors,
+        map (addSeverity (Warning ())) warnings
       ]
     }
 end
@@ -173,6 +221,11 @@ lang MLangCompiler =
     let reversedDependencies: Map URI (Set URI) = flatDependencyGraph in
     reversedDependencies
 
+  sem createEmptyFileFromDisk : Path -> MLangFile
+  sem createEmptyFileFromDisk =| path ->
+    match optionMap fileReadString (fileReadOpen path) with Some content in
+    createEmptyFile path content
+
   -- Handle loading of dependent files
   sem createFileLoader: () -> (LSPCompilationParameters -> LSPCompilationResult)
   sem createFileLoader =| _ ->
@@ -180,31 +233,26 @@ lang MLangCompiler =
     let dependencies: Ref (Map URI (Set URI)) = ref (mapEmpty cmpString) in
     let reversedDependencies: Ref (Map URI (Set URI)) = ref (mapEmpty cmpString) in
 
-    lam parameters.
+    lam parameters: LSPCompilationParameters.
       let languageSupportBuffer: Ref (Map URI [LanguageServerPayload]) = ref (mapEmpty cmpString) in
       let dirtyFilesBuffer: Ref (Set URI) = ref (setEmpty cmpString) in
 
       recursive let fileLoader: (Path -> Option MLangFile) -> MLangFile -> MLangFile =
         lam getFile. lam file.
-          let cache = deref cacheRef in
-
           let path = file.filename in
           let content = file.content in
-  
-          -- let file = optionGetOrElse (lam. createEmptyFile path content) (mapLookup path cache) in
           let file = compileMLangLSP getFile file path content in
-  
           let languageSupport = fileToLanguageSupport file in
   
           let dirtyFiles = mapLookupOr (setEmpty cmpString) path (deref reversedDependencies) in
           eprintln (join ["Dirty files: ", strJoin ", " (setToSeq dirtyFiles)]);
-          let newDependencies = optionMapOr [] (lam linked. linked.includes) file.linked in
+          let newDependencies = optionMapOr [] (lam linked. linked.links) file.linked in
           let newDependencies: Set Path = setOfSeq cmpString (map getPathFromLink newDependencies) in
 
           modref dependencies (mapInsert path newDependencies (deref dependencies));
           modref reversedDependencies (createReversedDependencies (deref dependencies));
           modref languageSupportBuffer (mapInsert path languageSupport (deref languageSupportBuffer));
-          modref cacheRef (mapInsert path file cache);
+          modref cacheRef (mapInsert path file (deref cacheRef));
           modref dirtyFilesBuffer (setUnion dirtyFiles (setSingleton cmpString path));
   
           file
@@ -215,36 +263,29 @@ lang MLangCompiler =
 
       -- Mark the current changed file as changed, making
       -- it ellible for re-parsing.
-      modref cacheRef (mapInsertWith (lam file. lam val. {
-        file with
-        status = Changed (),
-        content = val.content
-      }) path (createEmptyFile path content) (deref cacheRef));
+      (match parameters.typ with Change () then
+        modref cacheRef (mapInsertWith (lam file. lam val. {
+          file with
+          status = Changed (),
+          content = val.content
+        }) path (createEmptyFile path content) (deref cacheRef))
+      else ());
 
       recursive let getFile : Path -> Option MLangFile =
         lam path.
           let cache = deref cacheRef in
-
-          let file = match mapLookup path cache
-            with Some file then
-              file
-            else
-              match optionMap fileReadString (fileReadOpen path) with Some content in
-              createEmptyFile path content
-          in
+          let file = optionGetOrElse (lam. createEmptyFileFromDisk path) (mapLookup path cache) in
 
           -- Don't load the file if it's already been symbolized
           let file = match file.status
-            with Symbolized () then
-              file
-            else
-              fileLoader getFile file
+            with Symbolized () then file
+            else fileLoader getFile file
           in
 
           Some file
       in
 
-      -- Get the main file
+      -- Get the main file (main entry point)
       getFile path;
       
       -- Mark all dirty files as dirty, making them ellible for re-linking
@@ -262,9 +303,11 @@ lang MLangCompiler =
           ) maybeFile; ()
       ) (setToSeq (deref dirtyFilesBuffer));
 
+      -- Trigger re-linking and re-symbolization of all dirty files
       let seenDirtyFiles: Ref (Set URI) = ref (setEmpty cmpString) in
       iter (lam path. getFile path; ()) (setToSeq (deref dirtyFilesBuffer));
 
+      -- Return all cached language support results
       deref languageSupportBuffer
 
   sem compileMLangLSP: (Path -> Option MLangFile) -> MLangFile -> Path -> String -> MLangFile
@@ -276,12 +319,12 @@ lang MLangCompiler =
 
     let linked = match (file.linked, file.status)
       with (Some linked, Linked () | Symbolized ()) then linked
-      else lsLinkMLang file.filename parsed.includes
+      else lsLinkMLang file.filename parsed.includes parsed.program
     in
 
     let symbolized = match (file.symbolized, file.status)
       with (Some symbolized, Symbolized ()) then symbolized
-      else lsSymbolizeMLang getFile file.filename linked.includes parsed.program
+      else lsSymbolizeMLang getFile file.filename linked.links linked.program
     in
 
     let file: MLangFile = {

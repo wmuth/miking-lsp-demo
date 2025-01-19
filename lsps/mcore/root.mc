@@ -2,12 +2,12 @@ include "mlang/main.mc"
 include "../../lsp-server/lsp/root.mc"
 include "./util.mc"
 
-lang MLangBase = DiagnosticBase
+lang MLangBase = DiagnosticBase + MLangPipeline
   type Path = String
   type Link = (Info, Path)
 end
 
-lang MLangParsedRoot = MLangBase + MLangPipeline
+lang MLangParsedRoot = MLangBase
   -- The idea of using diagnostic arrays instead of a 
   -- result type is to allow for recoverable errors.
   -- TODO: Investigate the possibility of using a
@@ -29,14 +29,15 @@ lang MLangLinkedRoot = MLangBase
   -- the includes with the full absolute path,
   -- and to report errors if the file does not exist.
   type MLangLinkedFile = {
-    includes: [Link], -- Absolute paths, e.g. "/home/user/foo.m"
+    program: Option MLangProgram, -- With DeclInclude removed
+    links: [Link], -- Absolute paths, e.g. "/home/user/foo.m"
     diagnostics: [DiagnosticWithSeverity]
   }
 end
 
-lang MLangSymbolizedRoot = MLangBase + MLangPipeline
+lang MLangSymbolizedRoot = MLangBase
   type MLangSymbolizedFile = {
-    program: Option MLangProgram,
+    program: Option MLangProgram, -- With symbols
     symEnv: SymEnv, -- symEnvEmpty
     diagnostics: [DiagnosticWithSeverity]
   }

@@ -32,13 +32,16 @@ lang LSPChange = LSPRoot
     uri: String
   }
 
-  sem handleCompile: LSPExecutionContext -> URI -> String -> (LSPCompilationParameters -> LSPCompilationResult) -> LSPResult
-  sem handleCompile context uri content =| compilationFunction ->
+  -- TODO: Keep track of what diagnostics we have sent, so that we don't spam the client
+  -- with the same diagnostics over and over again.
+  sem handleCompile: EventType -> LSPExecutionContext -> URI -> String -> (LSPCompilationParameters -> LSPCompilationResult) -> LSPResult
+  sem handleCompile eventType context uri content =| compilationFunction ->
     let files = context.environment.files in
 
     let compilationParameters: LSPCompilationParameters = {
       uri = uri,
-      content = content
+      content = content,
+      typ = eventType
     } in
   
     let compilationResults: Map URI [LanguageServerPayload]  = compilationFunction compilationParameters in
@@ -98,15 +101,12 @@ lang LSPChange = LSPRoot
   sem execute context =
   | DidClose { uri = uri } ->
     context.parameters.onClose uri;
-    {
-      response = None (),
-      environment = { context.environment with files = mapRemove uri context.environment.files }
-    }
+    emptyResponse context
   | DidOpen {uri = uri, version = version, text = text} ->
     eprintln (join ["Opened: ", uri]);
-    handleCompile context uri text context.parameters.onOpen
+    handleCompile (Open ()) context uri text context.parameters.onOpen
   | DidChange {uri = uri, version = version, text = text} ->
     eprintln (join ["Changed: ", uri]);
-    handleCompile context uri text context.parameters.onChange
+    handleCompile (Change ()) context uri text context.parameters.onChange
 
 end

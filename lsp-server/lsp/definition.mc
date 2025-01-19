@@ -33,6 +33,11 @@ lang LSPGotoDefinition = LSPRoot
   sem generateLocationLinks: Int -> Option [DefinitionInformation] -> JsonValue
   sem generateLocationLinks id =
   | definitions ->
+    -- TODO: if definition and variable overlap,
+    -- truncate the definition position to end
+    -- at the start of the variable position.
+    -- Otherwise, LSP will return no result.
+    
     let result = match definitions with Some definitions then
       let definitions = flatMap (lam definition. definition.locations) definitions in
       let locations = filterMap (
@@ -118,10 +123,5 @@ lang LSPGotoDefinition = LSPRoot
       response = Some response,
       environment = context.environment
     }
-
-    -- TODO: if definition and variable overlap,
-    -- truncate the definition position to end
-    -- at the start of the variable position.
-    -- Otherwise, LSP will return no result.
     
 end

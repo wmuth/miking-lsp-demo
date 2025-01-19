@@ -48,10 +48,6 @@ lang LSPCodeLens = LSPRoot
     let uri = stripUriProtocol uri in
     let environment = mapLookup uri context.environment.files in
 
-    eprintln (join ["CodeLens: ", uri]);
-    eprintln (join ["Environment: ", bool2string (optionIsSome environment)]);
-    eprintln (join ["Files: ", strJoin ", " (map (lam file. match file with (path, value) in path) (mapToSeq context.environment.files))]);
-
     let lenses = optionMap (lam environment. environment.lenses) environment in
     let result = optionMap getUtestLenses lenses in
     let result = optionGetOr (JsonNull ()) result in

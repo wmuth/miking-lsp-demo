@@ -91,7 +91,6 @@ lang MLangLanguageServerCompiler = MLangRoot
       }
     ]
   | TmUtest { info = info & Info r } ->
-    eprintln (join ["Utest: ", info2str info]);
     [
       LsCodeLens {
         title = "Run Test (expr)",
@@ -294,8 +293,8 @@ lang MLangLanguageServerCompiler = MLangRoot
 
     join [self, childExprs, childDecls, childTypes, childPatterns]
 
-  sem fileToLanguageSupport: MLangFile -> [LanguageServerPayload]
-  sem fileToLanguageSupport =| file ->
+  sem programToLanguageSupport: MLangFile -> [LanguageServerPayload]
+  sem programToLanguageSupport =| file ->
     let res = switch (file.status, file.symbolized)
       case (Changed (), _) then
         None ()
@@ -304,7 +303,7 @@ lang MLangLanguageServerCompiler = MLangRoot
       case (_, Some symbolized) then
         Some (symEnvEmpty, symbolized.program)
       case _ then
-        error "Unhandeled case in fileToLanguageSupport"
+        error "Unhandeled case in programToLanguageSupport"
     end in
 
     let languageSupport = optionMap (lam res. match res with (symEnv, program) in join [
@@ -312,10 +311,34 @@ lang MLangLanguageServerCompiler = MLangRoot
       optionGetOr [] (optionMap (lam program. recursiveExprLookup file symEnv program.expr) program)
     ]) res in
 
+    optionGetOr [] languageSupport
+
+  sem linksToLanguageSupport: MLangFile -> [LanguageServerPayload]
+  sem linksToLanguageSupport =
+  | file & { status = Symbolized () | Linked (), linked=Some linked } ->
+    flatMap (
+      lam link.
+        match link with (info, path) in [
+          LsHover {
+            location = info,
+            toString = lam. Some (join ["`", path, "` (link)"])
+          },
+          LsGoto {
+            from = info,
+            to = (makeInfo (posVal path 1 0) (posVal path 1 0))
+          }
+        ]
+    ) linked.links
+
+  sem fileToLanguageSupport: MLangFile -> [LanguageServerPayload]
+  sem fileToLanguageSupport =| file ->
+    let programLanguageSupport = programToLanguageSupport file in
+    let linksLanguageSupport = linksToLanguageSupport file in
     let diagnostics = map (lam diagnostic. LsDiagnostic diagnostic) (getFileDiagnostics file) in
 
     join [
-      optionGetOr [] languageSupport,
+      programLanguageSupport,
+      linksLanguageSupport,
       diagnostics
     ]
 end

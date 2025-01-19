@@ -47,6 +47,7 @@ let parseMCoreLibsEnv : () -> Map String String = lam.
     -- error "Environment variable $MCORE_LIBS is not set!"
     mapEmpty cmpString
 
+    
 let addCWDtoLibs : Map String String -> Map String String = lam libs. 
   mapInsert "cwd" (sysGetCwd ()) libs
 

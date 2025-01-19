@@ -97,23 +97,23 @@ lang MLangCompiler =
       -- Get the main file (main entry point)
       getFile path;
       
-      -- Mark all dirty files as dirty, making them ellible for re-linking
-      -- and re-symbolization.
-      iter (
-        lam dirtyFilePath.
-          let maybeFile = mapLookup dirtyFilePath (deref cacheRef) in
-          optionMap (
-            lam file.
-              let file = {
-                file with
-                status = Dirty ()
-              } in
-              modref cacheRef (mapInsert dirtyFilePath file (deref cacheRef))
-          ) maybeFile; ()
-      ) (setToSeq (deref dirtyFilesBuffer));
+      recursive let markFileAsDirty = lam path: String.
+        match mapLookup path (deref cacheRef) with
+          Some file then
+            let file = {
+              file with
+              status = Dirty ()
+            } in
+            let childDirtyFiles = mapLookupOr (setEmpty cmpString) path (deref reversedDependencies) in
+            iter markFileAsDirty (setToSeq childDirtyFiles);
+            modref dirtyFilesBuffer (setUnion (deref dirtyFilesBuffer) (setSingleton cmpString path));
+            modref cacheRef (mapInsert path file (deref cacheRef))
+          else ()
+      in
 
+      -- Mark all dirty files as dirty, making them ellible for re-linking and re-symbolization.
+      iter markFileAsDirty (setToSeq (deref dirtyFilesBuffer));
       -- Trigger re-linking and re-symbolization of all dirty files
-      let seenDirtyFiles: Ref (Set URI) = ref (setEmpty cmpString) in
       iter (lam path. getFile path; ()) (setToSeq (deref dirtyFilesBuffer));
 
       -- Return all cached language support results

@@ -1,6 +1,6 @@
 include "./root.mc"
 
-let debugSym = true
+let debugSym = false
 
 let getSym = 
   if debugSym then

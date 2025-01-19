@@ -37,7 +37,7 @@ let generateLocationLinks2: Int -> Option [Info] -> JsonValue =
           match definition with Info r then
             Some (jsonKeyObject [
               ("uri", JsonString r.filename),
-              infoToRangeUnwrap r
+              ("range", infoToRangeUnwrap r)
             ])
           else
             None ()

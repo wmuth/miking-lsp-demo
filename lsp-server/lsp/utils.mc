@@ -79,8 +79,20 @@ let infoToRange = lam info: Info.
     else
       None ()
 
+-- let infoToRangeUnwrap = lam r: {filename: String, row1: Int, col1: Int, row2: Int, col2: Int}.
+--   ("range", jsonKeyObject [
+--     ("start", jsonKeyObject [
+--       ("line", JsonInt (subi r.row1 1)),
+--       ("character", JsonInt r.col1)
+--     ]),
+--     ("end", jsonKeyObject [
+--       ("line", JsonInt (subi r.row2 1)),
+--       ("character", JsonInt r.col2)
+--     ])
+--   ])
+
 let infoToRangeUnwrap = lam r: {filename: String, row1: Int, col1: Int, row2: Int, col2: Int}.
-  ("range", jsonKeyObject [
+  jsonKeyObject [
     ("start", jsonKeyObject [
       ("line", JsonInt (subi r.row1 1)),
       ("character", JsonInt r.col1)
@@ -89,7 +101,7 @@ let infoToRangeUnwrap = lam r: {filename: String, row1: Int, col1: Int, row2: In
       ("line", JsonInt (subi r.row2 1)),
       ("character", JsonInt r.col2)
     ])
-  ])
+  ]
 
 let stripUriProtocol = lam uri. match uri
   with "file://" ++ rest then rest

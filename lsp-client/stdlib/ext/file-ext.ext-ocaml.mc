@@ -103,39 +103,6 @@ let fileExtMap =
     --     cLibraries = []
     --   }
     -- ]),
-    ("externalExecuteCommand", [
-      { expr = "
-        (
-          fun path ->
-            (* Run the command and get channels for stdout and stderr *)
-            let in_channel, out_channel, err_channel = Unix.open_process_full path (Unix.environment ()) in
-          
-            (* Read the entire stdout *)
-            let rec read_channel chan acc =
-              match input_line chan with
-              | line -> read_channel chan (acc ^ line ^ \"\n\")
-              | exception End_of_file -> acc
-            in
-            let stdout_output = read_channel in_channel \"\" in
-            let stderr_output = read_channel err_channel \"\" in
-          
-            (* Close the channels and get the exit status *)
-            let process_status = Unix.close_process_full (in_channel, out_channel, err_channel) in
-
-            let status = match process_status with
-              | Unix.WEXITED i -> i
-              | Unix.WSIGNALED i -> -i
-              | Unix.WSTOPPED i -> -i
-            in
-
-            (stdout_output, stderr_output, status)
-        )
-      ",
-        ty = tyarrows_ [otystring_, otytuple_ [otystring_, otystring_, tyint_]],
-        libraries = [],
-        cLibraries = []
-      }
-    ]),
     ("externalReadString", [
       { expr = "(fun f -> try really_input_string f (in_channel_length f) with _ -> \"\")",
         ty = tyarrows_ [otyvarext_ "in_channel" [], otystring_],

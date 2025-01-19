@@ -1,5 +1,16 @@
 include "./root.mc"
 
+let debugSym = true
+
+let getSym = 
+  if debugSym then
+    lam name.
+      optionGetOr
+      "No symbol"
+      (optionMap (compose int2string sym2hash) (nameGetSym name))
+    else
+      lam. ""
+
 -- Basically do this:
 -- let childTypes = sfold_Decl_Type (lam acc. lam ty.
 --   join [acc, recursiveTypeLookup file env ty]
@@ -36,7 +47,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     [
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` (type)"])
+        toString = lam. Some (join ["`", nameGetStr ident, "` (type)", getSym ident])
       },
       LsUsage {
         location = info,
@@ -51,7 +62,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     [
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`"])
+        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`", getSym ident])
       },
       LsUsage {
         location = info,
@@ -71,7 +82,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     [
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)"])
+        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
       },
       LsDefinition {
         location = info,
@@ -83,7 +94,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     [
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`"])
+        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`", getSym ident])
       },
       LsUsage {
         location = info,
@@ -115,7 +126,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     [
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` (pattern)"])
+        toString = lam. Some (join ["`", nameGetStr ident, "` (pattern)", getSym ident])
         -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
       },
       LsDefinition {
@@ -134,7 +145,17 @@ lang MLangLanguageServerCompiler = MLangRoot
         toString = lam. Some (join ["`", path, "` (include)"])
       }
     ]
-  | DeclLet { ident=ident, info=info }
+  | DeclLet { info = info, ident = ident } ->
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` (let)", getSym ident])
+      },
+      LsDefinition {
+        location = info,
+        name = ident
+      }
+    ]
   | DeclType { ident=ident, info=info }
   | DeclConDef { ident=ident, info=info }
   | DeclExt { ident=ident, info=info } ->
@@ -150,7 +171,7 @@ lang MLangLanguageServerCompiler = MLangRoot
       [
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` (syn)"])
+          toString = lam. Some (join ["`", nameGetStr ident, "` (syn)", getSym ident])
         },
         LsDefinition {
           location = info,
@@ -195,7 +216,7 @@ lang MLangLanguageServerCompiler = MLangRoot
       [
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` (sem)"])
+          toString = lam. Some (join ["`", nameGetStr ident, "` (sem)", getSym ident])
         },
         LsDefinition {
           location = info,

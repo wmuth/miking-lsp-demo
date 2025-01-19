@@ -129,7 +129,8 @@ end
 let startLSPServer: use LSPRoot in LSPStartParameters -> () =
   lam parameters.
     let environment: use LSPRoot in LSPEnvironment = {
-      files = mapEmpty cmpString
+      files = mapEmpty cmpString,
+      rootUri = None ()
     } in
     readJsonRPC parameters environment []
 mexpr

@@ -71,11 +71,20 @@ lang LSPGotoDefinition = LSPRoot
 
   sem findDefinitions: Map Name [Info] -> Name -> Option DefinitionInformation
   sem findDefinitions definitions =| name ->
-    let definitions = mapLookup name definitions in
+    let locations = mapLookup name definitions in
+    -- eprintln (join [
+    --   "All "
+    -- ])
+    eprintln (join [
+      "Locations for ",
+      nameGetStr name,
+      ": ",
+      strJoin ", " (optionGetOr [] (optionMap (map info2str) locations))
+    ]);
     optionMap (lam locations. {
       name = name,
       locations = locations
-    }) definitions
+    }) locations
 
   sem findGotosLinearly: Map Info [Info] -> URI -> Int -> Int -> Option [Info]
   sem findGotosLinearly gotos uri line =| character ->

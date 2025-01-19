@@ -177,6 +177,7 @@ lang LanguageServer =
   }
 
   type LSPEnvironment = {
+    rootUri: Option URI,
     files: Map URI LanguageServerContext
   }
 

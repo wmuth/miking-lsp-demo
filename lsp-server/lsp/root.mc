@@ -7,7 +7,22 @@ include "../json-rpc.mc"
 type URI = String
 type Diagnostic = (Info, String)
 
-lang LanguageServerRoot
+lang DiagnosticBase
+  syn Severity =
+  | Error
+  | Warning
+  | Information
+
+  type DiagnosticWithSeverity = (Info, String, Severity)
+
+  sem clearSeverity : DiagnosticWithSeverity -> Diagnostic
+  sem clearSeverity =| (info, message, _) -> (info, message)
+
+  sem addSeverity : Severity -> Diagnostic -> DiagnosticWithSeverity
+  sem addSeverity severity =| (info, message) -> (info, message, severity)
+end
+
+lang LanguageServerRoot = DiagnosticBase
   type CodeLens = {
     title: String,
     ideCommand: String,
@@ -40,34 +55,20 @@ let emptyLanguageServerContext = {
   information = [],
   lenses = [],
   hover = mapEmpty infoCmp,
-  definitions = mapEmpty nameCmp,
+  definitions = mapEmpty nameSymCmp,
   usages = mapEmpty infoCmp
 }
 
 lang LanguageServerDiagnostic = LanguageServerRoot
-  syn DiagnosticSeverity =
-  | Error
-  | Warning
-  | Information
-
-  type DiagnosticWithSeverity = {
-    location: Info,
-    severity: DiagnosticSeverity,
-    message: String
-  }
-
-  sem clearSeverity: DiagnosticWithSeverity -> Diagnostic
-  sem clearSeverity =| diagnostic -> (diagnostic.location, diagnostic.message)
-
   syn LanguageServerPayload =
   | LsDiagnostic DiagnosticWithSeverity
 
   sem populateContext context =
-  | LsDiagnostic (diagnostic & { severity=Error () }) ->
+  | LsDiagnostic (diagnostic & (_, _, Error ())) ->
     { context with errors = join [context.errors, [clearSeverity diagnostic]] }
-  | LsDiagnostic (diagnostic & { severity=Warning () }) ->
+    | LsDiagnostic (diagnostic & (_, _, Warning ())) ->
     { context with warnings = join [context.warnings, [clearSeverity diagnostic]] }
-  | LsDiagnostic (diagnostic & { severity=Information () }) ->
+    | LsDiagnostic (diagnostic & (_, _, Information ())) ->
     { context with information = join [context.information, [clearSeverity diagnostic]] }
 end
 

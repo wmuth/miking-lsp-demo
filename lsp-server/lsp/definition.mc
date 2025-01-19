@@ -106,7 +106,7 @@ lang LSPGotoDefinition = LSPRoot
     let definitions = foldl (
       lam acc. lam file.
         mapUnionWith concat acc file.definitions
-    ) (mapEmpty nameCmp) files in
+    ) (mapEmpty nameSymCmp) files in
     
 
     let usageResult = findUsageLinearly uri usages line character in

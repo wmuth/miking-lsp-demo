@@ -173,6 +173,16 @@ let nameCmp : Name -> Name -> Int =
     else match nameGetSym n2 with Some _ then 1
     else cmpString (nameGetStr n1) (nameGetStr n2)
 
+-- (Didrik) Only compare symbols, used for LSP
+-- when only comparing symbolized names.
+let nameSymCmp : Name -> Name -> Int =
+  lam n1 : Name. lam n2 : Name.
+    match (nameGetSym n1, nameGetSym n2)
+      with (Some a, Some b) then
+        subi (sym2hash a) (sym2hash b)
+      else
+        negi 1
+
 let _s1 = gensym ()
 let _s2 = gensym ()
 utest nameCmp (nameSetSym (nameNoSym "foo") _s1) (nameSetSym (nameNoSym "foo") _s1) with 0

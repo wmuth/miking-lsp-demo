@@ -296,19 +296,26 @@ lang MLangLanguageServerCompiler = MLangRoot
 
   sem fileToLanguageSupport: MLangFile -> [LanguageServerPayload]
   sem fileToLanguageSupport =| file ->
-    let languageSupport = match (file.program, file.symEnv)
-      with (Some program, Some env) then
-        join [
-          flatMap (recursiveDeclLookup file env) program.decls,
-          recursiveExprLookup file env program.expr
-        ]
-      else
-        []
-    in
+    let res = switch (file.status, file.symbolized)
+      case (Changed (), _) then
+        None ()
+      case (Symbolized (), Some symbolized) then
+        Some (symbolized.symEnv, symbolized.program)
+      case (_, Some symbolized) then
+        Some (symEnvEmpty, symbolized.program)
+      case _ then
+        error "Unhandeled case in fileToLanguageSupport"
+    end in
+
+    let languageSupport = optionMap (lam res. match res with (symEnv, program) in join [
+      flatMap (recursiveDeclLookup file symEnv) (optionGetOr [] (optionMap (lam program. program.decls) program)),
+      optionGetOr [] (optionMap (lam program. recursiveExprLookup file symEnv program.expr) program)
+    ]) res in
+
+    let diagnostics = map (lam diagnostic. LsDiagnostic diagnostic) (getFileDiagnostics file) in
 
     join [
-      languageSupport,
-      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Error () }) (file.errors),
-      map (lam diagnostic. LsDiagnostic { location=diagnostic.0, message=diagnostic.1, severity=Warning () }) (file.warnings)
+      optionGetOr [] languageSupport,
+      diagnostics
     ]
 end

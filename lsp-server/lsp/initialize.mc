@@ -5,6 +5,7 @@ include "./utils.mc"
 include "../../lib/utils.mc"
 include "./root.mc"
 include "./compile.mc"
+include "./progress.mc"
 
 let sysGetWorkspaceFiles : String -> URI -> [URI] =
   lam extension. lam dir.
@@ -13,7 +14,9 @@ let sysGetWorkspaceFiles : String -> URI -> [URI] =
     let files = strSplit "\n" res in
     files
 
-lang LSPInitialize = LSPRoot + LSPCompileUtility
+lang LSPInitialize =
+  LSPRoot + LSPCompileUtility + LSPProgress
+
   syn Message =
   | Initialized {}
   | Initialize {
@@ -32,56 +35,42 @@ lang LSPInitialize = LSPRoot + LSPCompileUtility
       rootUri = optionMap stripUriProtocol rootUri
     }
 
-  syn ProgressReport =
-  | Begin {
-    message: String,
-    percentage: Int
-  }
-  | Report {
-    message: String,
-    percentage: Int
-  }
-  | End {
-    message: String
-  }
-
-  -- TODO: Use this
-  sem createProgressNotificationPayload : ProgressReport -> JsonValue
-  sem createProgressNotificationPayload =
-  | Begin { message = message, percentage = percentage } ->
-    jsonKeyObject [
-      ("kind", JsonString "begin"),
-      ("message", JsonString message),
-      ("percentage", JsonInt percentage)
-    ]
-  | Report { message = message, percentage = percentage } ->
-    jsonKeyObject [
-      ("kind", JsonString "report"),
-      ("message", JsonString message),
-      ("percentage", JsonInt percentage)
-    ]
-  | End { message = message } ->
-    jsonKeyObject [
-      ("kind", JsonString "end"),
-      ("message", JsonString message)
-    ]
-
   sem execute context =
   | Initialized {} ->
-    let environment = match context.environment.rootUri
-      with Some rootUri then
-        let workspaceFiles = sysGetWorkspaceFiles context.environment.extension rootUri in
-        foldl (
-          lam environment. lam uri.
-            let context = {
-              context with
-              environment = environment
-            } in
+    let environment = match (context.environment.options.indexWorkspace, context.environment.rootUri)
+      with (true, Some rootUri) then
+        eprintln "Indexing workspace files";
+        let workspaceFiles = sysGetWorkspaceFiles context.environment.options.extension rootUri in
+        let len = length workspaceFiles in
+        
+          let progress = createProgress context.sendNotification in
+          progress.reportMsg 0.0 (join ["Indexing files in workspace: ", rootUri]);
 
-            match optionMap fileReadString (fileReadOpen uri) with Some text in
-            handleCompile (Open ()) context uri text context.parameters.onOpen
-        ) context.environment workspaceFiles
+          let environment = foldli (
+            lam environment. lam i. lam uri.
+              let context = {
+                context with
+                environment = environment
+              } in
+
+              match optionMap fileReadString (fileReadOpen uri) with Some text in
+              let res = handleCompile (Open ()) context uri text context.parameters.onOpen in
+
+              let indexedUri = (compose join tail) (strSplit rootUri uri) in
+              progress.reportMsg
+                (divf (int2float (addi i 1)) (int2float len))
+                (join [
+                  "Indexing files: ", int2string (addi i 1), "/", int2string len,
+                  " (.", indexedUri, ")"
+                ]);
+
+              res
+          ) context.environment workspaceFiles in
+
+          progress.finish (Some "Finished indexing files");
+          environment
       else
+        eprintln "Skipping indexing workspace files";
         context.environment
     in
     

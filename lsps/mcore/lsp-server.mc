@@ -12,6 +12,8 @@ let config = defaultLSPOptions.config in
 let options = {
   defaultLSPOptions with
   config = config,
+  extension = "mc",
+  indexWorkspace = false,
   pruneMessages = true
 } in
 

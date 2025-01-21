@@ -28,14 +28,12 @@ let getContentLength: String -> Int = lam header.
   else
     error "The JSON-RPC header could not be read, this shouldn't happen!"
 
-let getRPCRequest: JsonValue -> RPCRequest = lam request.
+let getRPCRequest: JsonValue -> Option RPCRequest = lam request.
   match request with JsonObject request in
-  let id = match mapLookup "id" request with Some JsonInt id then Some id else None () in
-  match mapLookup "method" request with Some JsonString method in
-  match mapLookup "params" request with Some JsonObject params in
-  {
-    method = method,
-    params = params,
-    id = id
-  }
+  let lookup = (flip mapLookup) request in
+  let id = match lookup "id" with Some JsonInt id then Some id else None () in
+  match (lookup "method", lookup "params") with (Some JsonString method, Some JsonObject params) then
+    Some { method = method, params = params, id = id }
+  else
+    None ()
   

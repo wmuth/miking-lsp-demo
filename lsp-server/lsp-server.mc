@@ -52,7 +52,7 @@ let executeRequests: use LSPRoot in LSPStartParameters -> LSPEnvironment -> [Str
     if leqi (length bodies) 0 then
       environment
     else
-      let messages = map getMessage bodies in
+      let messages = filterMap (getMessage parameters.options) bodies in
       let messages = if parameters.options.pruneMessages
         then pruneMessages messages
         else messages
@@ -130,7 +130,7 @@ let startLSPServer: use LSPRoot in LSPStartParameters -> () =
   lam parameters.
     let environment: use LSPRoot in LSPEnvironment = {
       files = mapEmpty cmpString,
-      extension = parameters.options.extension,
+      options = parameters.options,
       rootUri = None ()
     } in
     readJsonRPC parameters environment []

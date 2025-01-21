@@ -1,6 +1,6 @@
 include "./root.mc"
 
-let debugSym = false
+let debugSym = true
 
 let getSym = 
   if debugSym then
@@ -69,6 +69,13 @@ lang MLangLanguageServerCompiler = MLangRoot
         name = ident
       }
     ]
+  | TmRecord { bindings=bindings, info=info } ->
+    [
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`record`"])
+      }
+    ]
   | TmRecLets { bindings=bindings } ->
     map (lam binding.
       LsDefinition {
@@ -90,11 +97,13 @@ lang MLangLanguageServerCompiler = MLangRoot
       }
     ]
   | TmVar { ident=ident, ty=ty, info=info }
-  | TmConApp { ident=ident, ty=ty, info=info } ->
+  | TmConDef { ident=ident, ty=ty, info=info }
+  | TmConApp { ident=ident, ty=ty, info=info }
+  | TmExt { ident=ident, ty=ty, info=info } ->
     [
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`", getSym ident])
+        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmConApp)", getSym ident])
       },
       LsUsage {
         location = info,
@@ -118,20 +127,31 @@ lang MLangLanguageServerCompiler = MLangRoot
   sem patLookup: MLangFile -> SymEnv -> Path -> Pat -> [LanguageServerPayload]
   sem patLookup file env filename =
   | _ -> []
-  | pat & PatSeqEdge { middle=PName ident, info=info }
-  | pat & PatNamed { ident=PName ident, info=info }
-  | pat & PatCon { ident=ident, info=info } ->
+  | PatSeqEdge { middle=PName ident, info=info }
+  | PatNamed { ident=PName ident, info=info } ->
     let info = infoWithFilename filename info in
-
     [
-      LsHover {
-        location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` (pattern)", getSym ident])
-        -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
-      },
       LsDefinition {
         location = info,
         name = ident
+      },
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` (PatSeqEdge / PatNamed)", getSym ident])
+        -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
+      }
+    ]
+  | PatCon { ident=ident, info=info } ->
+    let info = infoWithFilename filename info in
+    [
+      LsUsage {
+        location = info,
+        name = ident
+      },
+      LsHover {
+        location = info,
+        toString = lam. Some (join ["`", nameGetStr ident, "` (PatCon)", getSym ident])
+        -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
       }
     ]
 

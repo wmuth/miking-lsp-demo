@@ -26,15 +26,24 @@ type MessageWithContext = {
   message: use LSP in Message
 }
 
-let getMessage: String -> MessageWithContext =
-  lam body.
+let getMessage: use LSPRoot in LSPOptions -> String -> Option MessageWithContext =
+  lam options. lam body.
     let jsonBody = jsonParseExn body in
+    (
+      if options.printClientMessages then
+        eprintln (join ["Received message: ", body])
+      else
+        ()
+    );
     let request = getRPCRequest jsonBody in
-    let method = request.method in
-    let id = request.id in
-    let message = use LSP in getMessage request request.method in
-    {
-      method = method,
-      id = id,
-      message = message
-    }
+    match request with Some request then
+      let method = request.method in
+      let id = request.id in
+      let message = use LSP in getMessage request request.method in
+      Some {
+        method = method,
+        id = id,
+        message = message
+      }
+    else
+      None ()

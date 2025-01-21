@@ -4,8 +4,9 @@ include "../../lib/utils.mc"
 
 include "./utils.mc"
 include "./root.mc"
+include "./progress.mc"
 
-lang LSPGotoDefinition = LSPRoot
+lang LSPGotoDefinition = LSPRoot + LSPProgress
   syn Message =
   | GotoDefinition {
     id: Int,
@@ -99,22 +100,33 @@ lang LSPGotoDefinition = LSPRoot
     let files = mapValues context.environment.files in
     let environment = mapLookup uri context.environment.files in
 
+    let progress = createProgress context.sendNotification in
+    progress.reportMsg 0.0 "Generating usages";
+
     let usages = foldl (
       lam acc. lam file.
         mapUnionWith concat acc file.usages
     ) (mapEmpty infoCmp) files in
 
+    progress.reportMsg 0.2 "Generating definitions";
+
     let definitions = foldl (
       lam acc. lam file.
         mapUnionWith concat acc file.definitions
     ) (mapEmpty nameSymCmp) files in
+
+    progress.reportMsg 0.4 "Generating gotos";
     
     let gotos = optionMap (
       lam environment.
         findGotosLinearly environment.gotos uri line character
     ) environment in
 
+    progress.reportMsg 0.6 "Finding usages";
+
     let usageResult = findUsageLinearly uri usages line character in
+
+    progress.reportMsg 0.8 "Finding definitions";
     let definitions = optionMap (findDefinitions definitions) usageResult in
 
     let locations = (compose join filterOption) [
@@ -123,6 +135,8 @@ lang LSPGotoDefinition = LSPRoot
     ] in
 
     let response = generateLocationLinks id locations in
+
+    progress.finish (None ());
 
     {
       response = Some response,

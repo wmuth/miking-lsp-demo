@@ -101,6 +101,7 @@ lang LSPInitialize =
               ]),
               ("hoverProvider", JsonBool true),
               ("textDocumentSync", JsonInt 1),
+              ("workspaceSymbolProvider", JsonBool true),
               ("definitionProvider", JsonBool true),
               ("implementationProvider", JsonBool true),
               ("typeDefinitionProvider", JsonBool true),

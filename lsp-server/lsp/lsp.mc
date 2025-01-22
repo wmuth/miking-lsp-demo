@@ -7,6 +7,7 @@ include "./definition.mc"
 include "./misc.mc"
 include "./codelens.mc"
 include "./implementation.mc"
+include "./symbols.mc"
 
 lang LSP =
 LSPInitialize
@@ -17,6 +18,7 @@ LSPInitialize
 + LSPHover
 + LSPGotoDefinition
 + LSPImplementation
++ LSPWorkspaceSymbol
 + LSPMisc
 end
 

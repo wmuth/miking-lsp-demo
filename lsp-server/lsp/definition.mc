@@ -115,13 +115,6 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
         mapUnionWith concat acc file.definitions
     ) (mapEmpty nameSymCmp) files in
 
-    progress.reportMsg 0.4 "Generating gotos";
-    
-    let gotos = optionMap (
-      lam environment.
-        findGotosLinearly environment.gotos uri line character
-    ) environment in
-
     progress.reportMsg 0.6 "Finding usages";
 
     let usageResult = findUsageLinearly uri usages line character in
@@ -129,10 +122,7 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
     progress.reportMsg 0.8 "Finding definitions";
     let definitions = optionMap (findDefinitions definitions) usageResult in
 
-    let locations = (compose join filterOption) [
-      definitions,
-      gotos
-    ] in
+    let locations = (compose join filterOption) [definitions] in
 
     let response = generateLocationLinks id locations in
 

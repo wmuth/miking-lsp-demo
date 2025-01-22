@@ -359,14 +359,20 @@ lang MLangLanguageServerCompiler = MLangRoot
   | file & { status = Symbolized () | Linked (), linked=Some linked } ->
     flatMap (
       lam link.
-        match link with (info, path) in [
+        match link with (info, path) in
+        let fileName = nameSym path in
+        [
           LsHover {
             location = info,
             toString = lam. Some (join ["`", path, "` (link)"])
           },
-          LsGoto {
-            from = info,
-            to = (makeInfo (posVal path 1 0) (posVal path 1 0))
+          LsDefinition {
+            location = makeInfo (posVal path 1 0) (posVal path 1 0),
+            name = fileName
+          },
+          LsUsage {
+            location = info,
+            name = fileName
           }
         ]
     ) linked.links

@@ -40,8 +40,7 @@ lang LanguageServerRoot = DiagnosticBase
 
     hover: Map Info [() -> Option String],
     definitions: Map Name [Info],
-    usages: Map Info [Name],
-    gotos: Map Info [Info]
+    usages: Map Info [Name]
   }
 
   syn LanguageServerPayload =
@@ -57,8 +56,7 @@ let emptyLanguageServerContext = {
   lenses = [],
   hover = mapEmpty infoCmp,
   definitions = mapEmpty nameSymCmp,
-  usages = mapEmpty infoCmp,
-  gotos = mapEmpty infoCmp
+  usages = mapEmpty infoCmp
 }
 
 lang LanguageServerDiagnostic = LanguageServerRoot
@@ -72,18 +70,6 @@ lang LanguageServerDiagnostic = LanguageServerRoot
     { context with warnings = join [context.warnings, [clearSeverity diagnostic]] }
     | LsDiagnostic (diagnostic & (_, _, Information ())) ->
     { context with information = join [context.information, [clearSeverity diagnostic]] }
-end
-
-lang LanguageServerGoto = LanguageServerRoot
-  syn LanguageServerPayload =
-  | LsGoto {
-    from: Info,
-    to: Info
-  }
-
-  sem populateContext context =
-  | LsGoto { from=from, to=to } ->
-    { context with gotos = mapInsertWith concat from [to] context.gotos }
 end
 
 lang LanguageServerHover = LanguageServerRoot
@@ -139,7 +125,6 @@ end
 
 lang LanguageServer =
   LanguageServerRoot +
-  LanguageServerGoto +
   LanguageServerHover +
   LanguageServerUsage +
   LanguageServerDefinition +

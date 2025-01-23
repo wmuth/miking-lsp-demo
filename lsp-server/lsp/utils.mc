@@ -209,3 +209,21 @@ let findInfo: all a. Map Info a -> URI -> Int -> Int -> Option (Info, a) =
       Some (foldl f first rest)
     else
       None()
+
+type UsageInformation = {
+  location: Info,
+  names: [Name]
+}
+
+type DefinitionInformation = {
+  from: Info,
+  to: Info
+}
+
+let findUsageLinearly: URI -> Map Info [Name] -> Int -> Int -> Option UsageInformation =
+  lam uri. lam usages. lam line. lam character.
+    optionMap (
+      lam res.
+        match res with (info, value) in
+        { location = info, names = value }
+    ) (findInfo usages uri line character)

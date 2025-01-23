@@ -8,6 +8,7 @@ include "./misc.mc"
 include "./codelens.mc"
 include "./implementation.mc"
 include "./symbols.mc"
+include "./type-hierarchy.mc"
 
 lang LSP =
 LSPInitialize
@@ -19,6 +20,7 @@ LSPInitialize
 + LSPGotoDefinition
 + LSPImplementation
 + LSPWorkspaceSymbol
++ LSPTypeHierarchy
 + LSPMisc
 end
 

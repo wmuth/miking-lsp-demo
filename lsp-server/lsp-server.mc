@@ -130,6 +130,7 @@ let startLSPServer: use LSPRoot in LSPStartParameters -> () =
   lam parameters.
     let environment: use LSPRoot in LSPEnvironment = {
       files = mapEmpty cmpString,
+      typeSymbols = mapEmpty subi,
       options = parameters.options,
       rootUri = None ()
     } in

@@ -21,16 +21,6 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
       textDocument = getTextDocumentPositionParams request.params
     }
 
-  type UsageInformation = {
-    location: Info,
-    names: [Name]
-  }
-
-  type DefinitionInformation = {
-    from: Info,
-    to: Info
-  }
-
   sem generateLocationLinks: Int -> [DefinitionInformation] -> JsonValue
   sem generateLocationLinks id =
   | locations ->
@@ -63,14 +53,6 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
       ("id", JsonInt id),
       ("result", result)
     ]
-
-  sem findUsageLinearly: URI -> Map Info [Name] -> Int -> Int -> Option UsageInformation
-  sem findUsageLinearly uri usages line =| character ->
-    optionMap (
-      lam res.
-        match res with (info, value) in
-        { location = info, names = value }
-    ) (findInfo usages uri line character)
 
   sem findDefinitions: Map Name [(Info, SymbolKind)] -> UsageInformation -> [DefinitionInformation]
   sem findDefinitions definitions =| usage ->

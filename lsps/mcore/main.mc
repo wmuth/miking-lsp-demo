@@ -23,24 +23,52 @@ let createAccumulator: all a. all b. all acc. (([acc] -> a -> [acc]) -> [acc] ->
     ) [] item
 
 lang MLangLanguageServerCompiler = MLangRoot
+  sem getTypeNames : Type -> [Name]
+  sem getTypeNames =
+  | _ -> []
+  | typ & TyCon { ident=ident, info=info } ->
+    [ident]
+
+  sem getTypeNamesRecursively : Type -> [Name]
+  sem getTypeNamesRecursively =| typ ->
+    let childTypes = sfold_Type_Type (lam acc. lam ty.
+      join [acc, getTypeNamesRecursively ty]
+    ) [] typ in
+    join [getTypeNames typ, childTypes]
+
   sem typeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
   sem typeLookup file env =
   | _ -> []
-  | TyCon { ident=ident, info=info }
-  | TyVar { ident=ident, info=info }
-  | TyAll { ident=ident, info=info }
-  | TyUse { ident=ident, info=info } ->
+  | TyAlias { display=TyCon { ident=ident, info=info }, content=typ }
+  | typ & TyCon { ident=ident, info=info }
+  | typ & TyVar { ident=ident, info=info }
+  | typ & TyAll { ident=ident, info=info }
+  | typ & TyUse { ident=ident, info=info } ->
     let filename = file.filename in
     let info = infoWithFilename filename info in
-    [
-      LsHover {
-        location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` (type)", getSym ident])
-      },
-      LsUsage {
-        location = info,
-        name = ident
-      }
+    join [
+      [
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` (type Ty)", getSym ident])
+        },
+        LsUsage {
+          location = info,
+          name = ident
+        }
+      ],
+      sfold_Type_Type (lam acc. lam ty.
+        join [
+          acc,
+          [
+            LsType {
+              location = info,
+              ident = ident,
+              superIdents = getTypeNamesRecursively ty
+            }
+          ]
+        ]
+      ) [] typ
     ]
 
   sem exprLookup: MLangFile -> SymEnv -> Expr -> [LanguageServerPayload]
@@ -48,6 +76,11 @@ lang MLangLanguageServerCompiler = MLangRoot
   | _ -> []
   | TmUse { ident=ident, ty=ty, info=info } ->
     [
+      LsType {
+        location = info,
+        ident = ident,
+        superIdents = getTypeNamesRecursively ty
+      },
       LsHover {
         location = info,
         toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`", getSym ident])
@@ -76,6 +109,11 @@ lang MLangLanguageServerCompiler = MLangRoot
   | TmLam { ident=ident, ty=ty, info=info }
   | TmType { ident=ident, ty=ty, info=info } ->
     [
+      LsType {
+        location = info,
+        ident = ident,
+        superIdents = getTypeNamesRecursively ty
+      },
       LsHover {
         location = info,
         toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
@@ -91,6 +129,11 @@ lang MLangLanguageServerCompiler = MLangRoot
   | TmConApp { ident=ident, ty=ty, info=info }
   | TmExt { ident=ident, ty=ty, info=info } ->
     [
+      LsType {
+        location = info,
+        ident = ident,
+        superIdents = getTypeNamesRecursively ty
+      },
       LsHover {
         location = info,
         toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmConApp)", getSym ident])
@@ -168,15 +211,26 @@ lang MLangLanguageServerCompiler = MLangRoot
         name = ident
       }
     ]
-  | DeclType { ident=ident, info=info }
-  | DeclConDef { ident=ident, info=info }
-  | DeclExt { ident=ident, info=info } ->
-    [
-      LsDefinition {
-        kind = TypeParameter (),
-        location = info,
-        name = ident
-      }
+  | DeclType { ident=ident, info=info, tyIdent=tyIdent }
+  | DeclConDef { ident=ident, info=info, tyIdent=tyIdent }
+  | DeclExt { ident=ident, info=info, tyIdent=tyIdent } ->
+    join [
+      [
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` (type decl)", getSym ident, ", ", type2str tyIdent])
+        },
+        LsDefinition {
+          kind = TypeParameter (),
+          location = info,
+          name = ident
+        },
+        LsType {
+          location = info,
+          ident = ident,
+          superIdents = getTypeNamesRecursively tyIdent
+        }
+      ]
     ]
   | DeclSyn { ident=ident, info=info, defs=defs } ->
     let filename = file.filename in
@@ -223,10 +277,15 @@ lang MLangLanguageServerCompiler = MLangRoot
         name = ident
       }
     ]
-  | DeclSem { ident=ident, info=info, args=args, cases=cases, info=info } ->
+  | DeclSem { ident=ident, info=info, args=args, cases=cases, info=info, tyAnnot=tyAnnot } ->
     let patterns = map (lam cas. cas.pat) cases in
     join [
       [
+        LsType {
+          location = info,
+          ident = ident,
+          superIdents = getTypeNamesRecursively tyAnnot
+        },
         LsHover {
           location = info,
           toString = lam. Some (join ["`", nameGetStr ident, "` (sem)", getSym ident])

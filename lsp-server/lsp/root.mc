@@ -44,7 +44,13 @@ lang LanguageServerRoot =
 
     hover: Map Info [() -> Option String],
     definitions: Map Name [(Info, SymbolKind)],
-    usages: Map Info [Name]
+    usages: Map Info [Name],
+
+    typeLocations: Map Info [Name],
+    types: Map Name {
+      location: Info,
+      super: [Name] -- todo: iterate on this type since it can be primitive types as well
+    }
   }
 
   syn LanguageServerPayload =
@@ -60,7 +66,9 @@ let emptyLanguageServerContext = {
   lenses = [],
   hover = mapEmpty infoCmp,
   definitions = mapEmpty nameSymCmp,
-  usages = mapEmpty infoCmp
+  usages = mapEmpty infoCmp,
+  typeLocations = mapEmpty infoCmp,
+  types = mapEmpty nameSymCmp -- Map from a type to its super types
 }
 
 lang LanguageServerDiagnostic = LanguageServerRoot
@@ -122,6 +130,27 @@ lang LanguageServerDefinition = LanguageServerRoot
     }
 end
 
+lang LanguageServerTypeHierarchy = LanguageServerRoot
+  syn LanguageServerPayload =
+  | LsType { ident: Name, superIdents: [Name], location: Info }
+
+  sem populateContext context =
+  | LsType { ident=ident, superIdents=superIdents, location=location } ->
+    {
+      context with
+      typeLocations = mapInsertWith concat location [ident] context.typeLocations,
+      types = mapInsertWith (
+        lam prev. lam new. {
+          location = prev.location,
+          super = concat prev.super new.super
+        }
+      ) ident {
+        location = location,
+        super = superIdents
+      } context.types
+    }
+end
+
 lang LanguageServerCodeLens = LanguageServerRoot
   syn LanguageServerPayload =
   | LsCodeLens CodeLens
@@ -136,6 +165,7 @@ lang LanguageServer =
   LanguageServerHover +
   LanguageServerUsage +
   LanguageServerDefinition +
+  LanguageServerTypeHierarchy +
   LanguageServerDiagnostic +
   LanguageServerCodeLens
 
@@ -176,7 +206,8 @@ lang LanguageServer =
   type LSPEnvironment = {
     rootUri: Option URI,
     options: LSPOptions,
-    files: Map URI LanguageServerContext
+    files: Map URI LanguageServerContext,
+    typeSymbols: Map Int Name -- Keep track of the symbol between type hierarchy requests
   }
 
   type LSPExecutionContext = {

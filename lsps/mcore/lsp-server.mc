@@ -14,8 +14,9 @@ let options = {
   config = config,
   serverName = "MCore",
   extension = "mc",
-  indexWorkspace = false,
-  pruneMessages = true
+  indexWorkspace = true,
+  pruneMessages = true,
+  printClientMessages = false
 } in
 
 let fileLoader = use MLangCompiler in createFileLoader () in

@@ -43,6 +43,14 @@ lang MLangSymbolizedRoot = MLangBase
   }
 end
 
+lang MLangTypeCheckedRoot = MLangBase
+  type MLangTypeCheckedFile = {
+    expr: Option Expr, -- With symbols
+    symEnv: SymEnv, -- symEnvEmpty
+    diagnostics: [DiagnosticWithSeverity]
+  }
+end
+
 lang MLangRoot =
   LanguageServer + MLangBase +
   MLangParsedRoot + MLangLinkedRoot + MLangSymbolizedRoot

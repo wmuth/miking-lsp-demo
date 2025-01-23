@@ -29,15 +29,15 @@ lang MCoreCompile =
   PprintTyAnnot + HtmlAnnotator
 end
 
-lang TypeCheckMExpr = MLangRoot
+lang MLangMExprTypeChecker = MLangRoot
   type TypeCheckedMExprLSP = {
     expr: Expr,
     warnings: [Diagnostic],
     errors: [Diagnostic]
   }
 
-  sem typeCheckMExprLSP : Expr -> TypeCheckedMExprLSP
-  sem typeCheckMExprLSP =| expr ->
+  sem lsTypeCheckMExpr : Expr -> TypeCheckedMExprLSP
+  sem lsTypeCheckMExpr =| expr ->
     -- Ugly hacking to not make typeCheckExpr
     -- crash in the MLang pipeline
     modref __LSP__SOFT_ERROR true;
@@ -64,34 +64,36 @@ lang TypeCheckMExpr = MLangRoot
 end
 
 lang MLangMExprCompiler = MLangRoot
-	-- sem compileMLangToMExpr : Path -> MLangFile -> MLangFile
-	-- sem compileMLangToMExpr filename =
-  -- | file & CSymbolized (symbolized & { program = program }) ->
-  --   eprintln (join ["Mexprering file"]);
+	sem lsCompileMLangToMExpr : Path -> MLangFile -> MLangFile
+	sem lsCompileMLangToMExpr filename =
+  | file & CSymbolized (symbolized & { program = program }) ->
+    eprintln (join ["Mexprering file"]);
 
-  --   match result.consume (checkComposition program) with (warnings, res) in 
-  --   switch res 
-  --     case Left errs then 
-  --       iter raiseError errs ;
-  --       never
-  --     case Right env then
-  --       let ctx = _emptyCompilationContext env in 
-  --       let res = result.consume (compile ctx program) in 
-  --       match res with (_, rhs) in 
-  --       match rhs with Right expr in
+    match result.consume (checkComposition program) with (warnings, res) in 
+    switch res 
+      case Left errs then 
+        iter raiseError errs ;
+        never
+      case Right env then
+        let ctx = _emptyCompilationContext env in 
+        let res = result.consume (compile ctx program) in 
+        match res with (_, rhs) in 
+        match rhs with Right expr in
 
-  --       let expr = postprocess env.semSymMap expr in 
-  --       match use TypeCheckMExpr in typeCheckMExprLSP expr with {
-  --         expr = expr,
-  --         warnings = warnings,
-  --         errors = errors
-  --       } in
+        let expr = postprocess env.semSymMap expr in 
+        match use MLangMExprTypeChecker in lsTypeCheckMExpr expr with {
+          expr = expr,
+          warnings = warnings,
+          errors = errors
+        } in
 
-  --       CTypeChecked {
-  --         symbolized = symbolized,
-  --         expr = expr,
-  --         errors = errors,
-  --         warnings = warnings
-  --       }
-  --   end
+        CTypeChecked {
+          symbolized = symbolized,
+          expr = expr,
+          diagnostics = join [
+            map (addSeverity (Error ())) errors,
+            map (addSeverity (Warning ())) warnings
+          ]
+        }
+    end
 end

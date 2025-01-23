@@ -22,18 +22,6 @@ let createAccumulator: all a. all b. all acc. (([acc] -> a -> [acc]) -> [acc] ->
       join [acc, generator pat]
     ) [] item
 
--- This is very crude and wrong,
--- it doesn't even handle columns.
-let getContentInSection: String -> Info -> String =
-  lam content. lam info.
-    match info with Info info then
-      let start = info.row1 in
-      let endd = subi info.row2 info.row1 in
-      let lines = strSplit "\n" content in
-      let lines = subsequence lines start endd in
-      strJoin "\n" lines
-    else content
-
 lang MLangLanguageServerCompiler = MLangRoot
   sem typeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
   sem typeLookup file env =
@@ -216,18 +204,14 @@ lang MLangLanguageServerCompiler = MLangRoot
       }
     ) bindings
   | DeclLang { ident=ident, includes=includes, info=info } ->
-    -- Here we extract the languages from the DeclLang includes.
-    -- In a very crude way by looking at the original source code.
-    -- CURRENTLY NOT USED
-    let content = file.content in
-    let content = getContentInSection content info in
-    let languages = map strTrim (strSplit "+" content) in
-    -- eprintln (join ["Languages: ", strJoin "," languages]);
-
     [
       LsHover {
         location = info,
         toString = lam. Some (nameGetStr ident)
+      },
+      LsDefinition {
+        location = info,
+        name = ident
       }
     ]
   | DeclSem { ident=ident, info=info, args=args, cases=cases, info=info } ->

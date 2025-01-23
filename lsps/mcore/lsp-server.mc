@@ -14,7 +14,7 @@ let options = {
   config = config,
   serverName = "MCore",
   extension = "mc",
-  indexWorkspace = true,
+  indexWorkspace = false,
   pruneMessages = true
 } in
 

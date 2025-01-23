@@ -4,6 +4,8 @@ include "mexpr/ast.mc"
 include "../../lib/utils.mc"
 include "../json-rpc.mc"
 
+include "./symbol-kind.mc"
+
 type URI = String
 type Diagnostic = (Info, String)
 
@@ -22,7 +24,9 @@ lang DiagnosticBase
   sem addSeverity severity =| (info, message) -> (info, message, severity)
 end
 
-lang LanguageServerRoot = DiagnosticBase
+lang LanguageServerRoot =
+  DiagnosticBase + LSPSymbolKind
+  
   type CodeLens = {
     title: String,
     ideCommand: String,
@@ -39,7 +43,7 @@ lang LanguageServerRoot = DiagnosticBase
     lenses: [CodeLens],
 
     hover: Map Info [() -> Option String],
-    definitions: Map Name [Info],
+    definitions: Map Name [(Info, SymbolKind)],
     usages: Map Info [Name]
   }
 
@@ -102,6 +106,7 @@ end
 
 lang LanguageServerDefinition = LanguageServerRoot
   type DefinitionPayload = {
+    kind: SymbolKind,
     location: Info,
     name: Name
   }
@@ -110,8 +115,11 @@ lang LanguageServerDefinition = LanguageServerRoot
   | LsDefinition DefinitionPayload
 
   sem populateContext context =
-  | LsDefinition { location=location, name=name } ->
-    { context with definitions = mapInsertWith concat name [location] context.definitions }
+  | LsDefinition { location=location, name=name, kind=kind } ->
+    {
+      context with
+      definitions = mapInsertWith concat name [(location, kind)] context.definitions
+    }
 end
 
 lang LanguageServerCodeLens = LanguageServerRoot

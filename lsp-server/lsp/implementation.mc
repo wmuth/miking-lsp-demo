@@ -5,12 +5,12 @@ include "../../lib/utils.mc"
 include "./utils.mc"
 include "./root.mc"
 
-let findDefinitionLinearly: URI -> Map Name [Info] -> Int -> Int -> Option Name =
+let findDefinitionLinearly: URI -> Map Name [(Info, use LSPSymbolKind in SymbolKind)] -> Int -> Int -> Option Name =
   lam uri. lam definitions. lam line. lam character.
     -- Make Into [Name, [Info]] pairs
     let definitions = mapToSeq definitions in
     -- Make into [Name, Info] pairs
-    let definitions = flatMap (lam definition. match definition with (name, infos) in map (lam info. (name, info)) infos) definitions in
+    let definitions = flatMap (lam definition. match definition with (name, infos) in map (lam info. (name, info.0)) infos) definitions in
 
     let foundDefinitions = filterMap (
       lam definition.

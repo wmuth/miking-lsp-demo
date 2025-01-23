@@ -67,6 +67,7 @@ lang MLangLanguageServerCompiler = MLangRoot
   | TmRecLets { bindings=bindings } ->
     map (lam binding.
       LsDefinition {
+        kind = Function (),
         location = binding.info,
         name = binding.ident
       }
@@ -80,6 +81,7 @@ lang MLangLanguageServerCompiler = MLangRoot
         toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
       },
       LsDefinition {
+        kind = TypeParameter (),
         location = info,
         name = ident
       }
@@ -120,6 +122,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     let info = infoWithFilename filename info in
     [
       LsDefinition {
+        kind = Constructor (),
         location = info,
         name = ident
       },
@@ -160,6 +163,7 @@ lang MLangLanguageServerCompiler = MLangRoot
         toString = lam. Some (join ["`", nameGetStr ident, "` (let)", getSym ident])
       },
       LsDefinition {
+        kind = Variable (),
         location = info,
         name = ident
       }
@@ -169,6 +173,7 @@ lang MLangLanguageServerCompiler = MLangRoot
   | DeclExt { ident=ident, info=info } ->
     [
       LsDefinition {
+        kind = TypeParameter (),
         location = info,
         name = ident
       }
@@ -182,6 +187,7 @@ lang MLangLanguageServerCompiler = MLangRoot
           toString = lam. Some (join ["`", nameGetStr ident, "` (syn)", getSym ident])
         },
         LsDefinition {
+          kind = TypeParameter (),
           location = info,
           name = ident
         }
@@ -189,6 +195,7 @@ lang MLangLanguageServerCompiler = MLangRoot
       flatMap (lam def.
         [
           LsDefinition {
+            kind = EnumMember (),
             location = info,
             name = def.ident
           }
@@ -199,6 +206,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     let filename = file.filename in
     map (lam binding.
       LsDefinition {
+        kind = Function (),
         location = infoWithFilename filename info,
         name = binding.ident
       }
@@ -210,6 +218,7 @@ lang MLangLanguageServerCompiler = MLangRoot
         toString = lam. Some (nameGetStr ident)
       },
       LsDefinition {
+        kind = Module (),
         location = info,
         name = ident
       }
@@ -223,12 +232,14 @@ lang MLangLanguageServerCompiler = MLangRoot
           toString = lam. Some (join ["`", nameGetStr ident, "` (sem)", getSym ident])
         },
         LsDefinition {
+          kind = Function (),
           location = info,
           name = ident
         }
       ],
       map (lam arg. 
         LsDefinition {
+          kind = Variable (),
           location = info,
           name = arg.ident
         }  
@@ -351,6 +362,7 @@ lang MLangLanguageServerCompiler = MLangRoot
             toString = lam. Some (join ["`", path, "` (link)"])
           },
           LsDefinition {
+            kind = File (),
             location = makeInfo (posVal path 1 0) (posVal path 1 0),
             name = fileName
           },

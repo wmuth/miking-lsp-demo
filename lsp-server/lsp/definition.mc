@@ -72,10 +72,10 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
         { location = info, names = value }
     ) (findInfo usages uri line character)
 
-  sem findDefinitions: Map Name [Info] -> UsageInformation -> [DefinitionInformation]
+  sem findDefinitions: Map Name [(Info, SymbolKind)] -> UsageInformation -> [DefinitionInformation]
   sem findDefinitions definitions =| usage ->
     let locations = filterMap (lam name. mapLookup name definitions) usage.names in
-    flatMap (map (lam location. { from = usage.location, to = location })) locations
+    flatMap (map (lam location. { from = usage.location, to = location.0 })) locations
 
   sem findGotosLinearly: Map Info [Info] -> URI -> Int -> Int -> [DefinitionInformation]
   sem findGotosLinearly gotos uri line =| character ->

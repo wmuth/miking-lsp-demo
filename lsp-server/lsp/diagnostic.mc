@@ -80,8 +80,8 @@ let getDiagnosticFileName =
   lam diagnostic.
     (getFileInfo diagnostic.0).filename
 
-let getResultResponses: use LSPRoot in Map URI LanguageServerContext -> [JsonValue] =
-  lam compilationResults.
+let getResultResponses: use LSPRoot in LSPExecutionContext -> use LSPRoot in Map URI LanguageServerContext -> [JsonValue] =
+  lam context. lam compilationResults.
     let extractDiagnostics = lam f.
       foldl
         (lam acc: [(Info, String)]. lam diagnostic: [(Info, String)]. join [acc, diagnostic])
@@ -103,7 +103,7 @@ let getResultResponses: use LSPRoot in Map URI LanguageServerContext -> [JsonVal
     let emptyDiagnosticsForThisFile = mapFromSeq cmpString (map (lam uri. (uri, [])) (mapKeys compilationResults)) in
     let diagnosticsGroupedByFile = mapUnionWith concat diagnosticsGroupedByFile emptyDiagnosticsForThisFile in
 
-    getDiagnostics "MCore" diagnosticsGroupedByFile
+    getDiagnostics context.environment.options.serverName diagnosticsGroupedByFile
 
 -- let getResultResponses: URI -> use LSPRoot in LanguageServerContext -> [JsonValue] =
 --   lam uri. lam compilationResult.

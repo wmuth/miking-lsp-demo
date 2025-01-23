@@ -151,6 +151,7 @@ lang LanguageServer =
 
   type LSPOptions = {
     config: LSPConfig,
+    serverName: String,
     extension: String,
     indexWorkspace: Bool,
     printClientMessages: Bool,
@@ -188,6 +189,7 @@ let defaultLSPOptions: use LanguageServer in LSPOptions = {
     hover = true,
     definition = true
   },
+  serverName = "Miking LSP Server",
   extension = "",
   indexWorkspace = true,
   printClientMessages = false,

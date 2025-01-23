@@ -97,40 +97,43 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
     let line = addi line 1 in
     let uri = stripUriProtocol uri in
 
-    let files = mapValues context.environment.files in
-    let environment = mapLookup uri context.environment.files in
+    match mapLookup uri context.environment.files with Some file then
+      let files = mapValues context.environment.files in
+      let environment = mapLookup uri context.environment.files in
 
-    let progress = createProgress context.sendNotification in
-    progress.reportMsg 0.0 "Generating usages";
+      let progress = createProgress context.sendNotification in
+      progress.reportMsg 0.0 "Generating usages";
 
-    let usages = foldl (
-      lam acc. lam file.
-        mapUnionWith concat acc file.usages
-    ) (mapEmpty infoCmp) files in
+      let usages = file.usages in
 
-    progress.reportMsg 0.2 "Generating definitions";
+      progress.reportMsg 0.2 "Generating definitions";
 
-    let definitions = foldl (
-      lam acc. lam file.
-        mapUnionWith concat acc file.definitions
-    ) (mapEmpty nameSymCmp) files in
+      let definitions = foldl (
+        lam acc. lam file.
+          mapUnionWith concat acc file.definitions
+      ) (mapEmpty nameSymCmp) files in
 
-    progress.reportMsg 0.6 "Finding usages";
+      progress.reportMsg 0.6 "Finding usages";
 
-    let usageResult = findUsageLinearly uri usages line character in
+      let usageResult = findUsageLinearly uri usages line character in
 
-    progress.reportMsg 0.8 "Finding definitions";
-    let definitions = optionMap (findDefinitions definitions) usageResult in
+      progress.reportMsg 0.8 "Finding definitions";
+      let definitions = optionMap (findDefinitions definitions) usageResult in
 
-    let locations = (compose join filterOption) [definitions] in
+      let locations = (compose join filterOption) [definitions] in
 
-    let response = generateLocationLinks id locations in
+      let response = generateLocationLinks id locations in
 
-    progress.finish (None ());
+      progress.finish (None ());
 
-    {
-      response = Some response,
-      environment = context.environment
-    }
+      {
+        response = Some response,
+        environment = context.environment
+      }
+    else
+      {
+        response = None (),
+        environment = context.environment
+      }
     
 end

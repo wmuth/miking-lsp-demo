@@ -12,8 +12,9 @@ let config = defaultLSPOptions.config in
 let options = {
   defaultLSPOptions with
   config = config,
+  serverName = "MCore",
   extension = "mc",
-  indexWorkspace = false,
+  indexWorkspace = true,
   pruneMessages = true
 } in
 

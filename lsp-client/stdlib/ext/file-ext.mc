@@ -70,8 +70,8 @@ let fileReadBytes : ReadChannel -> Int -> Option [Int] =
       case _ then None ()
     end
 
--- external externalHasBytesToRead ! : ReadChannel -> Bool
--- let fileHasBytesToRead: ReadChannel -> Bool = lam rc. externalHasBytesToRead rc
+external externalHasBytesToRead ! : ReadChannel -> Bool
+let fileHasBytesToRead: ReadChannel -> Bool = lam rc. externalHasBytesToRead rc
 
 -- Reads everything in a file and returns the content as a string.
 -- Should support Unicode in the future.

@@ -17,7 +17,7 @@ lang LSPCompileUtility = LSPRoot
     let compilationResults: Map URI [LanguageServerPayload]  = compilationFunction compilationParameters in
     let compilationResults: Map URI LanguageServerContext = mapMap (foldl populateContext emptyLanguageServerContext) compilationResults in
   
-    let responses = getResultResponses compilationResults in
+    let responses = getResultResponses context compilationResults in
     iter context.sendNotification responses;
 
     let newFiles: [(URI, LanguageServerContext)] = map (lam compilationResult.

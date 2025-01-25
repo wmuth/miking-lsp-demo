@@ -32,6 +32,10 @@ lang LSPTypeHierarchy = LSPRoot + LSPProgress
     id: Int,
     symbol: Int
   }
+  | TypeHierarchySubtypes {
+    id: Int,
+    symbol: Int
+  }
 
   sem getMessage request =
   | "textDocument/prepareTypeHierarchy" ->
@@ -45,6 +49,14 @@ lang LSPTypeHierarchy = LSPRoot + LSPProgress
     match mapLookup "item" request.params with Some (JsonObject item) in
     match mapLookup "data" item with Some JsonInt symbol in
     TypeHierarchySupertypes {
+      id = id,
+      symbol = symbol
+    } 
+  | "typeHierarchy/subtypes" ->
+    match request.id with Some id in
+    match mapLookup "item" request.params with Some (JsonObject item) in
+    match mapLookup "data" item with Some JsonInt symbol in
+    TypeHierarchySubtypes {
       id = id,
       symbol = symbol
     } 
@@ -184,6 +196,12 @@ lang LSPTypeHierarchy = LSPRoot + LSPProgress
         }
       }
     else
+      {
+        response = Some (emptyRpcResponse id),
+        environment = context.environment
+      }
+  | TypeHierarchySubtypes { id = id, symbol = symbol } ->
+      -- TODO: Implement
       {
         response = Some (emptyRpcResponse id),
         environment = context.environment

@@ -132,7 +132,11 @@ end
 
 lang LanguageServerTypeHierarchy = LanguageServerRoot
   syn LanguageServerPayload =
-  | LsType { ident: Name, superIdents: [Name], location: Info }
+  | LsType {
+    location: Info,
+    ident: Name,
+    superIdents: [Name]
+  }
 
   sem populateContext context =
   | LsType { ident=ident, superIdents=superIdents, location=location } ->

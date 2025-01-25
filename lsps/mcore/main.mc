@@ -258,12 +258,18 @@ lang MLangLanguageServerCompiler = MLangRoot
     ]
   | DeclRecLets { bindings=bindings, info=info } ->
     let filename = file.filename in
-    map (lam binding.
-      LsDefinition {
-        kind = Function (),
-        location = infoWithFilename filename info,
-        name = binding.ident
-      }
+    flatMap (lam binding.
+      [
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr binding.ident, "` (let)", getSym binding.ident])
+        },
+        LsDefinition {
+          kind = Variable (),
+          location = infoWithFilename filename info,
+          name = binding.ident
+        }
+      ]
     ) bindings
   | DeclLang { ident=ident, includes=includes, info=info } ->
     [

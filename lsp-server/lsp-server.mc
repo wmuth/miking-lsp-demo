@@ -53,6 +53,15 @@ let executeRequests: use LSPRoot in LSPStartParameters -> LSPEnvironment -> [Str
       environment
     else
       let messages = filterMap (getMessage parameters.options) bodies in
+      
+      eprintln (join [
+        "Received ",
+        int2string (length messages),
+        " requests: [",
+        debugPrintMessages messages,
+        "]"
+      ]);
+
       let messages = if parameters.options.pruneMessages
         then pruneMessages messages
         else messages

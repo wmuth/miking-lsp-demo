@@ -161,15 +161,25 @@ export async function activate(context: ExtensionContext) {
   const lspServerBin = context.asAbsolutePath(
     path.join("compile-and-start.sh")
   );
+  
   // const mcoreCompilerBin = context.asAbsolutePath(
   //   path.join("bin", "compile-mcore")
   // );
 
   // throw new Error(JSON.stringify({
-  //   env: process.env["MCORE_LIBS"]
+  //   // env: process.env["MCORE_LIBS"]
+  //   env: process.env
   // }));
 
   const configuration = workspace.getConfiguration("mcore");
+
+  // Somehow my environment variables are not getting passed to the server
+  const PATH = [
+    process.env["PATH"],
+    `/Users/${process.env.USER}/.opam/miking-ocaml/bin`,
+    `/Users/${process.env.USER}/.local/bin`,
+    `/Users/${process.env.USER}/.opam/miking-ocaml/man/man1`
+  ].join(':');
 
   const serverOptions: ServerOptions = {
     command: lspServerBin,
@@ -177,6 +187,7 @@ export async function activate(context: ExtensionContext) {
     options: {
       env: {
         ...process.env,
+        PATH,
         // MCORE_LIBS: "stdlib=/Users/didrik/projects/miking/miking/stdlib:coreppl=/Users/didrik/projects/miking/miking-dppl/coreppl/src",
         MCORE_LIBS:
           configuration.get<string>("mcoreLibs") || process.env["MCORE_LIBS"],

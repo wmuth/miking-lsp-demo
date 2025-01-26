@@ -44,6 +44,14 @@ let mergeInfo : Info -> Info -> Info = lam fi1 : Info. lam fi2 : Info.
     else fi1
   else fi2
 
+let rightMergeInfo : Info -> Info -> Info = lam fi1 : Info. lam fi2 : Info.
+  match fi1 with Info r1 then
+    match fi2 with Info r2 then
+      Info {filename = r1.filename, row1 = r1.row2, col1 = r1.col2,
+            row2 = r2.row2, col2 = r2.col2}
+    else fi1
+  else fi2
+
 -- Create an info structure
 let infoVal : String -> Int -> Int -> Int -> Int -> Info =
   lam filename. lam r1. lam c1. lam r2. lam c2.
@@ -57,6 +65,15 @@ let info2str : Info -> String = lam fi.
   else match fi with Info r then
     join ["<", r.filename, " ", int2string r.row1, ":", int2string r.col1,
     "-", int2string r.row2, ":", int2string r.col2, ">"]
+  else never
+
+-- Generate a link from an info
+let info2link : Info -> String = lam fi.
+  match fi with NoInfo () then "" else
+  match fi with Info (r & {row1 = 0}) then
+    r.filename
+  else match fi with Info r then
+    join [r.filename, "#L", int2string r.row1, ":", int2string r.col1]
   else never
 
 -- Generate an info error string

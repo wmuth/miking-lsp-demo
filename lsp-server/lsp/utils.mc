@@ -121,7 +121,12 @@ let infoCollision: Info -> String -> Int -> Int -> Bool = lam info. lam filename
       (
         and
         (collision (r.row1, r.row2) line)
-        (collision (r.col1, r.col2) character)
+        (
+          if eqi r.row1 r.row2 then
+            collision (r.col1, r.col2) character
+          else
+            true
+        )
       )
     )
   else
@@ -188,17 +193,21 @@ let filterMap: all a. all b. (a -> Option b) -> [a] -> [b] =
   lam f. lam xs.
     filterOption (map f xs)
 
-let findInfo: all a. Map Info a -> URI -> Int -> Int -> Option (Info, a) =
+let findAllInfo: all a. Map Info a -> URI -> Int -> Int -> [(Info, a)] =
   lam m. lam uri. lam line. lam character.
     let m = mapToSeq m in
 
-    let found = filterMap (
+    filterMap (
       lam v.
         match v with (info, value) in
         if infoCollision info uri line character
           then Some (info, value)
           else None ()
-    ) m in
+    ) m
+
+let findInfo: all a. Map Info a -> URI -> Int -> Int -> Option (Info, a) =
+  lam m. lam uri. lam line. lam character.
+    let found = findAllInfo m uri line character in
 
     match found with [first] ++ rest then
       let f = lam v1. lam v2.

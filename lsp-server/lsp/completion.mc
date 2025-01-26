@@ -6,25 +6,6 @@ include "./utils.mc"
 include "./root.mc"
 include "./completion-kind.mc"
 
--- let getCompletionItems = lam environment.
---   let getCompletionItem = lam definition.
---     match definition with (name, info) in
---     let name = nameGetStr name in
---     jsonKeyObject [
---       ("label", JsonString name),
---       ("kind", JsonInt (use LSPCompletionKind in getCompletionItemKind (CompletionMethod ()))),
---       ("insertText", JsonString (join [name, " in"])),
---       ("insertTextFormat", JsonInt 2),
---       ("documentation", jsonKeyObject [
---         ("kind", JsonString "markdown"),
---         ("value", JsonString "Addition operation `markdown test`")
---       ]),
---       ("deprecated", JsonBool false)
---     ]
---   in
-
---   map getCompletionItem (mapToSeq environment.definitions)
-
 let getCompletionItem = lam completion: use LSPRoot in Completion.
   jsonKeyObject (filterOption [
     Some ("label", JsonString completion.label),
@@ -67,16 +48,50 @@ lang LSPCompletion = LSPRoot + LSPCompletionKind
 
       let environment = mapLookup uri context.environment.files in
 
-      let findInfo = lam environment. findInfo environment.completions uri line character in
-      let getScopes = lam value. match value with (info, generateScopes) in
-        foldl (lam acc. lam generateScope. join [acc, generateScope ()]) [] generateScopes
+      -- let findAllInfo = lam environment. findAllInfo environment.completions uri line character in
+      -- let generateCompletions: (Info, [() -> Completion]) -> [Completion] = lam value. match value with (info, generateCompletions) in
+      --   map (lam generateCompletion. generateCompletion ()) generateCompletions
+      -- in
+      let getAllSymbols: () -> [Completion] = lam.
+        let definitions = optionMap (lam environment. mapToSeq environment.definitions) environment in
+        let definitions = optionGetOr [] definitions in
+        let mapDefinitions = lam definition.
+          match definition with (name, infos) in
+          map (
+            lam info. match info with (info, symbolKind) in {
+              label = nameGetStr name,
+              kind = CompletionMethod (),
+              insertText = None (),
+              documentation = Some (join [
+                "Defined at [`", info2str info, "`]\n\n",
+                "[`", info2str info, "`]: file://", info2link info, "\n\n"
+              ]),
+              deprecated = false
+            }
+          ) infos
+        in
+        flatMap mapDefinitions definitions
       in
 
-      let generateScopes = optionBind environment findInfo in
-      let scopes = optionMap getScopes generateScopes in
+      -- eprintln (join ["Completion request: ", uri, ":", int2string line, ":", int2string character]);
+      -- (
+      --   match environment with Some environment then
+      --     eprintln (join ["Environment found: ", uri]);
+      --     eprintln (join ["Completions: ", strJoin ", " (map (lam v. match v with (info, _) in info2str info) (mapToSeq environment.completions))]);
+      --     ()
+      --   else ()
+      -- );
 
-      let items = optionMap (map getCompletionItem) scopes in
-      let items = optionGetOr [] items in
+      -- let items: Option ([(Info, [() -> Completion])]) = optionMap findAllInfo environment in
+      -- let items: Option [Completion] = optionMap (flatMap generateCompletions) items in
+      -- let items = optionGetOr [] items in
+      -- -- let scopes = join [
+      -- --   scopes
+      -- --   -- getAllSymbols ()
+      -- -- ] in
+
+      let items = getAllSymbols () in
+      let items = map getCompletionItem items in
 
       {
         environment = context.environment,
@@ -85,7 +100,7 @@ lang LSPCompletion = LSPRoot + LSPCompletionKind
             ("jsonrpc", JsonString "2.0"),
             ("id", JsonInt id),
             ("result", jsonKeyObject [
-              ("isIncomplete", JsonBool true),
+              ("isIncomplete", JsonBool false),
               ("items", JsonArray items)
             ])
           ]

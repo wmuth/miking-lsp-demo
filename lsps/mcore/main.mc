@@ -135,19 +135,55 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
         }
       ) bindings
     )
-  | TmLet { ident=ident, ty=ty, info=info }
-  | TmLam { ident=ident, ty=ty, info=info } ->
+  | TmLet { ident=ident, ty=ty, info=info, inexpr=inexpr } ->
+    let documentation = join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmLet)", getSym ident] in
     (
-      {
-        env with
-        availableVariables = concat env.availableVariables [{
-          location = info,
-          name = ident,
-          kind = CompletionVariable (),
-          documentation = None ()
-        }]
-      },
+      env,
       [
+        -- LsCompletion {
+        --   location = Some (infoTm inexpr),
+        --   getCompletion = lam. {
+        --     label = nameGetStr ident,
+        --     kind = CompletionVariable (),
+        --     insertText = None (),
+        --     deprecated = false,
+        --     documentation = Some documentation
+        --   }
+        -- },
+        LsHover {
+          location = info,
+          toString = lam. Some documentation
+        },
+        LsDefinition {
+          kind = SymbolTypeParameter (),
+          location = info,
+          name = ident
+        }
+      ]
+    )
+  | TmLam { ident=ident, ty=ty, info=info, body=body } ->
+    (
+      env,
+      -- {
+      --   env with
+      --   availableVariables = concat env.availableVariables [{
+      --     location = info,
+      --     name = ident,
+      --     kind = CompletionVariable (),
+      --     documentation = None ()
+      --   }]
+      -- },
+      [
+        -- LsCompletion {
+        --   location = Some info,
+        --   getCompletion = lam. {
+        --     label = nameGetStr ident,
+        --     kind = CompletionVariable (),
+        --     insertText = None (),
+        --     deprecated = false,
+        --     documentation = Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
+        --   }
+        -- },
         LsHover {
           location = info,
           toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
@@ -159,7 +195,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
         }
       ]
     )
-  | TmType { ident=ident, ty=ty, info=info } ->
+  | TmType { ident=ident, ty=ty, info=info, inexpr=inexpr } ->
     (
       {
         env with
@@ -191,16 +227,6 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
     (
       env,
       [
-        LsCompletion {
-          location = info,
-          getCompletions = lam. map (lam v. {
-            label = nameGetStr v.name,
-            kind = v.kind,
-            insertText = None (),
-            deprecated = false,
-            documentation = v.documentation
-          }) env.availableVariables 
-        },
         LsHover {
           location = info,
           toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmVar)", getSym ident])
@@ -217,16 +243,16 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
     (
       env,
       [
-        LsCompletion {
-          location = info,
-          getCompletions = lam. map (lam v. {
-            label = nameGetStr v.name,
-            kind = v.kind,
-            insertText = None (),
-            deprecated = false,
-            documentation = v.documentation
-          }) env.availableTypes 
-        },
+        -- LsCompletion {
+        --   location = Some info,
+        --   getCompletions = lam. map (lam v. {
+        --     label = nameGetStr v.name,
+        --     kind = v.kind,
+        --     insertText = None (),
+        --     deprecated = false,
+        --     documentation = v.documentation
+        --   }) env.availableTypes 
+        -- },
         LsType {
           location = info,
           ident = ident,
@@ -515,6 +541,24 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
     ]) res in
 
     optionGetOr [] languageSupport
+
+  -- sem intrinsicInLanguageSupport: MLangFile -> LSEnv -> LSCompileResult
+  -- sem intrinsicInLanguageSupport =| file ->
+  --   let filename = file.filename in
+  --   let info = infoWithFilename filename (Info filename 1 0) in
+    
+  --   [
+  --     -- LsCompletion {
+  --     --   location = Some info,
+  --     --   getCompletions = lam. map (lam v. {
+  --     --     label = nameGetStr v.name,
+  --     --     kind = v.kind,
+  --     --     insertText = None (),
+  --     --     deprecated = false,
+  --     --     documentation = v.documentation
+  --     --   }) env.availableVariables 
+  --     -- }
+  --   ]
 
   sem linksToLanguageSupport: MLangFile -> [LanguageServerPayload]
   sem linksToLanguageSupport =

@@ -53,7 +53,7 @@ lang LanguageServerRoot =
     lenses: [CodeLens],
 
     hover: Map Info [() -> Option String],
-    completions: Map Info [() -> [Completion]],
+    completions: Map Info [() -> Completion],
 
     definitions: Map Name [(Info, SymbolKind)],
     usages: Map Info [Name],
@@ -97,19 +97,20 @@ lang LanguageServerDiagnostic = LanguageServerRoot
     { context with information = join [context.information, [clearSeverity diagnostic]] }
 end
 
-lang LanguageServerCompletion = LanguageServerRoot
-  type CompletionPayload = {
-    location: Info,
-    getCompletions: () -> [Completion]
-  }
+-- lang LanguageServerCompletion = LanguageServerRoot
+--   type CompletionPayload = {
+--     location: Option Info,
+--     getCompletion: () -> Completion
+--   }
 
-  syn LanguageServerPayload =
-  | LsCompletion CompletionPayload
+--   syn LanguageServerPayload =
+--   | LsCompletion CompletionPayload
 
-  sem populateContext context =
-  | LsCompletion (completion & { location=location, getCompletions=getCompletions }) ->
-    { context with completions = mapInsertWith concat location [getCompletions] context.completions }
-end
+--   sem populateContext context =
+--   | LsCompletion (completion & { location=location, getCompletion=getCompletion }) ->
+--     let location = optionGetOr (NoInfo ()) location in
+--     { context with completions = mapInsertWith concat location [getCompletion] context.completions }
+-- end
 
 lang LanguageServerHover = LanguageServerRoot
   type HoverPayload = {
@@ -139,7 +140,7 @@ lang LanguageServerUsage = LanguageServerRoot
     { context with usages = mapInsertWith concat location [name] context.usages } 
 end
 
-lang LanguageServerDefinition = LanguageServerRoot
+lang LanguageServerDefinition = LanguageServerRoot + LSPSymbolToCompletion
   type DefinitionPayload = {
     kind: SymbolKind,
     location: Info,
@@ -193,7 +194,7 @@ end
 
 lang LanguageServer =
   LanguageServerRoot +
-  LanguageServerCompletion +
+  -- LanguageServerCompletion +
   LanguageServerHover +
   LanguageServerUsage +
   LanguageServerDefinition +

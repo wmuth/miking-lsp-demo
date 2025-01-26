@@ -5,6 +5,7 @@ include "../../lib/utils.mc"
 include "../json-rpc.mc"
 
 include "./symbol-kind.mc"
+include "./completion-kind.mc"
 
 type URI = String
 type Diagnostic = (Info, String)
@@ -25,7 +26,8 @@ lang DiagnosticBase
 end
 
 lang LanguageServerRoot =
-  DiagnosticBase + LSPSymbolKind
+  DiagnosticBase +
+  LSPSymbolKind + LSPCompletionKind
   
   type CodeLens = {
     title: String,
@@ -33,6 +35,14 @@ lang LanguageServerRoot =
     arguments: [JsonValue],
     data: Option JsonValue,
     location: Info
+  }
+
+  type Completion = {
+    label: String,
+    kind: CompletionItemKind,
+    insertText: Option String,
+    documentation: Option String,
+    deprecated: Bool
   }
 
   type LanguageServerContext = {
@@ -43,6 +53,8 @@ lang LanguageServerRoot =
     lenses: [CodeLens],
 
     hover: Map Info [() -> Option String],
+    completions: Map Info [() -> [Completion]],
+
     definitions: Map Name [(Info, SymbolKind)],
     usages: Map Info [Name],
 
@@ -65,6 +77,7 @@ let emptyLanguageServerContext = {
   information = [],
   lenses = [],
   hover = mapEmpty infoCmp,
+  completions = mapEmpty infoCmp,
   definitions = mapEmpty nameSymCmp,
   usages = mapEmpty infoCmp,
   typeLocations = mapEmpty infoCmp,
@@ -82,6 +95,20 @@ lang LanguageServerDiagnostic = LanguageServerRoot
     { context with warnings = join [context.warnings, [clearSeverity diagnostic]] }
     | LsDiagnostic (diagnostic & (_, _, Information ())) ->
     { context with information = join [context.information, [clearSeverity diagnostic]] }
+end
+
+lang LanguageServerCompletion = LanguageServerRoot
+  type CompletionPayload = {
+    location: Info,
+    getCompletions: () -> [Completion]
+  }
+
+  syn LanguageServerPayload =
+  | LsCompletion CompletionPayload
+
+  sem populateContext context =
+  | LsCompletion (completion & { location=location, getCompletions=getCompletions }) ->
+    { context with completions = mapInsertWith concat location [getCompletions] context.completions }
 end
 
 lang LanguageServerHover = LanguageServerRoot
@@ -166,6 +193,7 @@ end
 
 lang LanguageServer =
   LanguageServerRoot +
+  LanguageServerCompletion +
   LanguageServerHover +
   LanguageServerUsage +
   LanguageServerDefinition +

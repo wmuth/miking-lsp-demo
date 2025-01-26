@@ -78,7 +78,7 @@ lang LSPTypeHierarchy = LSPRoot + LSPProgress
 
       let res = jsonKeyObject [
         ("name", JsonString (nameGetStr typName)),
-        ("kind", JsonInt (getSymbolKind (TypeParameter ()))),
+        ("kind", JsonInt (getSymbolKind (SymbolTypeParameter ()))),
         ("uri", JsonString r.filename),
         ("range", infoToRangeUnwrap r),
         ("selectionRange", infoToRangeUnwrap r),
@@ -115,9 +115,6 @@ lang LSPTypeHierarchy = LSPRoot + LSPProgress
 
       let typesResult = findInfo file.typeLocations uri line character in
 
-      eprintln (join ["Looking up type hierarchy for ", uri, " at ", int2string line, ":", int2string character]);
-      eprintln (join ["Found usage result: ", (compose bool2string optionIsSome) typesResult]);
-
       let res = optionMap (lam typRes.
         match typRes with (Info r, typNames) in
         let lookup = (flip mapLookup) file.types in
@@ -129,7 +126,7 @@ lang LSPTypeHierarchy = LSPRoot + LSPProgress
 
             let res = jsonKeyObject [
               ("name", JsonString (nameGetStr typName)),
-              ("kind", JsonInt (getSymbolKind (TypeParameter ()))),
+              ("kind", JsonInt (getSymbolKind (SymbolTypeParameter ()))),
               ("uri", JsonString r.filename),
               ("range", infoToRangeUnwrap r),
               ("selectionRange", infoToRangeUnwrap r),

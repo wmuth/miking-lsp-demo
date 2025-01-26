@@ -1,87 +1,44 @@
 include "json.mc"
 
 include "../../lib/utils.mc"
+
+include "./utils.mc"
 include "./root.mc"
+include "./completion-kind.mc"
 
-lang LSPCompletionItem
+-- let getCompletionItems = lam environment.
+--   let getCompletionItem = lam definition.
+--     match definition with (name, info) in
+--     let name = nameGetStr name in
+--     jsonKeyObject [
+--       ("label", JsonString name),
+--       ("kind", JsonInt (use LSPCompletionKind in getCompletionItemKind (CompletionMethod ()))),
+--       ("insertText", JsonString (join [name, " in"])),
+--       ("insertTextFormat", JsonInt 2),
+--       ("documentation", jsonKeyObject [
+--         ("kind", JsonString "markdown"),
+--         ("value", JsonString "Addition operation `markdown test`")
+--       ]),
+--       ("deprecated", JsonBool false)
+--     ]
+--   in
 
-  -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItemKind
-  syn CompletionItemKind =
-    | Text
-    | Method
-    | Function
-    | Constructor
-    | Field
-    | Variable
-    | Class
-    | Interface
-    | Module
-    | Property
-    | Unit
-    | Value
-    | Enum
-    | Keyword
-    | Snippet
-    | Color
-    | File
-    | Reference
-    | Folder
-    | EnumMember
-    | Constant
-    | Struct
-    | Event
-    | Operator
-    | TypeParameter
+--   map getCompletionItem (mapToSeq environment.definitions)
 
-  sem getCompletionItemKind: CompletionItemKind -> Int
-  sem getCompletionItemKind =
-  | Text () -> 1
-  | Method () -> 2
-  | Function () -> 3
-  | Constructor () -> 4
-  | Field () -> 5
-  | Variable () -> 6
-  | Class () -> 7
-  | Interface () -> 8
-  | Module () -> 9
-  | Property () -> 10
-  | Unit () -> 11
-  | Value () -> 12
-  | Enum () -> 13
-  | Keyword () -> 14
-  | Snippet () -> 15
-  | Color () -> 16
-  | File () -> 17
-  | Reference () -> 18
-  | Folder () -> 19
-  | EnumMember () -> 20
-  | Constant () -> 21
-  | Struct () -> 22
-  | Event () -> 23
-  | Operator () -> 24
-  | TypeParameter () -> 25
-end
+let getCompletionItem = lam completion: use LSPRoot in Completion.
+  jsonKeyObject (filterOption [
+    Some ("label", JsonString completion.label),
+    Some ("kind", JsonInt (use LSPCompletionKind in getCompletionItemKind completion.kind)),
+    Some ("insertText", JsonString (optionGetOr completion.label completion.insertText)),
+    Some ("insertTextFormat", JsonInt 1), -- Plain Text
+    optionMap (lam documentation. ("documentation", jsonKeyObject [
+      ("kind", JsonString "markdown"),
+      ("value", JsonString documentation)
+    ])) completion.documentation,
+    Some ("deprecated", JsonBool completion.deprecated)
+  ])
 
-let getCompletionItems = lam environment.
-  let getCompletionItem = lam definition.
-    match definition with (name, info) in
-    let name = nameGetStr name in
-    jsonKeyObject [
-      ("label", JsonString name),
-      ("kind", JsonInt (use LSPCompletionItem in getCompletionItemKind (Method ()))),
-      ("insertText", JsonString (join [name, " in"])),
-      ("insertTextFormat", JsonInt 2),
-      ("documentation", jsonKeyObject [
-        ("kind", JsonString "markdown"),
-        ("value", JsonString "Addition operation `markdown test`")
-      ]),
-      ("deprecated", JsonBool false)
-    ]
-  in
-
-  map getCompletionItem (mapToSeq environment.definitionLookup)
-
-lang LSPCompletion = LSPRoot
+lang LSPCompletion = LSPRoot + LSPCompletionKind
   syn Message =
   | Completion {
     id: Int,
@@ -96,30 +53,42 @@ lang LSPCompletion = LSPRoot
       textDocument = getTextDocumentPositionParams request.params
     }
 
-  -- sem execute context =
-  --   | Completion {
-  --     id = id,
-  --     textDocument = {
-  --       uri = uri,
-  --       line = line,
-  --       character = character
-  --     }
-  --   } ->
-  --     let environmentMaybe = mapLookup uri context.environment.files in
-  --     let items = optionMap getCompletionItems environmentMaybe in
-  --     let items = optionGetOr [] items in
+  sem execute context =
+    | Completion {
+      id = id,
+      textDocument = {
+        uri = uri,
+        line = line,
+        character = character
+      }
+    } ->
+      let line = addi line 1 in
+      let uri = stripUriProtocol uri in
 
-  --     {
-  --       environment = context.environment,
-  --       response = Some(
-  --         jsonKeyObject [
-  --           ("jsonrpc", JsonString "2.0"),
-  --           ("id", JsonInt id),
-  --           ("result", jsonKeyObject [
-  --             ("isIncomplete", JsonBool true),
-  --             ("items", JsonArray items)
-  --           ])
-  --         ]
-  --       )
-  --     }
+      let environment = mapLookup uri context.environment.files in
+
+      let findInfo = lam environment. findInfo environment.completions uri line character in
+      let getScopes = lam value. match value with (info, generateScopes) in
+        foldl (lam acc. lam generateScope. join [acc, generateScope ()]) [] generateScopes
+      in
+
+      let generateScopes = optionBind environment findInfo in
+      let scopes = optionMap getScopes generateScopes in
+
+      let items = optionMap (map getCompletionItem) scopes in
+      let items = optionGetOr [] items in
+
+      {
+        environment = context.environment,
+        response = Some(
+          jsonKeyObject [
+            ("jsonrpc", JsonString "2.0"),
+            ("id", JsonInt id),
+            ("result", jsonKeyObject [
+              ("isIncomplete", JsonBool true),
+              ("items", JsonArray items)
+            ])
+          ]
+        )
+      }
 end

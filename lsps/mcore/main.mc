@@ -22,7 +22,28 @@ let createAccumulator: all a. all b. all acc. (([acc] -> a -> [acc]) -> [acc] ->
       join [acc, generator pat]
     ) [] item
 
-lang MLangLanguageServerCompiler = MLangRoot
+lang MLangScope = MLangRoot + LSPRoot
+  type AvailableName = {
+    location: Info,
+    name: Name,
+    kind: CompletionItemKind,
+    documentation: Option String
+  }
+
+  type LSEnv = {
+    availableVariables: [AvailableName],
+    availableTypes: [AvailableName]
+  }
+end
+
+let emptyLSEnv: use MLangScope in LSEnv = {
+  availableVariables = [],
+  availableTypes = []
+}
+
+lang MLangLanguageServerCompiler = MLangRoot + MLangScope
+  type LSCompileResult = (LSEnv, [LanguageServerPayload])
+
   sem getTypeNames : Type -> [Name]
   sem getTypeNames =
   | _ -> []
@@ -71,91 +92,172 @@ lang MLangLanguageServerCompiler = MLangRoot
       ) [] typ
     ]
 
-  sem exprLookup: MLangFile -> SymEnv -> Expr -> [LanguageServerPayload]
-  sem exprLookup file env =
-  | _ -> []
+  sem exprLookup: MLangFile -> SymEnv -> LSEnv -> Expr -> LSCompileResult
+  sem exprLookup file symEnv env =
+  | _ -> (env, [])
   | TmUse { ident=ident, ty=ty, info=info } ->
-    [
-      LsType {
-        location = info,
-        ident = ident,
-        superIdents = getTypeNamesRecursively ty
-      },
-      LsHover {
-        location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`", getSym ident])
-      },
-      LsUsage {
-        location = info,
-        name = ident
-      }
-    ]
+    (
+      env,
+      [
+        LsType {
+          location = info,
+          ident = ident,
+          superIdents = getTypeNamesRecursively ty
+        },
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`", getSym ident])
+        },
+        LsUsage {
+          location = info,
+          name = ident
+        }
+      ]
+    )
   | TmRecord { bindings=bindings, info=info } ->
-    [
-      LsHover {
-        location = info,
-        toString = lam. Some (join ["`record`"])
-      }
-    ]
+    (
+      env,
+      [
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`record`"])
+        }
+      ]
+    )
   | TmRecLets { bindings=bindings } ->
-    map (lam binding.
-      LsDefinition {
-        kind = Function (),
-        location = binding.info,
-        name = binding.ident
-      }
-    ) bindings
+    (
+      env,
+      map (lam binding.
+        LsDefinition {
+          kind = SymbolFunction (),
+          location = binding.info,
+          name = binding.ident
+        }
+      ) bindings
+    )
   | TmLet { ident=ident, ty=ty, info=info }
-  | TmLam { ident=ident, ty=ty, info=info }
+  | TmLam { ident=ident, ty=ty, info=info } ->
+    (
+      {
+        env with
+        availableVariables = concat env.availableVariables [{
+          location = info,
+          name = ident,
+          kind = CompletionVariable (),
+          documentation = None ()
+        }]
+      },
+      [
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
+        },
+        LsDefinition {
+          kind = SymbolTypeParameter (),
+          location = info,
+          name = ident
+        }
+      ]
+    )
   | TmType { ident=ident, ty=ty, info=info } ->
-    [
-      LsType {
-        location = info,
-        ident = ident,
-        superIdents = getTypeNamesRecursively ty
+    (
+      {
+        env with
+        availableTypes = concat env.availableTypes [{
+          location = info,
+          name = ident,
+          kind = CompletionTypeParameter (),
+          documentation = None ()
+        }]
       },
-      LsHover {
-        location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
-      },
-      LsDefinition {
-        kind = TypeParameter (),
-        location = info,
-        name = ident
-      }
-    ]
-  | TmVar { ident=ident, ty=ty, info=info }
+      [
+        LsType {
+          location = info,
+          ident = ident,
+          superIdents = getTypeNamesRecursively ty
+        },
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
+        },
+        LsDefinition {
+          kind = SymbolTypeParameter (),
+          location = info,
+          name = ident
+        }
+      ]
+    )
+  | TmVar { ident=ident, ty=ty, info=info } ->
+    (
+      env,
+      [
+        LsCompletion {
+          location = info,
+          getCompletions = lam. map (lam v. {
+            label = nameGetStr v.name,
+            kind = v.kind,
+            insertText = None (),
+            deprecated = false,
+            documentation = v.documentation
+          }) env.availableVariables 
+        },
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmVar)", getSym ident])
+        },
+        LsUsage {
+          location = info,
+          name = ident
+        }
+      ]
+    )
   | TmConDef { ident=ident, ty=ty, info=info }
   | TmConApp { ident=ident, ty=ty, info=info }
   | TmExt { ident=ident, ty=ty, info=info } ->
-    [
-      LsType {
-        location = info,
-        ident = ident,
-        superIdents = getTypeNamesRecursively ty
-      },
-      LsHover {
-        location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmConApp)", getSym ident])
-      },
-      LsUsage {
-        location = info,
-        name = ident
-      }
-    ]
+    (
+      env,
+      [
+        LsCompletion {
+          location = info,
+          getCompletions = lam. map (lam v. {
+            label = nameGetStr v.name,
+            kind = v.kind,
+            insertText = None (),
+            deprecated = false,
+            documentation = v.documentation
+          }) env.availableTypes 
+        },
+        LsType {
+          location = info,
+          ident = ident,
+          superIdents = getTypeNamesRecursively ty
+        },
+        LsHover {
+          location = info,
+          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmConApp)", getSym ident])
+        },
+        LsUsage {
+          location = info,
+          name = ident
+        }
+      ]
+    )
   | TmUtest { info = info & Info r } ->
-    [
-      LsCodeLens {
-        title = "Run Test (expr)",
-        ideCommand = "mcore.debugSingle",
-        arguments = [
-          JsonString r.filename,
-          JsonString (info2str info)
-        ],
-        data = None (),
-        location = info
-      }
-    ]
+    (
+      env,
+      [
+        LsCodeLens {
+          title = "Run Test (expr)",
+          ideCommand = "mcore.debugSingle",
+          arguments = [
+            JsonString r.filename,
+            JsonString (info2str info)
+          ],
+          data = None (),
+          location = info
+        }
+      ]
+    )
 
   sem patLookup: MLangFile -> SymEnv -> Path -> Pat -> [LanguageServerPayload]
   sem patLookup file env filename =
@@ -165,7 +267,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     let info = infoWithFilename filename info in
     [
       LsDefinition {
-        kind = Constructor (),
+        kind = SymbolConstructor (),
         location = info,
         name = ident
       },
@@ -206,7 +308,7 @@ lang MLangLanguageServerCompiler = MLangRoot
         toString = lam. Some (join ["`", nameGetStr ident, "` (let)", getSym ident])
       },
       LsDefinition {
-        kind = Variable (),
+        kind = SymbolVariable (),
         location = info,
         name = ident
       }
@@ -221,7 +323,7 @@ lang MLangLanguageServerCompiler = MLangRoot
           toString = lam. Some (join ["`", nameGetStr ident, "` (type decl)", getSym ident, ", ", type2str tyIdent])
         },
         LsDefinition {
-          kind = TypeParameter (),
+          kind = SymbolTypeParameter (),
           location = info,
           name = ident
         },
@@ -241,7 +343,7 @@ lang MLangLanguageServerCompiler = MLangRoot
           toString = lam. Some (join ["`", nameGetStr ident, "` (syn)", getSym ident])
         },
         LsDefinition {
-          kind = TypeParameter (),
+          kind = SymbolTypeParameter (),
           location = info,
           name = ident
         }
@@ -249,7 +351,7 @@ lang MLangLanguageServerCompiler = MLangRoot
       flatMap (lam def.
         [
           LsDefinition {
-            kind = EnumMember (),
+            kind = SymbolEnumMember (),
             location = info,
             name = def.ident
           }
@@ -265,7 +367,7 @@ lang MLangLanguageServerCompiler = MLangRoot
           toString = lam. Some (join ["`", nameGetStr binding.ident, "` (let)", getSym binding.ident])
         },
         LsDefinition {
-          kind = Variable (),
+          kind = SymbolVariable (),
           location = infoWithFilename filename info,
           name = binding.ident
         }
@@ -278,7 +380,7 @@ lang MLangLanguageServerCompiler = MLangRoot
         toString = lam. Some (nameGetStr ident)
       },
       LsDefinition {
-        kind = Module (),
+        kind = SymbolModule (),
         location = info,
         name = ident
       }
@@ -297,14 +399,14 @@ lang MLangLanguageServerCompiler = MLangRoot
           toString = lam. Some (join ["`", nameGetStr ident, "` (sem)", getSym ident])
         },
         LsDefinition {
-          kind = Function (),
+          kind = SymbolFunction (),
           location = info,
           name = ident
         }
       ],
       map (lam arg. 
         LsDefinition {
-          kind = Variable (),
+          kind = SymbolVariable (),
           location = info,
           name = arg.ident
         }  
@@ -352,21 +454,21 @@ lang MLangLanguageServerCompiler = MLangRoot
 
     join [self, childTypes, childPatterns]
 
-  sem recursiveExprLookup: MLangFile -> SymEnv -> Expr -> [LanguageServerPayload]
-  sem recursiveExprLookup file env =| expr ->
+  sem recursiveExprLookup: MLangFile -> SymEnv -> LSEnv -> Expr -> [LanguageServerPayload]
+  sem recursiveExprLookup file symEnv env =| expr ->
     let filename = file.filename in
-    let self = exprLookup file env expr in
+    match exprLookup file symEnv env expr with (env, self) in
 
     let childTypes = sfold_Expr_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup file env ty]
+      join [acc, recursiveTypeLookup file symEnv ty]
     ) [] expr in
 
     let childExprs = sfold_Expr_Expr (lam acc. lam expr.
-      join [acc, recursiveExprLookup file env expr]
+      join [acc, recursiveExprLookup file symEnv env expr]
     ) [] expr in
 
     let childPatterns = sfold_Expr_Pat (lam acc. lam pat.
-      join [acc, recursivePatLookup file env pat]
+      join [acc, recursivePatLookup file symEnv pat]
     ) [] expr in
 
     join [self, childExprs, childPatterns, childTypes]
@@ -385,7 +487,7 @@ lang MLangLanguageServerCompiler = MLangRoot
     ) [] decl in
 
     let childExprs = sfold_Decl_Expr (lam acc. lam expr.
-      join [acc, recursiveExprLookup file env expr]
+      join [acc, recursiveExprLookup file env emptyLSEnv expr]
     ) [] decl in
 
     let childDecls = sfold_Decl_Decl (lam acc. lam decl.
@@ -409,7 +511,7 @@ lang MLangLanguageServerCompiler = MLangRoot
 
     let languageSupport = optionMap (lam res. match res with (symEnv, program) in join [
       flatMap (recursiveDeclLookup file symEnv) (optionGetOr [] (optionMap (lam program. program.decls) program)),
-      optionGetOr [] (optionMap (lam program. recursiveExprLookup file symEnv program.expr) program)
+      optionGetOr [] (optionMap (lam program. recursiveExprLookup file symEnv emptyLSEnv program.expr) program)
     ]) res in
 
     optionGetOr [] languageSupport
@@ -427,7 +529,7 @@ lang MLangLanguageServerCompiler = MLangRoot
             toString = lam. Some (join ["`", path, "` (link)"])
           },
           LsDefinition {
-            kind = File (),
+            kind = SymbolFile (),
             location = makeInfo (posVal path 1 0) (posVal path 1 0),
             name = fileName
           },

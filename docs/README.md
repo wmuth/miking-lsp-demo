@@ -18,6 +18,10 @@ https://github.com/user-attachments/assets/9895db91-e153-4248-858c-d3ae952b0612
 
 https://github.com/user-attachments/assets/96e50a1b-94fe-4d06-b2fd-8b3e572ee86c
 
+### Type hierarchy
+
+https://github.com/user-attachments/assets/991cf930-cf41-4e3f-a8dd-c4c6c7d593e2
+
 ## Requirements
 
 ### Programs

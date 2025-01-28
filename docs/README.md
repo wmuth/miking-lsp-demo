@@ -1,16 +1,10 @@
 # Miking LSP PoC
 
-### Version 1
-
-https://github.com/didrikmunther/miking-lsp-demo/assets/5240046/3fb31104-b3fc-44c9-8262-ad91f5245114
-
-### Version 2
-
-#### Goto Definition & Hover Support (Type information)
+### Goto Definition & Hover Support (Type information)
 
 https://github.com/user-attachments/assets/5ffcb3a5-773c-4d26-830c-b3de1d564780
 
-#### Code Lens (Run unit tests)
+### Code Lens (Run unit tests)
 
 https://github.com/user-attachments/assets/9895db91-e153-4248-858c-d3ae952b0612
 
@@ -21,6 +15,10 @@ https://github.com/user-attachments/assets/96e50a1b-94fe-4d06-b2fd-8b3e572ee86c
 ### Type hierarchy
 
 https://github.com/user-attachments/assets/991cf930-cf41-4e3f-a8dd-c4c6c7d593e2
+
+## Version 1 (legacy)
+
+https://github.com/didrikmunther/miking-lsp-demo/assets/5240046/3fb31104-b3fc-44c9-8262-ad91f5245114
 
 ## Requirements
 

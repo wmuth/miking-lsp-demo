@@ -141,7 +141,7 @@
 	  },
 	  "comment-line": {
 		"name": "comment.line.probtime",
-		"begin": "--",
+		"begin": "//",
 		"end": "\n"
 	  },
 	  "comment-block": {

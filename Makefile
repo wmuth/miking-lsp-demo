@@ -38,4 +38,4 @@ $(LSPS):
 
 $(CLIENTS):
 	@echo "-- [Building CLIENT $@] --"
-	make -C $@
+	make -B -C $@

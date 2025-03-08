@@ -1,10 +1,9 @@
+include "../../../ProbTime/src/rtppl.mc"
+
 include "../../lsp-server/lsp/root.mc"
+include "../../lsp-server/lsp/utils.mc"
 
 lang ProbTimeCompiler = LSPRoot
-  syn EventType =
-  | Open
-  | Change
-
   -- sem createReversedDependencies : Map URI (Set URI) -> Map URI (Set URI)
   -- sem createReversedDependencies =| dependencies ->
   --   -- Convert the map to a sequence
@@ -32,9 +31,26 @@ lang ProbTimeCompiler = LSPRoot
   --   match optionMap fileReadString (fileReadOpen path) with Some content in
   --   createEmptyFile path content
 
-  sem createFileLoader: EventType -> (LSPCompilationParameters -> LSPCompilationResult)
-  sem createFileLoader =| eventType ->
-    lam. mapEmpty cmpString
+  sem onChange: LSPCompilationParameters -> LSPCompilationResult
+  sem onChange =| parameters ->
+    let filename = stripUriProtocol parameters.uri in
+
+    -- mapFromSeq cmpString [(
+    --   stripUriProtocol parameters.uri,
+    --   [
+    --       LsHover {
+    --       location = makeInfo (posVal parameters.uri 0 0) (posVal parameters.uri 100 100),
+    --       toString = lam. Some (join [
+    --         "hejsan"
+    --       ])
+    --     }
+    --   ]
+    -- )]
+
+    use Rtppl in
+    let program = parseRtpplExn filename parameters.content in
+
+    mapEmpty cmpString
 
   -- sem compileMLangLSP: (Path -> Option MLangFile) -> MLangFile -> Path -> String -> MLangFile
   -- sem compileMLangLSP getFile file uri =| content ->

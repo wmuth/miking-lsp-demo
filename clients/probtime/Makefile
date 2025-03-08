@@ -8,7 +8,7 @@ all: client/out/extension.js
 
 clean:
 	npm run clean
-	rm -rf out lsp-server probtime stdlib probtime-lib
+	rm -rf out lsp-server probtime stdlib probtime-lib coreppl-lib
 
 client/out/extension.js: $(JS_FILES) $(TS_FILES) $(JSON_FILES) clean
 	mkdir -p probtime out
@@ -16,10 +16,8 @@ client/out/extension.js: $(JS_FILES) $(TS_FILES) $(JSON_FILES) clean
 	mkdir -p probtime/lsps/probtime
 	cp -r ../../lsps/probtime/*.mc probtime/lsps/probtime
 
-	mkdir -p stdlib
-	cp -r ../../../miking/stdlib .
-
-	mkdir -p probtime-lib
-	cp -r ../../../probtime-lib . && rm -rf probtime-lib/.git
+	rm -rf stdlib && cp -r ../../../miking/stdlib .
+	rm -rf probtime-lib && cp -r ../../../probtime-lib . && rm -rf probtime-lib/.git
+	rm -rf coreppl-lib && cp -r ../../../miking-dppl/coreppl/src ./coreppl-lib
 
 	npm install && npm run compile

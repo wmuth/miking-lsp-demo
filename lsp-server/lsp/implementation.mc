@@ -6,7 +6,7 @@ include "./utils.mc"
 include "./root.mc"
 
 -- let findDefinitionLinearly: URI -> Map Name [(Info, use LSPSymbolKind in SymbolKind)] -> Int -> Int -> Option Name =
-let findDefinitionLinearly: URI -> Map Name [use LanguageServerRoot in Definition] -> Int -> Int -> Option Name =
+let findDefinitionLinearly: URI -> Map Name [use LanguageServerRoot in LSPDefinition] -> Int -> Int -> Option Name =
   lam uri. lam definitions. lam line. lam character.
     -- Make Into [Name, [Info]] pairs
     let definitions = mapToSeq definitions in

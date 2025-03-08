@@ -24,7 +24,7 @@ if [ ! -f "$DIR/out/$BINARY" ]; then
   >&2 echo "ProbTime LSP binary not found, compiling..."
   rm -rf $DIR/out && \
   mkdir -p $DIR/out && \
-  MCORE_LIBS="stdlib=$DIR/stdlib" \
+  MCORE_LIBS="stdlib=$DIR/stdlib:probtime=$DIR/probtime-lib:coreppl=$DIR/coreppl-lib" \
   mi compile $DIR/probtime/lsps/probtime/lsp-server.mc --output $DIR/out/$BINARY && \
   $DIR/out/lsp-server-$VERSION || \
   (>&2 echo "Compilation failed" && exit 1)

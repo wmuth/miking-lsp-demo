@@ -54,7 +54,7 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
       ("result", result)
     ]
 
-  sem findDefinitions: Map Name [Definition] -> UsageInformation -> [DefinitionInformation]
+  sem findDefinitions: Map Name [LSPDefinition] -> UsageInformation -> [DefinitionInformation]
   sem findDefinitions definitions =| usage ->
     let locations = filterMap (lam name. mapLookup name definitions) usage.names in
     flatMap (map (lam definition. { from = usage.location, to = definition.location })) locations

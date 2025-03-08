@@ -1,0 +1,86 @@
+// A simple coin flip model that estimates the likelihood of a coin being
+// biased, given our provided observations. We use 0.0 to denote heads and 1.0
+// to denote tails. For a fair coin, the bias should be 0.5, while a coin that
+// always yields heads has bias 0.0.
+model coinFlipModel(prior : Dist(Float), observations : [TSV(Float)]) : Float {
+  sample bias123 ~ prior
+  for obs in observations {
+    if value(obs) == 0.0 {
+      observe false ~ Bernoulli(bias123)
+    } else {
+      observe true ~ Bernoulli(bias123)
+    }
+  }
+  return bias123
+}
+
+def printObs(obs55 : TSV(Float)) : Unit {
+  print(intToString(timestamp(obs55)))
+  print(" ")
+  printLine(floatToString(value(obs55)))
+}
+
+def printInput(observations : [TSV(Float)]) : Unit {
+  printLine("Received observations:")
+  for obs in observations {
+    printObs(obs)
+  }
+}
+
+// Compute the expected value of the distribution.
+def expectedValue(d : Dist(Float)) : Float {
+  var acc = 0.0
+  var s = samples d
+  for i in range(0, |s.s|) update acc {
+    acc = acc + (s.s[i]) * exp(s.w[i])
+  }
+  return acc
+}
+
+def stddev(d : Dist(Float), mu : Float) : Float {
+  var acc = 0.0
+  var s = samples d
+  for i in range(0, |s.s|) update acc {
+    acc = acc + (s.s[i] - mu) * (s.s[i] - mu) * exp(s.w[i])
+  }
+  return sqrt(acc)
+}
+
+// An iterative coin flip task template. We start from a uniform distribution,
+// and repeatedly update the distribution based on our new observations.
+template CoinFlip() {
+  input in1 : Float
+  output out1 : {mu : Float, sigma : Float}
+
+  // We start from a uniform distribution.
+  var d = Uniform(0.0, 1.0)
+
+  // We use 'd' in the loop to indicate that its updated values should be made
+  // visible to later iterations of the loop.
+  while true update d {
+    delay 1s
+    read in1 to indata
+    printInput(indata)
+
+    // We infer a distribution from the coin flip model using a fixed number of
+    // particles. We could have used an execution time budget, with which we
+    // will infer as many particles as we have time for during the given
+    // budget. However, this does not work well for simple models as this one,
+    // as the number of particles grows too large.
+    infer coinFlipModel(d, indata) to d particles 100
+
+    // We write the expected value and the standard deviation of the empirical
+    // distribution to the output port.
+    var mu = expectedValue(d)
+    var sigma = stddev(d, mu)
+    write {mu = mu, sigma = sigma} to out1
+  }
+}
+
+system {
+  sensor coin : Float rate 300ms
+  actuator bias : Float rate 100ms
+  task cf = CoinFlip() importance 1
+  coin -> cf.in1
+  cf.out1 -> bias
+}

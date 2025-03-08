@@ -29,13 +29,13 @@ lang LanguageServerRoot =
   DiagnosticBase +
   LSPSymbolKind + LSPCompletionKind
   
-  type Definition = {
+  type LSPDefinition = {
     location: Info,
     kind: SymbolKind,
     documentation: () -> Option String
   }
 
-  type CodeLens = {
+  type LSPCodeLens = {
     title: String,
     ideCommand: String,
     arguments: [JsonValue],
@@ -43,7 +43,7 @@ lang LanguageServerRoot =
     location: Info
   }
 
-  type Completion = {
+  type LSPCompletion = {
     label: String,
     kind: CompletionItemKind,
     insertText: Option String,
@@ -56,12 +56,12 @@ lang LanguageServerRoot =
     warnings: [Diagnostic],
     information: [Diagnostic],
 
-    lenses: [CodeLens],
+    lenses: [LSPCodeLens],
 
     hover: Map Info [() -> Option String],
-    completions: Map Info [() -> Completion],
+    completions: Map Info [() -> LSPCompletion],
 
-    definitions: Map Name [Definition],
+    definitions: Map Name [LSPDefinition],
     availability: Map Info [Name],
     usages: Map Info [Name],
 
@@ -212,7 +212,7 @@ end
 
 lang LanguageServerCodeLens = LanguageServerRoot
   syn LanguageServerPayload =
-  | LsCodeLens CodeLens
+  | LsCodeLens LSPCodeLens
 
   sem populateContext context =
   | LsCodeLens lens ->

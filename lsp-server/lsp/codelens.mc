@@ -8,7 +8,7 @@ include "./root.mc"
 let getUtestLenses = lam lenses.
   eprintln (join ["Lens count: ", int2string (length lenses)]);
 
-  let createLens: use LanguageServer in CodeLens -> Option JsonValue = lam lens.
+  let createLens: use LanguageServer in LSPCodeLens -> Option JsonValue = lam lens.
     match (infoToRange lens.location, lens.location) with (Some range, Info r) then
       Some (jsonKeyObject [
         range,

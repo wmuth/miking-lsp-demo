@@ -1,88 +1,130 @@
-include "../../../ProbTime/src/rtppl.mc"
+include "probtime-lib/src/rtppl.mc"
+include "mexpr/mexpr.mc"
 
 include "../../lsp-server/lsp/root.mc"
 include "../../lsp-server/lsp/utils.mc"
 
-lang ProbTimeCompiler = LSPRoot
-  -- sem createReversedDependencies : Map URI (Set URI) -> Map URI (Set URI)
-  -- sem createReversedDependencies =| dependencies ->
-  --   -- Convert the map to a sequence
-  --   let seq: [(Path, Set Path)] = mapToSeq dependencies in
-  --   -- Create a list of pairs (childUri, parentUri)
-  --   let pairs: [(Path, Path)] = flatMap (
-  --     lam dependency.
-  --       match dependency with (childUri, parentUris) in
-  --       map (lam parentUri. (childUri, parentUri)) (setToSeq parentUris)
-  --   ) seq in
-    
-  --   -- Group the pairs by the parentUri
-  --   let flatDependencyGraph: Map URI (Set URI) = foldl (
-  --     lam acc. lam dependency.
-  --       match dependency with (childUri, parentUri) in
-  --       mapInsertWith setUnion parentUri (setSingleton cmpString childUri) acc
-  --   ) (mapEmpty cmpString) pairs in
+include "./main.mc"
 
-  --   -- TODO: Implement parentUri having all children
-  --   let reversedDependencies: Map URI (Set URI) = flatDependencyGraph in
-  --   reversedDependencies
+let toDiagnostic = use LSPRoot in lam element. LsDiagnostic element
+let toError = use LSPRoot in addSeverity (Error ())
+let toWarning = use LSPRoot in addSeverity (Warning ())
 
-  -- sem createEmptyFileFromDisk : Path -> MLangFile
-  -- sem createEmptyFileFromDisk =| path ->
-  --   match optionMap fileReadString (fileReadOpen path) with Some content in
-  --   createEmptyFile path content
+lang ProbTimeCompiler = LSPRoot + Rtppl + MExpr + MExprLanguageServerCompiler
+  type MExprSymbolized = {
+    expr: Expr, -- With symbols
+    diagnostics: [DiagnosticWithSeverity]
+  }
 
-  sem onChange: LSPCompilationParameters -> LSPCompilationResult
-  sem onChange =| parameters ->
+  type MExprTypeChecked = {
+    expr: Expr,
+    diagnostics: [DiagnosticWithSeverity]
+  }
+
+  sem lsSymbolizeExpr: SymEnv -> Expr -> MExprSymbolized
+  sem lsSymbolizeExpr symEnv =| expr ->
+    modref __LSP__SOFT_ERROR true;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
+
+    let expr = symbolizeExpr symEnv expr in
+
+    let errors = deref __LSP__BUFFERED_ERRORS in
+    let warnings = deref __LSP__BUFFERED_WARNINGS in
+
+    modref __LSP__SOFT_ERROR false;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
+
+    {
+      expr = expr,
+      diagnostics = join [
+        map toError errors,
+        map toWarning warnings
+      ]
+    }
+  
+  sem lsTypeCheckMExpr : Expr -> MExprTypeChecked
+  sem lsTypeCheckMExpr =| expr ->
+    modref __LSP__SOFT_ERROR true;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
+
+    let env = {
+      typcheckEnvDefault with
+      disableConstructorTypes = true
+    } in
+
+    let expr = removeMetaVarExpr (typeCheckExpr env expr) in
+
+    let errors = deref __LSP__BUFFERED_ERRORS in
+    let warnings = deref __LSP__BUFFERED_WARNINGS in
+
+    modref __LSP__SOFT_ERROR false;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
+
+    {
+      expr = expr,
+      diagnostics = join [
+        map toError errors,
+        map toWarning warnings
+      ]
+    }
+
+  sem createChangeHandler: () -> (LSPCompilationParameters -> LSPCompilationResult)
+  sem createChangeHandler =| _ ->
+    let runtime = readRuntime () in
+    let runtimeSymEnv = addTopNames symEnvEmpty runtime in
+    onChange runtime runtimeSymEnv
+
+  sem onChange: Expr -> SymEnv -> (LSPCompilationParameters -> LSPCompilationResult)
+  sem onChange runtime runtimeSymEnv =| parameters ->
     let filename = stripUriProtocol parameters.uri in
 
-    -- mapFromSeq cmpString [(
-    --   stripUriProtocol parameters.uri,
-    --   [
-    --       LsHover {
-    --       location = makeInfo (posVal parameters.uri 0 0) (posVal parameters.uri 100 100),
-    --       toString = lam. Some (join [
-    --         "hejsan"
-    --       ])
-    --     }
-    --   ]
-    -- )]
+    switch parseRtppl filename parameters.content
+      case Left errors then
+        eprintln (join ["Error parsing ", filename]);
+        let diagnostics = map (compose toDiagnostic toError) errors in
+        mapSingleton cmpString filename diagnostics
+      case Right (ProgramRtpplProgram program) then  
+        eprintln (join ["Parsed ", filename]);
+        -- validateRtpplProgram program;
 
-    use Rtppl in
-    let program = parseRtpplExn filename parameters.content in
+        let env = initTopEnv rtpplDefaultOptions in
+        match mapAccumL compileRtpplTop env program.tops with 
+        (
+          topEnv,
+          exprs
+        ) in
 
-    mapEmpty cmpString
+        let expr = bindall_ exprs in
+        let expr = bind_ runtime expr in
 
-  -- sem compileMLangLSP: (Path -> Option MLangFile) -> MLangFile -> Path -> String -> MLangFile
-  -- sem compileMLangLSP getFile file uri =| content ->
-  --   let parsed = match (file.parsed, file.status)
-  --     with (Some parsed, !Changed ()) then parsed
-  --     else lsParseMLang file.filename file.content
-  --   in
+        match lsSymbolizeExpr runtimeSymEnv expr with {
+          expr = expr,
+          diagnostics = symbolizeDiagnostics
+        } in
 
-  --   let linked = match (file.linked, file.status)
-  --     with (Some linked, Linked () | Symbolized ()) then linked
-  --     else lsLinkMLang file.filename parsed.includes parsed.program
-  --   in
+        match lsTypeCheckMExpr expr with {
+          expr = expr,
+          diagnostics = typeCheckDiagnostics
+        } in
+        
+        -- let ast = eliminateDuplicateCode (bind_ runtime rtpplExpr) in
 
-  --   let symbolized = match (file.symbolized, file.status)
-  --     with (Some symbolized, Symbolized ()) then symbolized
-  --     else lsSymbolizeMLang getFile file.filename linked.links linked.program
-  --   in
+        -- match liftLambdasWithSolutions expr with (
+        --   solutions,
+        --   expr
+        -- ) in
 
-  --   let typeChecked = match (file.typeChecked, file.status)
-  --     with (Some typeChecked, TypeChecked ()) then typeChecked
-  --     else lsCompileMLangToMExpr getFile file.filename linked.links symbolized.program
-  --   in
+        let languageSupport = fileToLanguageSupport filename expr in
 
-  --   let file: MLangFile = {
-  --     file with
-  --     status = TypeChecked (),
-  --     -- status = Symbolized (),
-  --     parsed = Some parsed,
-  --     linked = Some linked,
-  --     symbolized = Some symbolized,
-  --     typeChecked = Some typeChecked
-  --   } in
-
-  --   file
+        eprintln (join ["Compiled ", filename]);
+        mapSingleton cmpString filename (join [
+          map toDiagnostic symbolizeDiagnostics,
+          map toDiagnostic typeCheckDiagnostics,
+          languageSupport
+        ])
+    end
 end

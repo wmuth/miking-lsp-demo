@@ -20,8 +20,8 @@ let options = {
 } in
 
 let lspStartParameters: use LSPRoot in LSPStartParameters = {
-  onOpen   = use ProbTimeCompiler in onChange,
-  onChange = use ProbTimeCompiler in onChange,
+  onOpen   = use ProbTimeCompiler in createChangeHandler (),
+  onChange = use ProbTimeCompiler in createChangeHandler (),
   onClose  = onClose,
   options  = options
 } in

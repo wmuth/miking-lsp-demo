@@ -1,0 +1,10 @@
+
+
+let a = 5.0 + 2.0 * 15.0;
+
+let b = 123.0;
+
+let c = b;
+
+let result = a + 5.0;
+

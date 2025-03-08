@@ -6,7 +6,7 @@ include "./utils.mc"
 include "./root.mc"
 include "./completion-kind.mc"
 
-let getCompletionItem = lam completion: use LSPRoot in Completion.
+let getCompletionItem = lam completion: use LSPRoot in LSPCompletion.
   jsonKeyObject (filterOption [
     Some ("label", JsonString completion.label),
     Some ("kind", JsonInt (use LSPCompletionKind in getCompletionItemKind completion.kind)),
@@ -52,7 +52,7 @@ lang LSPCompletion = LSPRoot + LSPCompletionKind
       -- let generateCompletions: (Info, [() -> Completion]) -> [Completion] = lam value. match value with (info, generateCompletions) in
       --   map (lam generateCompletion. generateCompletion ()) generateCompletions
       -- in
-      let getAllSymbols: () -> [Completion] = lam.
+      let getAllSymbols: () -> [LSPCompletion] = lam.
         let definitions = optionMap (lam environment. mapToSeq environment.definitions) environment in
         let definitions = optionGetOr [] definitions in
         let mapDefinitions = lam definition.

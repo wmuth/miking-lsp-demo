@@ -1,5 +1,6 @@
 DSLS := $(wildcard dsls/*)
 LSPS := $(wildcard lsps/*)
+CLIENTS := $(wildcard clients/*)
 
 .PHONY: all clean vscode-client $(DSLS) $(LSPS)
 
@@ -31,10 +32,10 @@ $(LSPS):
 	@echo "-- [Building LSP $@] --"
 	make -C $@
 
-# -- VSCode extension --
+# -- CLIENTs --
 
-vscode-client: lsps/mcore
-	@echo "-- [Building VSCode extension] --"
+$(CLIENTS):
+	@echo "-- [Building CLIENT $@] --"
 	rm -rf lsp-client/mcore lsp-client/out
 	mkdir -p lsp-client/mcore lsp-client/out
 	cp -r ./{lsp-server,lib} lsp-client/mcore

@@ -22,11 +22,17 @@ lang MCoreCompile =
   MExprCmp +
   MExprSym + MExprRemoveTypeAscription + MExprTypeCheck +
   MExprUtestGenerate + MExprRuntimeCheck + MExprProfileInstrument +
-  MExprPrettyPrint +
+  MLangPrettyPrint +
   MExprLowerNestedPatterns +
   MExprConstantFold +
   SpecializeCompile +
   PprintTyAnnot + HtmlAnnotator
+end
+
+lang LSPTypeCheck = MCoreCompile
+  sem typeCheckExpr env =
+  | TmUse { inexpr=inexpr } ->
+    typeCheckExpr env inexpr
 end
 
 lang MLangMExprTypeChecker = MLangRoot
@@ -44,10 +50,12 @@ lang MLangMExprTypeChecker = MLangRoot
     modref __LSP__BUFFERED_ERRORS [];
     modref __LSP__BUFFERED_WARNINGS [];
 
-    let expr = use MCoreCompile in typeCheckExpr {
+    let env = {
       typcheckEnvDefault with
-      disableConstructorTypes = false
-    } expr in
+      disableConstructorTypes = true
+    } in
+
+    let expr = use LSPTypeCheck in removeMetaVarExpr (typeCheckExpr env expr) in
 
     let errors = deref __LSP__BUFFERED_ERRORS in
     let warnings = deref __LSP__BUFFERED_WARNINGS in
@@ -64,32 +72,44 @@ lang MLangMExprTypeChecker = MLangRoot
 end
 
 lang MLangMExprCompiler = MLangRoot
-	sem lsCompileMLangToMExpr : Path -> MLangFile -> MLangFile
-	sem lsCompileMLangToMExpr filename =
-  | file & CSymbolized (symbolized & { program = program }) ->
-    eprintln (join ["Mexprering file"]);
+	sem lsCompileMLangToMExpr : (Path -> Option MLangFile) -> Path -> [Link] -> Option MLangProgram -> MLangTypeCheckedFile
+	sem lsCompileMLangToMExpr getFile filename includes =
+  | None () -> {
+    expr = None (),
+    diagnostics = []
+  }
+  | Some program ->
+    -- let includedFiles: [MLangFile] = filterMap (lam link. getFile link.1) includes in
+    -- let includedProgram: [MLangProgram] = filterMap getProgram includedFiles in
+    -- let includedDecls = map (lam program. program.decls) includedProgram in
+    -- let decls = foldl concat program.decls includedDecls in
+    -- let program = { program with decls = decls } in
 
     match result.consume (checkComposition program) with (warnings, res) in 
     switch res 
       case Left errs then 
-        iter raiseError errs ;
-        never
+        {
+          expr = None (),
+          diagnostics = map (compose (addSeverity (Error ())) getCompositionErrorDiagnostic) errs
+        }
       case Right env then
-        let ctx = _emptyCompilationContext env in 
-        let res = result.consume (compile ctx program) in 
-        match res with (_, rhs) in 
-        match rhs with Right expr in
+        let ctx = _emptyCompilationContext env in        
 
+        let declCtx = result.foldlM compileDecl ctx program.decls in
+        match result.consume declCtx with (_, Right ctx) in
+
+        let ctx = withExpr ctx program.expr in
+        let expr = bindall_ ctx.exprs in
         let expr = postprocess env.semSymMap expr in 
+
         match use MLangMExprTypeChecker in lsTypeCheckMExpr expr with {
           expr = expr,
           warnings = warnings,
           errors = errors
         } in
 
-        CTypeChecked {
-          symbolized = symbolized,
-          expr = expr,
+        {
+          expr = Some expr,
           diagnostics = join [
             map (addSeverity (Error ())) errors,
             map (addSeverity (Warning ())) warnings

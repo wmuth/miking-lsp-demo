@@ -78,19 +78,18 @@ lang LSPWorkspaceSymbol = LSPRoot + LSPSymbolKind
     -- }
 
     let f = lam definition.
-      match definition with (name, infos) in
+      match definition with (name, definitions) in
       filterMap (
-        lam info.
-          match info with (info, kind) in
-          match generateLocationLinks__LSPWorkspaceSymbol info with Some location then
+        lam definition.
+          match generateLocationLinks__LSPWorkspaceSymbol definition.location with Some location then
             Some (jsonKeyObject [
               ("name", JsonString (nameGetStr name)),
-              ("kind", JsonInt (getSymbolKind kind)),
+              ("kind", JsonInt (getSymbolKind definition.kind)),
               ("location", location)
             ])
           else 
             None ()
-      ) infos
+      ) definitions
     in
 
     let response = jsonKeyObject [

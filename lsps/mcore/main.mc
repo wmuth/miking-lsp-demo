@@ -1,13 +1,31 @@
 include "./root.mc"
 
-let debugSym = true
+let debugSym = false
+
+let mcoreCode = lam code. join ["```mcore\n", code, "\n```"]
+
+recursive let getAnyType = lam types.
+  use MExprAst in
+  switch types
+    case [] then
+      TyUnknown { info = NoInfo () }
+    case [t] then
+      t
+    case [TyUnknown _] ++ rest then
+      getAnyType rest
+    case [t] ++ rest then
+      t
+  end
+end
+
 
 let getSym = 
   if debugSym then
     lam name.
-      optionGetOr
-      "No symbol"
-      (optionMap (compose int2string sym2hash) (nameGetSym name))
+      join [
+        "\n",
+        optionGetOr "No symbol" (optionMap (compose int2string sym2hash) (nameGetSym name))
+      ]
     else
       lam. ""
 
@@ -41,27 +59,29 @@ let emptyLSEnv: use MLangScope in LSEnv = {
   availableTypes = []
 }
 
-lang MLangLanguageServerCompiler = MLangRoot + MLangScope
+lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
   type LSCompileResult = (LSEnv, [LanguageServerPayload])
 
   sem getTypeNames : Type -> [Name]
   sem getTypeNames =
   | _ -> []
-  | typ & TyCon { ident=ident, info=info } ->
+  | TyCon { ident=ident, info=info } ->
+    eprintln (join ["getTypeNames: ", nameGetStr ident]);
     [ident]
 
   sem getTypeNamesRecursively : Type -> [Name]
   sem getTypeNamesRecursively =| typ ->
-    let childTypes = sfold_Type_Type (lam acc. lam ty.
+    eprintln (join ["getTypeNamesRecursively: ", type2str typ]);
+    let myTypes = getTypeNames typ in
+    sfold_Type_Type (lam acc. lam ty.
       join [acc, getTypeNamesRecursively ty]
-    ) [] typ in
-    join [getTypeNames typ, childTypes]
+    ) myTypes typ
 
   sem typeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
   sem typeLookup file env =
   | _ -> []
   | TyAlias { display=TyCon { ident=ident, info=info }, content=typ }
-  | typ & TyCon { ident=ident, info=info }
+  | TyCon { ident=ident, info=info, data=typ }
   | typ & TyVar { ident=ident, info=info }
   | typ & TyAll { ident=ident, info=info }
   | typ & TyUse { ident=ident, info=info } ->
@@ -71,7 +91,10 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       [
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` (type Ty)", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (join ["type ", nameGetStr ident, ": ", type2str typ]),
+            getSym ident
+          ])
         },
         LsUsage {
           location = info,
@@ -95,18 +118,40 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
   sem exprLookup: MLangFile -> SymEnv -> LSEnv -> Expr -> LSCompileResult
   sem exprLookup file symEnv env =
   | _ -> (env, [])
-  | TmUse { ident=ident, ty=ty, info=info } ->
+  | TmUse { ident=ident, ty=ty, info=info, langEnv={
+    varEnv = varEnv,
+    conEnv = conEnv,
+    tyVarEnv = tyVarEnv,
+    tyConEnv = tyConEnv,
+    reprEnv = reprEnv
+  } } ->
+    let env2str: Map String Name -> String = lam env.
+      strJoin "\n" (
+        map
+        (lam x. join [x.0, ": \n\t", nameGetStr x.1])
+        (mapToSeq env)
+      )
+    in
     (
       env,
       [
-        LsType {
-          location = info,
-          ident = ident,
-          superIdents = getTypeNamesRecursively ty
-        },
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">`", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (join [nameGetStr ident, ": ", type2str ty]),
+            "\n\n varEnv",
+            env2str varEnv,
+            "\n\n conEnv",
+            env2str conEnv,
+            "\n\n tyVarEnv",
+            env2str tyVarEnv,
+            "\n\n tyConEnv",
+            env2str tyConEnv,
+            "\n\n reprEnv",
+            env2str reprEnv,
+            "\n\n",
+            getSym ident
+          ])
         },
         LsUsage {
           location = info,
@@ -117,11 +162,24 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
   | TmRecord { bindings=bindings, info=info } ->
     (
       env,
-      [
-        LsHover {
-          location = info,
-          toString = lam. Some (join ["`record`"])
-        }
+      join [
+        -- [
+        --   LsHover {
+        --     location = info,
+        --     toString = lam. Some (join ["`record`"])
+        --   }
+        -- ],
+        -- map (
+        --   lam binding. match binding with (sid, expr) in
+        --     let name = sidToString sid in
+        --     let location = infoTm expr in
+        --     LsHover {
+        --       location = location,
+        --       toString = lam. Some (join [
+        --         mcoreCode (join ["{ ", name, " }"])
+        --       ])
+        --     }
+        -- ) (mapToSeq bindings)
       ]
     )
   | TmRecLets { bindings=bindings } ->
@@ -129,66 +187,46 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       env,
       map (lam binding.
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolFunction (),
           location = binding.info,
           name = binding.ident
         }
       ) bindings
     )
-  | TmLet { ident=ident, ty=ty, info=info, inexpr=inexpr } ->
-    let documentation = join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmLet)", getSym ident] in
+  | TmLet { ident=ident, tyAnnot=tyAnnot, tyBody=tyBody, info=info } ->
+    let documentation = join [
+      mcoreCode (join ["let ", nameGetStr ident, ": ", type2str (getAnyType [tyAnnot, tyBody])]),
+      getSym ident
+    ] in
     (
       env,
       [
-        -- LsCompletion {
-        --   location = Some (infoTm inexpr),
-        --   getCompletion = lam. {
-        --     label = nameGetStr ident,
-        --     kind = CompletionVariable (),
-        --     insertText = None (),
-        --     deprecated = false,
-        --     documentation = Some documentation
-        --   }
-        -- },
         LsHover {
           location = info,
           toString = lam. Some documentation
         },
         LsDefinition {
-          kind = SymbolTypeParameter (),
+          documentation=lam. Some documentation,
+          kind = SymbolVariable (),
           location = info,
           name = ident
         }
       ]
     )
-  | TmLam { ident=ident, ty=ty, info=info, body=body } ->
+  | TmLam { ident=ident, ty=ty, info=info, body=body, tyParam=tyParam } ->
     (
       env,
-      -- {
-      --   env with
-      --   availableVariables = concat env.availableVariables [{
-      --     location = info,
-      --     name = ident,
-      --     kind = CompletionVariable (),
-      --     documentation = None ()
-      --   }]
-      -- },
       [
-        -- LsCompletion {
-        --   location = Some info,
-        --   getCompletion = lam. {
-        --     label = nameGetStr ident,
-        --     kind = CompletionVariable (),
-        --     insertText = None (),
-        --     deprecated = false,
-        --     documentation = Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
-        --   }
-        -- },
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (join ["lam ", nameGetStr ident, ": ", type2str ty]),
+            getSym ident
+          ])
         },
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolTypeParameter (),
           location = info,
           name = ident
@@ -214,9 +252,13 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
         },
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (definition)", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (join ["type ", nameGetStr ident, " = ", type2str ty]),
+            getSym ident
+          ])
         },
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolTypeParameter (),
           location = info,
           name = ident
@@ -229,7 +271,10 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       [
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmVar)", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (join ["let ", nameGetStr ident, ": ", type2str ty]),
+            getSym ident
+          ])
         },
         LsUsage {
           location = info,
@@ -237,22 +282,37 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
         }
       ]
     )
-  | TmConDef { ident=ident, ty=ty, info=info }
+  | TmConDef { ident=ident, tyIdent=ty, info=info } ->
+    (
+      env,
+      [
+        let super = getTypeNamesRecursively ty in
+        eprintln (join ["Supers: ", strJoin ", " (map nameGetStr super)]);
+        LsType {
+          location = info,
+          ident = ident,
+          superIdents = super
+        },
+        LsDefinition {
+          documentation=lam. None (),
+          kind = SymbolConstructor (),
+          location = info,
+          name = ident
+        },
+        LsHover {
+          location = info,
+          toString = lam. Some (join [
+            mcoreCode (join ["con ", nameGetStr ident, ": ", type2str ty]),
+            getSym ident
+          ])
+        }
+      ]
+    )
   | TmConApp { ident=ident, ty=ty, info=info }
   | TmExt { ident=ident, ty=ty, info=info } ->
     (
       env,
       [
-        -- LsCompletion {
-        --   location = Some info,
-        --   getCompletions = lam. map (lam v. {
-        --     label = nameGetStr v.name,
-        --     kind = v.kind,
-        --     insertText = None (),
-        --     deprecated = false,
-        --     documentation = v.documentation
-        --   }) env.availableTypes 
-        -- },
         LsType {
           location = info,
           ident = ident,
@@ -260,7 +320,10 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
         },
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` `<", type2str ty, ">` (TmConApp)", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (join ["type ", nameGetStr ident, ": ", type2str ty]),
+            getSym ident
+          ])
         },
         LsUsage {
           location = info,
@@ -293,13 +356,14 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
     let info = infoWithFilename filename info in
     [
       LsDefinition {
+        documentation=lam. None (),
         kind = SymbolConstructor (),
         location = info,
         name = ident
       },
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` (PatSeqEdge / PatNamed)", getSym ident])
+        toString = lam. Some (join [mcoreCode (nameGetStr ident), getSym ident])
         -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
       }
     ]
@@ -312,7 +376,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       },
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` (PatCon)", getSym ident])
+        toString = lam. Some (join [mcoreCode (nameGetStr ident), getSym ident])
         -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
       }
     ]
@@ -324,19 +388,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
     [
       LsHover {
         location = info,
-        toString = lam. Some (join ["`", path, "` (include)"])
-      }
-    ]
-  | DeclLet { info = info, ident = ident } ->
-    [
-      LsHover {
-        location = info,
-        toString = lam. Some (join ["`", nameGetStr ident, "` (let)", getSym ident])
-      },
-      LsDefinition {
-        kind = SymbolVariable (),
-        location = info,
-        name = ident
+        toString = lam. Some (join ["`", path, "`"])
       }
     ]
   | DeclType { ident=ident, info=info, tyIdent=tyIdent }
@@ -346,9 +398,13 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       [
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` (type decl)", getSym ident, ", ", type2str tyIdent])
+          toString = lam. Some (join [
+            mcoreCode (join ["type ", nameGetStr ident, ": ", type2str tyIdent]),
+            getSym ident
+          ])
         },
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolTypeParameter (),
           location = info,
           name = ident
@@ -366,9 +422,13 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       [
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` (syn)", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (nameGetStr ident),
+            getSym ident
+          ])
         },
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolTypeParameter (),
           location = info,
           name = ident
@@ -377,6 +437,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       flatMap (lam def.
         [
           LsDefinition {
+            documentation=lam. None (),
             kind = SymbolEnumMember (),
             location = info,
             name = def.ident
@@ -390,9 +451,13 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       [
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr binding.ident, "` (let)", getSym binding.ident])
+          toString = lam. Some (join [
+            mcoreCode (join ["recursive let ", nameGetStr binding.ident, ": ", type2str binding.tyAnnot]),
+            getSym binding.ident
+          ])
         },
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolVariable (),
           location = infoWithFilename filename info,
           name = binding.ident
@@ -403,9 +468,13 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
     [
       LsHover {
         location = info,
-        toString = lam. Some (nameGetStr ident)
+        toString = lam. Some (join [
+          mcoreCode (join ["lang ", nameGetStr ident]),
+          getSym ident
+        ])
       },
       LsDefinition {
+        documentation=lam. None (),
         kind = SymbolModule (),
         location = info,
         name = ident
@@ -422,9 +491,13 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
         },
         LsHover {
           location = info,
-          toString = lam. Some (join ["`", nameGetStr ident, "` (sem)", getSym ident])
+          toString = lam. Some (join [
+            mcoreCode (nameGetStr ident),
+            getSym ident
+          ])
         },
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolFunction (),
           location = info,
           name = ident
@@ -432,6 +505,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
       ],
       map (lam arg. 
         LsDefinition {
+          documentation=lam. None (),
           kind = SymbolVariable (),
           location = info,
           name = arg.ident
@@ -524,45 +598,29 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
 
   sem programToLanguageSupport: MLangFile -> [LanguageServerPayload]
   sem programToLanguageSupport =| file ->
-    let res = switch (file.status, file.symbolized)
-      case (Changed (), _) then
+    let res = switch (file.status, file.symbolized, file.typeChecked)
+      case (Changed (), _, _) then
         None ()
-      case (Symbolized (), Some symbolized) then
-        Some (symbolized.symEnv, symbolized.program)
-      case (_, Some symbolized) then
-        Some (symEnvEmpty, symbolized.program)
+      case (TypeChecked (), Some symbolized, Some typeChecked) then
+        Some (symbolized.symEnv, symbolized.program, typeChecked.expr)
+      case (Symbolized (), Some symbolized, _) then
+        Some (symbolized.symEnv, symbolized.program, None ())
+      case (_, Some symbolized, _) then
+        Some (symEnvEmpty, symbolized.program, None ())
       case _ then
         error "Unhandeled case in programToLanguageSupport"
     end in
 
-    let languageSupport = optionMap (lam res. match res with (symEnv, program) in join [
-      flatMap (recursiveDeclLookup file symEnv) (optionGetOr [] (optionMap (lam program. program.decls) program)),
-      optionGetOr [] (optionMap (lam program. recursiveExprLookup file symEnv emptyLSEnv program.expr) program)
+    let languageSupport = optionMap (lam res. match res with (symEnv, program, expr) in join [
+      optionGetOr [] (optionMap (lam expr. recursiveExprLookup file symEnv emptyLSEnv expr) expr)
     ]) res in
 
     optionGetOr [] languageSupport
 
-  -- sem intrinsicInLanguageSupport: MLangFile -> LSEnv -> LSCompileResult
-  -- sem intrinsicInLanguageSupport =| file ->
-  --   let filename = file.filename in
-  --   let info = infoWithFilename filename (Info filename 1 0) in
-    
-  --   [
-  --     -- LsCompletion {
-  --     --   location = Some info,
-  --     --   getCompletions = lam. map (lam v. {
-  --     --     label = nameGetStr v.name,
-  --     --     kind = v.kind,
-  --     --     insertText = None (),
-  --     --     deprecated = false,
-  --     --     documentation = v.documentation
-  --     --   }) env.availableVariables 
-  --     -- }
-  --   ]
-
   sem linksToLanguageSupport: MLangFile -> [LanguageServerPayload]
   sem linksToLanguageSupport =
-  | file & { status = Symbolized () | Linked (), linked=Some linked } ->
+  | _ -> []
+  | file & { status = TypeChecked () | Symbolized () | Linked (), linked=Some linked } ->
     flatMap (
       lam link.
         match link with (info, path) in
@@ -570,9 +628,10 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
         [
           LsHover {
             location = info,
-            toString = lam. Some (join ["`", path, "` (link)"])
+            toString = lam. Some (join ["[", path, "](", path, ")"])
           },
           LsDefinition {
+            documentation=lam. None (),
             kind = SymbolFile (),
             location = makeInfo (posVal path 1 0) (posVal path 1 0),
             name = fileName
@@ -588,7 +647,11 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope
   sem fileToLanguageSupport =| file ->
     let programLanguageSupport = programToLanguageSupport file in
     let linksLanguageSupport = linksToLanguageSupport file in
-    let diagnostics = map (lam diagnostic. LsDiagnostic diagnostic) (getFileDiagnostics file) in
+    
+    let diagnostics = map (
+      lam diagnostic.
+        LsDiagnostic diagnostic
+    ) (getFileDiagnostics file) in
 
     join [
       programLanguageSupport,

@@ -46,14 +46,13 @@ end
 lang MLangTypeCheckedRoot = MLangBase
   type MLangTypeCheckedFile = {
     expr: Option Expr, -- With symbols
-    symEnv: SymEnv, -- symEnvEmpty
     diagnostics: [DiagnosticWithSeverity]
   }
 end
 
 lang MLangRoot =
   LanguageServer + MLangBase +
-  MLangParsedRoot + MLangLinkedRoot + MLangSymbolizedRoot
+  MLangParsedRoot + MLangLinkedRoot + MLangSymbolizedRoot + MLangTypeCheckedRoot
 
   -- The status of a file represents not what the file is
   -- currently providing (e.g. Symbolized does not mean that
@@ -74,6 +73,7 @@ lang MLangRoot =
   | Dirty -- Dependency has changed, needs re-symbolization
   | Linked
   | Symbolized
+  | TypeChecked
 
   sem mLangFileStatusToString : MLangFileStatus -> String
   sem mLangFileStatusToString =
@@ -82,6 +82,7 @@ lang MLangRoot =
   | Dirty () -> "Dirty"
   | Linked () -> "Linked"
   | Symbolized () -> "Symbolized"
+  | TypeChecked () -> "TypeChecked"
 
   type MLangFile = {
     status: MLangFileStatus,
@@ -90,8 +91,17 @@ lang MLangRoot =
 
     parsed: Option MLangParsedFile,
     linked: Option MLangLinkedFile,
-    symbolized: Option MLangSymbolizedFile
+    symbolized: Option MLangSymbolizedFile,
+    typeChecked: Option MLangTypeCheckedFile
   }
+
+  sem getProgram : MLangFile -> Option MLangProgram
+  sem getProgram =
+  | _ -> None ()
+  | { status = Parsed (), parsed = Some { program = program } }
+  | { status = Linked (), linked = Some { program = program } }
+  | { status = Symbolized () | TypeChecked (), symbolized = Some { program = program } } ->
+    program
 
   sem _getDiagnostics : MLangFile -> MLangFileStatus -> [DiagnosticWithSeverity]
   sem _getDiagnostics file =
@@ -109,6 +119,10 @@ lang MLangRoot =
     _getDiagnostics file (Linked ()),
     optionMapOr [] (lam v. v.diagnostics) file.symbolized
   ]
+  | TypeChecked () -> join [
+    _getDiagnostics file (Symbolized ()),
+    optionMapOr [] (lam v. v.diagnostics) file.typeChecked
+  ]
 
   sem getFileDiagnostics : MLangFile -> [DiagnosticWithSeverity]
   sem getFileDiagnostics =| file ->
@@ -122,6 +136,7 @@ lang MLangRoot =
       content = content,
       parsed = None (),
       linked = None (),
-      symbolized = None ()
+      symbolized = None (),
+      typeChecked = None ()
     }
 end

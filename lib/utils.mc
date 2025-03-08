@@ -5,19 +5,18 @@ include "result.mc"
 
 -- returns Option content if the requested number of bytes could be read
 -- otherwise, None is returned
-recursive
-  let readBytesBuffered : ReadChannel -> Int -> Option [Int] =
-    lam rc. lam len. switch fileReadBytes rc len
-      case Some s then (
-        let actualLength = length s in
-        if eqi actualLength len then Some s
-        else match readBytesBuffered rc (subi len actualLength)
-          with Some s2 then Some (join [s, s2])
-          else None ()
-      )
+let readBytesBuffered : ReadChannel -> Int -> Option [Int] =
+  lam rc. lam len.
+  recursive let work = lam remainLen. lam acc.
+    if leqi remainLen 0 then Some acc
+    else switch fileReadBytes rc remainLen
+      case Some s then
+        let acc = concat acc s in
+        let readLen = length s in
+        work (subi remainLen readLen) acc
       case None () then None ()
     end
-  end
+  in work len []
 
 recursive let reduce: all a. all b. (b -> a -> b) -> b -> [a] -> b =
   lam f. lam acc. lam xs.

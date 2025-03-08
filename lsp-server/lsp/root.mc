@@ -29,6 +29,12 @@ lang LanguageServerRoot =
   DiagnosticBase +
   LSPSymbolKind + LSPCompletionKind
   
+  type Definition = {
+    location: Info,
+    kind: SymbolKind,
+    documentation: () -> Option String
+  }
+
   type CodeLens = {
     title: String,
     ideCommand: String,
@@ -55,7 +61,8 @@ lang LanguageServerRoot =
     hover: Map Info [() -> Option String],
     completions: Map Info [() -> Completion],
 
-    definitions: Map Name [(Info, SymbolKind)],
+    definitions: Map Name [Definition],
+    availability: Map Info [Name],
     usages: Map Info [Name],
 
     typeLocations: Map Info [Name],
@@ -79,6 +86,7 @@ let emptyLanguageServerContext = {
   hover = mapEmpty infoCmp,
   completions = mapEmpty infoCmp,
   definitions = mapEmpty nameSymCmp,
+  availability = mapEmpty infoCmp,
   usages = mapEmpty infoCmp,
   typeLocations = mapEmpty infoCmp,
   types = mapEmpty nameSymCmp -- Map from a type to its super types
@@ -140,9 +148,24 @@ lang LanguageServerUsage = LanguageServerRoot
     { context with usages = mapInsertWith concat location [name] context.usages } 
 end
 
+lang LanguageServerAvailability = LanguageServerRoot
+  type AvailabilityPayload = {
+    location: Info,
+    name: Name
+  }
+
+  syn LanguageServerPayload =
+  | LsAvailability AvailabilityPayload
+
+  sem populateContext context =
+  | LsAvailability { location=location, name=name } ->
+    { context with availability = mapInsertWith concat location [name] context.usages } 
+end
+
 lang LanguageServerDefinition = LanguageServerRoot + LSPSymbolToCompletion
   type DefinitionPayload = {
     kind: SymbolKind,
+    documentation: () -> Option String,
     location: Info,
     name: Name
   }
@@ -151,10 +174,14 @@ lang LanguageServerDefinition = LanguageServerRoot + LSPSymbolToCompletion
   | LsDefinition DefinitionPayload
 
   sem populateContext context =
-  | LsDefinition { location=location, name=name, kind=kind } ->
+  | LsDefinition { location=location, name=name, kind=kind, documentation=documentation } ->
     {
       context with
-      definitions = mapInsertWith concat name [(location, kind)] context.definitions
+      definitions = mapInsertWith concat name [{
+        location=location,
+        kind=kind,
+        documentation=documentation
+      }] context.definitions
     }
 end
 
@@ -202,14 +229,9 @@ lang LanguageServer =
   LanguageServerDiagnostic +
   LanguageServerCodeLens
 
-  syn EventType =
-  | Open
-  | Change
-
   type LSPCompilationParameters = {
     uri: URI,
-    content: String,
-    typ: EventType
+    content: String
   }
 
   type LSPCompilationResult = Map URI [LanguageServerPayload]

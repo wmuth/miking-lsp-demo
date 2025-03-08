@@ -3,10 +3,15 @@ include "./main.mc"
 include "./parser.mc"
 include "./linker.mc"
 include "./symbolize.mc"
+include "./mexpr.mc"
 
 lang MLangCompiler =
   MLangRoot + MLangLanguageServerCompiler +
-  MLangParser + MLangSymbolizer
+  MLangParser + MLangSymbolizer + MLangMExprCompiler
+
+  syn EventType =
+  | Open
+  | Change
 
   sem createReversedDependencies : Map URI (Set URI) -> Map URI (Set URI)
   sem createReversedDependencies =| dependencies ->
@@ -36,8 +41,8 @@ lang MLangCompiler =
     createEmptyFile path content
 
   -- Handle loading of dependent files
-  sem createFileLoader: () -> (LSPCompilationParameters -> LSPCompilationResult)
-  sem createFileLoader =| _ ->
+  sem createFileLoader: EventType -> (LSPCompilationParameters -> LSPCompilationResult)
+  sem createFileLoader =| eventType ->
     let cacheRef: Ref (Map URI MLangFile) = ref (mapEmpty cmpString) in
     let dependencies: Ref (Map URI (Set URI)) = ref (mapEmpty cmpString) in
     let reversedDependencies: Ref (Map URI (Set URI)) = ref (mapEmpty cmpString) in
@@ -72,7 +77,7 @@ lang MLangCompiler =
 
       -- Mark the current changed file as changed, making
       -- it ellible for re-parsing.
-      (match parameters.typ with Change () then
+      (match eventType with Change () then
         modref cacheRef (mapInsertWith (lam file. lam val. {
           file with
           status = Changed (),
@@ -87,7 +92,7 @@ lang MLangCompiler =
 
           -- Don't load the file if it's already been symbolized
           let file = match file.status
-            with Symbolized () then file
+            with Symbolized () | TypeChecked () then file
             else fileLoader getFile file
           in
 
@@ -136,12 +141,19 @@ lang MLangCompiler =
       else lsSymbolizeMLang getFile file.filename linked.links linked.program
     in
 
+    let typeChecked = match (file.typeChecked, file.status)
+      with (Some typeChecked, TypeChecked ()) then typeChecked
+      else lsCompileMLangToMExpr getFile file.filename linked.links symbolized.program
+    in
+
     let file: MLangFile = {
       file with
-      status = Symbolized (),
+      status = TypeChecked (),
+      -- status = Symbolized (),
       parsed = Some parsed,
       linked = Some linked,
-      symbolized = Some symbolized
+      symbolized = Some symbolized,
+      typeChecked = Some typeChecked
     } in
 
     file

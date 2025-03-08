@@ -74,7 +74,7 @@ end
 lang AssignmentCompile = CalcCompileBase + AssignmentDSLStatementAst
   sem compileStatementsToMexpr =
   | [AssignmentDSLStatement x] ++ rest -> TmLet {
-    ident = nameNoSym x.ident.v,
+    ident = x.ident.v,
     tyAnnot = _tyuk x.info,
     tyBody = _tyuk x.info,
     body = compileExprToMexpr x.val,
@@ -87,7 +87,7 @@ end
 lang VariableCompile = CalcCompileBase + VariableDSLExprAst
   sem compileExprToMexpr =
   | VariableDSLExpr x -> TmVar {
-    ident = nameNoSym x.ident.v,
+    ident = x.ident.v,
     ty = _tyfloat x.info,
     info = x.info,
     frozen = false

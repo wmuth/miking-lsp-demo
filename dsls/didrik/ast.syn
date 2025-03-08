@@ -11,11 +11,11 @@ type DSLExpr {
 prod File: File = (s:DSLStatement ";")*
 -- prod File: File = e:DSLExpr
 
-prod Assignment: DSLStatement = "let" ident:LIdent "=" val:DSLExpr
+prod Assignment: DSLStatement = "let" ident:UName "=" val:DSLExpr
 -- prod Print: DSLStatement = "print" "(" val:DSLExpr ")"
 
 prod Num: DSLExpr = val:Float
-prod Variable: DSLExpr = ident:LIdent
+prod Variable: DSLExpr = ident:UName
 prod Add: DSLExpr = left:DSLExpr "+" right:DSLExpr
 prod Sub: DSLExpr = left:DSLExpr "-" right:DSLExpr
 prod Mul: DSLExpr = left:DSLExpr "*" right:DSLExpr
@@ -60,6 +60,16 @@ token UIdent {
   constructor = UIdentTok,
   fragment = UIdentTokenParser,
   ty = String,
+}
+token UName {
+  base = UIdent,
+  wrap = nameNoSym,
+  ty = Name,
+}
+token LName {
+  base = LIdent,
+  wrap = nameNoSym,
+  ty = Name,
 }
 
 -- Token types only used through literals

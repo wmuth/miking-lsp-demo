@@ -76,13 +76,13 @@ lang LSPChange = LSPRoot + LSPCompileUtility
     eprintln (join ["Opened: ", uri]);
     {
       response = None (),
-      environment = handleCompile (Open ()) context uri text context.parameters.onOpen
+      environment = handleCompile context uri text context.parameters.onOpen
     }
   | DidChange {uri = uri, version = version, text = text} ->
     eprintln (join ["Changed: ", uri]);
     {
       response = None (),
-      environment = handleCompile (Change ()) context uri text context.parameters.onChange
+      environment = handleCompile context uri text context.parameters.onChange
     }
 
 end

@@ -54,7 +54,7 @@ lang LSPInitialize =
               } in
 
               match optionMap fileReadString (fileReadOpen uri) with Some text in
-              let res = handleCompile (Open ()) context uri text context.parameters.onOpen in
+              let res = handleCompile context uri text context.parameters.onOpen in
 
               let indexedUri = (compose join tail) (strSplit rootUri uri) in
               progress.reportMsg

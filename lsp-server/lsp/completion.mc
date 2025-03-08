@@ -56,19 +56,22 @@ lang LSPCompletion = LSPRoot + LSPCompletionKind
         let definitions = optionMap (lam environment. mapToSeq environment.definitions) environment in
         let definitions = optionGetOr [] definitions in
         let mapDefinitions = lam definition.
-          match definition with (name, infos) in
+          match definition with (name, definitions) in
+          let definitions = filter (
+            lam definition. match definition.kind with SymbolFile () then false else true
+          ) definitions in
           map (
-            lam info. match info with (info, symbolKind) in {
+            lam definition. {
               label = nameGetStr name,
-              kind = CompletionMethod (),
+              kind = symbolToCompletion definition.kind,
               insertText = None (),
               documentation = Some (join [
-                "Defined at [`", info2str info, "`]\n\n",
-                "[`", info2str info, "`]: file://", info2link info, "\n\n"
+                "Defined at [`", info2str definition.location, "`]\n\n",
+                "[`", info2str definition.location, "`]: file://", info2link definition.location, "\n\n"
               ]),
               deprecated = false
             }
-          ) infos
+          ) definitions
         in
         flatMap mapDefinitions definitions
       in

@@ -19,11 +19,12 @@ let options = {
   printClientMessages = true
 } in
 
-let fileLoader = use MLangCompiler in createFileLoader () in
+let onOpen = use MLangCompiler in createFileLoader (Open ()) in
+let onChange = use MLangCompiler in createFileLoader (Change ()) in
 
 let lspStartParameters: use LSPRoot in LSPStartParameters = {
-  onOpen   = fileLoader,
-  onChange = fileLoader,
+  onOpen   = onOpen,
+  onChange = onChange,
   onClose  = onClose,
   options  = options
 } in

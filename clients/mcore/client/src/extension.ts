@@ -183,7 +183,7 @@ export async function activate(context: ExtensionContext) {
 
   const serverOptions: ServerOptions = {
     command: lspServerBin,
-    args: [LIB_VERSION],
+    args: [`mcore-${LIB_VERSION}`],
     options: {
       env: {
         ...process.env,

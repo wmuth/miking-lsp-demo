@@ -2,9 +2,9 @@ DSLS := $(wildcard dsls/*)
 LSPS := $(wildcard lsps/*)
 CLIENTS := $(wildcard clients/*)
 
-.PHONY: all clean vscode-client $(DSLS) $(LSPS)
+.PHONY: all clean $(DSLS) $(LSPS) $(CLIENTS)
 
-all: $(DSLS) $(LSPS) vscode-client
+all: $(DSLS) $(LSPS) $(CLIENTS)
 
 clean:
 	@for d in $(DSLS); do \
@@ -17,8 +17,10 @@ clean:
 		make -C $$l clean; \
 	done
 
-	@echo "-- [Cleaning VSCode extension] --"
-	make -C lsp-client clean
+	@for l in $(CLIENTS); do \
+		echo "-- [Cleaning CLIENT $$l] --"; \
+		make -C $$l clean; \
+	done
 
 # -- DSLs --
 
@@ -36,14 +38,4 @@ $(LSPS):
 
 $(CLIENTS):
 	@echo "-- [Building CLIENT $@] --"
-	rm -rf lsp-client/mcore lsp-client/out
-	mkdir -p lsp-client/mcore lsp-client/out
-	cp -r ./{lsp-server,lib} lsp-client/mcore
-	mkdir -p lsp-client/mcore/lsps/mcore
-	cp -r lsps/mcore/*.mc lsp-client/mcore/lsps/mcore
-
-	rm -rf lsp-client/stdlib
-	mkdir -p lsp-client/stdlib
-	cp -r ../miking/stdlib lsp-client
-
-	make -C lsp-client
+	make -C $@

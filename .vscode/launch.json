@@ -1,34 +1,34 @@
-// A launch configuration that compiles the extension and then opens it inside a new window
-{
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"type": "extensionHost",
-			"request": "launch",
-			"name": "Launch Client",
-			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}/lsp-client"],
-			"outFiles": [
-				"${workspaceRoot}/lsp-client/client/out/**/*.js",
-				"${workspaceRoot}/lsp-client/server/out/**/*.js"
-			],
-			"autoAttachChildProcesses": true,
-			"preLaunchTask": {
-				"type": "npm",
-				"script": "watch"
-			}
-		},
-		{
-			"name": "Language Server E2E Test",
-			"type": "extensionHost",
-			"request": "launch",
-			"runtimeExecutable": "${execPath}",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}/lsp-client",
-				"--extensionTestsPath=${workspaceRoot}/lsp-client/client/out/test/index",
-				"${workspaceRoot}/lsp-client/client/testFixture"
-			],
-			"outFiles": ["${workspaceRoot}/lsp-client/client/out/test/**/*.js"]
-		}
-	]
-}
+// // A launch configuration that compiles the extension and then opens it inside a new window
+// {
+// 	"version": "0.2.0",
+// 	"configurations": [
+// 		{
+// 			"type": "extensionHost",
+// 			"request": "launch",
+// 			"name": "Launch Client",
+// 			"runtimeExecutable": "${execPath}",
+// 			"args": ["--extensionDevelopmentPath=${workspaceRoot}/lsp-client"],
+// 			"outFiles": [
+// 				"${workspaceRoot}/lsp-client/client/out/**/*.js",
+// 				"${workspaceRoot}/lsp-client/server/out/**/*.js"
+// 			],
+// 			"autoAttachChildProcesses": true,
+// 			"preLaunchTask": {
+// 				"type": "npm",
+// 				"script": "watch"
+// 			}
+// 		},
+// 		{
+// 			"name": "Language Server E2E Test",
+// 			"type": "extensionHost",
+// 			"request": "launch",
+// 			"runtimeExecutable": "${execPath}",
+// 			"args": [
+// 				"--extensionDevelopmentPath=${workspaceRoot}/lsp-client",
+// 				"--extensionTestsPath=${workspaceRoot}/lsp-client/client/out/test/index",
+// 				"${workspaceRoot}/lsp-client/client/testFixture"
+// 			],
+// 			"outFiles": ["${workspaceRoot}/lsp-client/client/out/test/**/*.js"]
+// 		}
+// 	]
+// }

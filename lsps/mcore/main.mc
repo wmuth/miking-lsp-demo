@@ -190,7 +190,8 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           documentation=lam. None (),
           kind = SymbolFunction (),
           location = binding.info,
-          name = binding.ident
+          name = binding.ident,
+          exported = false
         }
       ) bindings
     )
@@ -208,6 +209,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         },
         LsDefinition {
           documentation=lam. Some documentation,
+          exported = false,
           kind = SymbolVariable (),
           location = info,
           name = ident
@@ -227,6 +229,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         },
         LsDefinition {
           documentation=lam. None (),
+          exported = false,
           kind = SymbolTypeParameter (),
           location = info,
           name = ident
@@ -259,6 +262,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         },
         LsDefinition {
           documentation=lam. None (),
+          exported = false,
           kind = SymbolTypeParameter (),
           location = info,
           name = ident
@@ -295,6 +299,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         },
         LsDefinition {
           documentation=lam. None (),
+          exported = false,
           kind = SymbolConstructor (),
           location = info,
           name = ident
@@ -359,7 +364,8 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         documentation=lam. None (),
         kind = SymbolConstructor (),
         location = info,
-        name = ident
+        name = ident,
+        exported = false
       },
       LsHover {
         location = info,
@@ -632,6 +638,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           },
           LsDefinition {
             documentation=lam. None (),
+            exported = false,
             kind = SymbolFile (),
             location = makeInfo (posVal path 1 0) (posVal path 1 0),
             name = fileName

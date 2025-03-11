@@ -75,6 +75,7 @@ lang AssignmentCompile = CalcCompileBase + AssignmentDSLStatementAst
   sem compileStatementsToMexpr =
   | [AssignmentDSLStatement x] ++ rest -> TmLet {
     ident = x.ident.v,
+    parentIdent = None (),
     tyAnnot = _tyuk x.info,
     tyBody = _tyuk x.info,
     body = compileExprToMexpr x.val,

@@ -121,10 +121,13 @@ lang SymLookup
   -- Insert a new symbol mapping into the environment, overriding if it exists.
   sem setSymbol : Map String Name -> Name -> (Map String Name, Name)
   sem setSymbol env =| ident -> 
-    if nameHasSym ident then (env, ident)
+    -- if nameHasSym ident then (env, ident)
+    let ident = if nameHasSym ident then
+      ident
     else
-      let ident = nameSetNewSym ident in
-      (mapInsert (nameGetStr ident) ident env, ident)
+      nameSetNewSym ident
+    in
+    (mapInsert (nameGetStr ident) ident env, ident)
 
   -- The general case, where we may have a richer return value than simply name or env.
   sem getSymbolWith

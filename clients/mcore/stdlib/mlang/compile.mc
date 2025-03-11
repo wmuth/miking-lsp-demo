@@ -103,6 +103,7 @@ lang LetDeclCompiler = DeclCompiler + LetDeclAst + LetAst
   sem compileDecl ctx = 
   | DeclLet d -> result.ok (
     withExpr ctx (TmLet {ident = d.ident,
+                         parentIdent = None (),
                          tyAnnot = d.tyAnnot,
                          tyBody = d.tyBody,
                          body = d.body,

@@ -355,6 +355,7 @@ end
 lang LetAst = Ast + VarAst
   syn Expr =
   | TmLet {ident : Name,
+           parentIdent : Option (Name, Info),
            tyAnnot : Type,
            tyBody : Type,
            body : Expr,

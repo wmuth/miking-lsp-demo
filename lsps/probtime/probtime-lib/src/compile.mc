@@ -351,6 +351,8 @@ lang RtpplCompileType = RtpplCompileBase + DPPLParser
     TyArrow {from = compileRtpplType from, to = compileRtpplType to, info = info}
 end
 
+let lspNameBindings: Ref (Map Name (Name, Info)) = ref (mapEmpty nameCmp)
+
 lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTaskInfers
   sem compileRtpplTop : RtpplTopEnv -> RtpplTop -> (RtpplTopEnv, Expr)
   sem compileRtpplTop env =
@@ -358,7 +360,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     let ty = compileRtpplType ty in
     let body = compileRtpplExpr e in
     ( env
-    , TmLet {
+    , TmLet { parentIdent = None (),
         ident = id, tyAnnot = ty, tyBody = _tyuk info, body = body,
         inexpr = uunit_, ty = _tyuk info, info = info } )
   | TypeAliasRtpplTop {id = {v = id}, ty = ty, info = info} ->
@@ -374,12 +376,12 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     let retExpr = compileRtpplReturnExpr info ret in
     let body = compileRtpplStmts env retExpr stmts in
     ( env
-    , TmLet {
+    , TmLet { parentIdent = None (),
         ident = id, tyAnnot = tyAnnot, tyBody = _tyuk info,
         body = foldl addParamToBody body params, inexpr = uunit_,
         ty = _tyuk info, info = info } )
   | ModelDefRtpplTop {
-      id = {v = id}, params = params, ty = ty,
+      id = {v = id, i = namePos}, params = params, ty = ty,
       body = {stmts = stmts, ret = ret}, info = info} ->
     let params = compileParams params in
     let tyAnnot = foldl addParamTypeAnnot (compileRtpplType ty) params in
@@ -387,6 +389,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     let body = compileRtpplStmts env retExpr stmts in
     ( env
     , TmLet {
+        parentIdent = Some (id, namePos),
         ident = id, tyAnnot = tyAnnot, tyBody = _tyuk info,
         body = foldl addParamToBody body params, inexpr = uunit_,
         ty = _tyuk info, info = info } )
@@ -408,8 +411,8 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
       let env = foldl buildPortTypesMap env ports in
       let body = bindall_ (map (compileRtpplStmt env) body) in
       ( env
-      , TmLet {
-          ident = escapedId, tyAnnot = tyAnnot, tyBody = _tyuk info,
+      , TmLet { parentIdent = None (),
+          ident = escapedId, parentIdent = None (), tyAnnot = tyAnnot, tyBody = _tyuk info,
           body = foldl addParamToBody body params, inexpr = uunit_,
           ty = _tyuk info, info = info } )
     else
@@ -461,24 +464,27 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
 
   sem compileRtpplStmt : RtpplTopEnv -> RtpplStmt -> Expr
   sem compileRtpplStmt env =
-  | BindingRtpplStmt {id = {v = id}, ty = ty, e = e, info = info} ->
+  | BindingRtpplStmt {id = {v = id, i = namePos}, ty = ty, e = e, info = info} ->
     let tyAnnot =
       match ty with Some ty then compileRtpplType ty
       else TyUnknown {info = info}
     in
     let body = compileRtpplExpr e in
     TmLet {
-      ident = id, tyAnnot = tyAnnot, tyBody = _tyuk info, body = body,
+      ident = id,
+      parentIdent = Some (id, namePos),
+      tyAnnot = tyAnnot, tyBody = _tyuk info, body = body,
       inexpr = uunit_, ty = _tyuk info, info = info }
   | ObserveRtpplStmt {e = e, d = d, info = info} ->
     let obsExpr = TmObserve {
       value = compileRtpplExpr e, dist = compileRtpplExpr d,
       ty = _tyuk info, info = info } in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = nameNoSym "", tyAnnot = _tyunit info, tyBody = _tyuk info,
       body = obsExpr, inexpr = uunit_, ty = _tyuk info, info = info }
-  | AssumeRtpplStmt {id = {v = id}, d = d, info = info} ->
+  | AssumeRtpplStmt {id = {v = id, i = namePos}, d = d, info = info} ->
     TmLet {
+      parentIdent = Some (id, namePos),
       ident = id, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmAssume { dist = compileRtpplExpr d, ty = _tyuk info, info = info },
       inexpr = uunit_, ty = _tyuk info, info = info }
@@ -496,7 +502,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
       else
         _variable info rtids.mainInferRunner
     in
-    let inferModelBind = TmLet {
+    let inferModelBind = TmLet { parentIdent = None (),
       ident = nameNoSym "inferModel", tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmLam {
         ident = nameNoSym "p", tyAnnot = _tyuk info, tyParam = _tyuk info,
@@ -509,7 +515,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
         ty = _tyuk info, info = info},
       inexpr = uunit_, ty = _tyuk info, info = info
     } in
-    let distBind = TmLet {
+    let distBind = TmLet { parentIdent = None (),
       ident = id, tyAnnot = TyDist {ty = _tyuk info, info = info},
       tyBody = _tyuk info,
       body = TmApp {
@@ -527,12 +533,12 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     let smallWeight = TmConst {
       val = CFloat {val = negf 1e300}, ty = _tyuk info, info = info
     } in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = nameNoSym "", tyAnnot = _tyunit info, tyBody = _tyuk info,
       body = TmWeight {weight = smallWeight, ty = _tyuk info, info = info},
       inexpr = uunit_, ty = _tyuk info, info = info }
   | ResampleRtpplStmt {info = info} ->
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = nameNoSym "", tyAnnot = _tyunit info, tyBody = _tyuk info,
       body = TmResample {ty = _tyuk info, info = info},
       inexpr = uunit_, ty = _tyuk info, info = info }
@@ -553,7 +559,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
             ty = _tyuk info, info = info }
         else readExpr
       in
-      TmLet {
+      TmLet { parentIdent = None (),
         ident = dst, tyAnnot = readTy, tyBody = _tyuk info,
         body = body, inexpr = uunit_, ty = _tyuk info, info = info }
     else
@@ -565,7 +571,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     in
     let portId = _getPortIdentifier env.topId portStr in
     match mapLookup portId env.portTypes with Some ty then
-      TmLet {
+      TmLet { parentIdent = None (),
         ident = nameNoSym "", tyAnnot = _tyuk info, tyBody = _tyuk info,
         body = TmWrite { portId = portStr, src = compileRtpplExpr src
                        , delay = delayExpr, ty = _tyuk info, info = info },
@@ -574,7 +580,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
       errorSingle [info] "Reference to undefined port"
   | ForLoopRtpplStmt {id = {v = id}, e = e, upd = loopVar, body = body, info = info} ->
     match
-      match loopVar with Some {v = lvid} then
+      match loopVar with Some {v = lvid, i = info} then
         (lvid, _variable info lvid)
       else
         (nameNoSym "", uunit_)
@@ -587,7 +593,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
         body = bodyExpr, ty = _tyuk info, info = info },
       ty = _tyuk info, info = info
     } in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = loopVarId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmApp {
         lhs = TmApp {
@@ -623,14 +629,14 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
         body = loopBody, ty = _tyuk info, info = info },
       info = info
     } in
-    let resultBind = TmLet {
+    let resultBind = TmLet { parentIdent = None (),
       ident = loopVarId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = recCall, inexpr = uunit_, ty = _tyuk info, info = info
     } in
     TmRecLets {
       bindings = [recBind], inexpr = resultBind, ty = _tyuk info, info = info }
   | DelayRtpplStmt {ns = ns, info = info} ->
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = nameNoSym "", tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmSdelay {e = compileRtpplExpr ns, ty = _tyuk info, info = info},
       inexpr = uunit_, ty = _tyuk info, info = info }
@@ -650,7 +656,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
       match condVar with Some {v = condVarId} then condVarId
       else nameNoSym ""
     in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = targetId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = cond, inexpr = uunit_, ty = _tyuk info, info = info }
   | IdentPlusStmtRtpplStmt {
@@ -664,7 +670,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
           ty = _tyuk info, info = info }
       else e
     in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = id, tyAnnot = _tyuk info, tyBody = _tyuk info, body = body,
       inexpr = uunit_, ty = _tyuk info, info = info }
   | IdentPlusStmtRtpplStmt {
@@ -677,7 +683,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     in
     let args = if null args then [uunit_] else map compileRtpplExpr args in
     let funCallExpr = foldl appArg (_variable info id) args in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = nameNoSym "", tyAnnot = _tyuk info, tyBody = _tyunit info,
       body = funCallExpr, inexpr = uunit_, ty = _tyuk info, info = info }
 
@@ -1072,7 +1078,7 @@ lang RtpplCompileGenerated = RtpplCompileType
     let closeFileDescExpr = lam port.
       match port with (portId, _) in
       let bindId = nameNoSym (concat "close_" portId) in
-      TmLet {
+      TmLet { parentIdent = None (),
         ident = bindId, tyAnnot = _tyuk info, tyBody = _tyuk info,
         body = TmApp {
           lhs = _variable info rtIds.closeFile,
@@ -1103,10 +1109,10 @@ lang RtpplCompileGenerated = RtpplCompileType
       ty = _tyuk info, info = info
     } in
     bindall_ [
-      TmLet {
+      TmLet { parentIdent = None (),
         ident = fileDescriptorsId, tyAnnot = _tyuk info, tyBody = _tyuk info,
         body = openFilesExpr, inexpr = uunit_, ty = _tyuk info, info = info},
-      TmLet {
+      TmLet { parentIdent = None (),
         ident = closeFileDescriptorsId, tyAnnot = _tyuk info, tyBody = _tyuk info,
         body = closeFilesExpr, inexpr = uunit_, ty = _tyuk info, info = info} ]
 
@@ -1120,7 +1126,7 @@ lang RtpplCompileGenerated = RtpplCompileType
       bindings = mapFromSeq cmpSID (map initEmptySeq ports),
       ty = _tyuk info, info = info
     } in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = bufferId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmApp {
         lhs = TmConst {val = CRef (), ty = _tyuk info, info = info},
@@ -1139,7 +1145,7 @@ lang RtpplCompileGenerated = RtpplCompileType
       bindings = mapFromSeq cmpSID (map updatePortData inputPorts),
       ty = _tyuk info, info = info
     } in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = updateInputsId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmLam {
         ident = nameNoSym "", tyAnnot = _tyuk info, tyParam = _tyuk info,
@@ -1166,7 +1172,7 @@ lang RtpplCompileGenerated = RtpplCompileType
             -- identifiers, or all but one is removed by the duplicate code
             -- elimination used in the DPPL compiler.
             let id = nameNoSym (join ["w_", nameGetStr taskId, "_", dstPort]) in
-            TmLet {
+            TmLet { parentIdent = None (),
               ident = id, tyAnnot = _tyuk info, tyBody = _tyuk info,
               body = rtpplWriteExprType rtIds fdExpr msgsExpr outputPort.ty,
               inexpr = acc, ty = _tyuk info, info = info })
@@ -1177,7 +1183,7 @@ lang RtpplCompileGenerated = RtpplCompileType
     let clearPortData = lam outputPort.
       (stringToSid outputPort.id, TmSeq {tms = [], ty = _tyuk info, info = info})
     in
-    let clearExpr = TmLet {
+    let clearExpr = TmLet { parentIdent = None (),
       ident = nameNoSym "", tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmApp {
         lhs = TmApp {
@@ -1189,7 +1195,7 @@ lang RtpplCompileGenerated = RtpplCompileType
         ty = _tyuk info, info = info},
       inexpr = uunit_, ty = _tyuk info, info = info
     } in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = flushOutputsId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmLam {
         ident = nameNoSym "", tyAnnot = _tyuk info, tyParam = _tyuk info,
@@ -1247,9 +1253,9 @@ lang RtpplCompile =
   sem insertBindingsAfter p binds =
   | TmLet t ->
     if p t.ident then
-      TmLet {t with inexpr = bind_ binds t.inexpr}
+      TmLet { t with inexpr = bind_ binds t.inexpr}
     else
-      TmLet {t with inexpr = insertBindingsAfter p binds t.inexpr}
+      TmLet { t with inexpr = insertBindingsAfter p binds t.inexpr}
   | t -> smap_Expr_Expr (insertBindingsAfter p binds) t
 
   sem specializeRtpplExprs : CompileEnv -> Name -> Expr -> Expr
@@ -1282,7 +1288,7 @@ lang RtpplCompile =
       lhs = TmConst {val = CDeRef (), ty = _tyuk info, info = info},
       rhs =  _variable info outputSeqsId, ty = _tyuk info, info = info
     } in
-    TmLet {
+    TmLet { parentIdent = None (),
       ident = outId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = outputsExpr, ty = _tyuk info, info = info,
       inexpr = TmApp {
@@ -1427,6 +1433,52 @@ lang RtpplCompile =
     mapInsert id (resolveConstants consts e) consts
   | _ ->
     consts
+
+  sem identTopParams : RtpplTopParams -> RtpplTopParams
+  sem identTopParams =
+  | params -> params
+  | ParamsRtpplTopParams (top & { params = params }) ->
+    -- [{id: {i: Info, v: Name}, ty: RtpplType}]
+
+    let params = map (lam p.
+      let name = nameSetNewSym p.id.v in
+      { p with id = { p.id with v = name } }
+    ) params in
+
+    ParamsRtpplTopParams {
+      top with
+      params = params
+    }
+
+  sem identStmt : RtpplStmt -> RtpplStmt
+  sem identStmt =
+  | stmt -> stmt
+  | BindingRtpplStmt (stmt & { id = id & { v = name } }) ->
+    BindingRtpplStmt {
+      stmt with
+      id = {
+        id with
+        v = nameSetNewSym name
+      }
+    }
+
+  sem identRtpplProgram : RtpplProgram -> RtpplProgram
+  sem identRtpplProgram =
+  | p -> p
+  | prog & (ProgramRtpplProgram p) ->
+    let transforms = [
+      (smap_RtpplTop_RtpplStmt identStmt),
+      (smap_RtpplTop_RtpplTopParams identTopParams)
+    ] in
+
+    let getTop = flip (foldl (
+      lam acc. lam f. f acc
+    )) transforms in
+
+    ProgramRtpplProgram {
+      p with
+      tops = map getTop p.tops
+    }
 
   -- NOTE(larshum, 2023-04-11): One RTPPL program is compiled to multiple
   -- Expr's, each of which correspond to a task declared in the main section of

@@ -19,7 +19,7 @@
 		"patterns": [
 		  {
 			"comment": "let expression/semantic functions",
-			"match": "\\b(model|for|sample|return|observe|infer|write|output|input|samples|template|while|delay|read|var|let|def|in)[[:space:]]+(([[:lower:]_][[:word:]']*)|(#var\".*\"))",
+			"match": "\\b(update|model|for|sample|return|observe|infer|write|output|input|samples|template|while|delay|read|var|let|def|in)[[:space:]]+(([[:lower:]_][[:word:]']*)|(#var\".*\"))",
 			"captures": {
 			  "1": { "name": "keyword.probtime" },
 			  "2": { "name": "entity.name.function.binding.probtime" }

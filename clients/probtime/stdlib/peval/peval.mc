@@ -30,6 +30,7 @@ let astBuilder = lam info.
     },
     nulet = lam id. lam body. TmLet {
       ident = id,
+      parentIdent = None (),
       tyAnnot = tyunknown_,
       tyBody = tyunknown_,
       body = body,

@@ -32,7 +32,8 @@ lang LanguageServerRoot =
   type LSPDefinition = {
     location: Info,
     kind: SymbolKind,
-    documentation: () -> Option String
+    documentation: () -> Option String,
+    exported: Bool
   }
 
   type LSPCodeLens = {
@@ -166,6 +167,7 @@ lang LanguageServerDefinition = LanguageServerRoot + LSPSymbolToCompletion
   type DefinitionPayload = {
     kind: SymbolKind,
     documentation: () -> Option String,
+    exported: Bool,
     location: Info,
     name: Name
   }
@@ -174,13 +176,14 @@ lang LanguageServerDefinition = LanguageServerRoot + LSPSymbolToCompletion
   | LsDefinition DefinitionPayload
 
   sem populateContext context =
-  | LsDefinition { location=location, name=name, kind=kind, documentation=documentation } ->
+  | LsDefinition { location=location, name=name, kind=kind, documentation=documentation, exported=exported } ->
     {
       context with
       definitions = mapInsertWith concat name [{
         location=location,
         kind=kind,
-        documentation=documentation
+        documentation=documentation,
+        exported=exported
       }] context.definitions
     }
 end

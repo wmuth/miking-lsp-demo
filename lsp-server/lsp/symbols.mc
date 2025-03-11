@@ -60,6 +60,11 @@ lang LSPWorkspaceSymbol = LSPRoot + LSPSymbolKind
     ) (mapEmpty nameCmp) files in
 
     let definitions = mapToSeq definitions in
+    -- let definitions = filter (
+    --   lam definition.
+    --     match definition with (_, definition) in
+    --     definition.exported
+    -- ) definitions in
     let definitions = filter (
       lam definition.
         match definition with (name, _) in

@@ -2,8 +2,8 @@
     "comments": {
         // symbol used for single line comment. Remove this entry if your 
         // language does not support line comments.
-        "lineComment": "--",
-        "blockComment": ["[/]-", "-[/]"]
+        "lineComment": "//",
+        // "blockComment": ["[/]-", "-[/]"]
     
     },
     // symbols used as brackets
@@ -28,7 +28,7 @@
         ["'", "'"]
     ],
     "indentationRules": {
-        "decreaseIndentPattern": "^\\s*(end|in|then|else|with)\\b",
-        "increaseIndentPattern": "\\blet[ \\t]+.*=[ \\t]*$|\\blam\\b.*\\.[ \\t]*$|\\b(if|then|else|match|case|utest)[ \\t]*$|\\b(recursive|switch)\\b",
+        "decreaseIndentPattern": "^\\s*(if|else|while)\\b",
+        "increaseIndentPattern": "\\b(if|else|while)[ \\t]*$",
     }
 }

@@ -181,6 +181,7 @@ lang BootParser = MExprAst + ConstTransformer
            body = gterm t 0}
   | 103 /-TmLet-/ ->
     TmLet {ident = gname t 0,
+           parentIdent = None (),
            tyAnnot = gtype t 0,
            tyBody = TyUnknown { info = ginfo t 0 },
            body = gterm t 0,

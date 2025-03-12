@@ -559,7 +559,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
       in
       TmLet {
         ident = dst, tyAnnot = readTy, tyBody = _tyuk info,
-        body = body, inexpr = uunit_, ty = _tyuk info, info = info }
+        body = body, inexpr = uunit_, ty = _tyuk info, info = dstInfo }
     else
       errorSingle [info] "Reference to undefined port"
   | WriteRtpplStmt {src = src, port = {v = portStr}, delay = delay, info = info} ->

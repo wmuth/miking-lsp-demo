@@ -49,17 +49,31 @@ lang RtpplLanguageServerCompiler =
       probtimeCode (join ["var ", nameGetStr name]),
       getSym name
     ]
+  | ReadRtpplStmt { port = { v = portStr }, dst = { v = name, i = info } } ->
+    eprintln (join ["Read ", portStr, " to ", nameGetStr name]);
+    join [
+      probtimeCode (join ["read ", portStr, " to ", nameGetStr name]),
+      getSym name
+    ]
+
+  sem stmtSymbol: RtpplStmt -> SymbolKind
+  sem stmtSymbol =
+  | _ -> SymbolFile ()
+  | ForLoopRtpplStmt _ -> SymbolVariable ()
+  | BindingRtpplStmt _ -> SymbolVariable ()
+  | ReadRtpplStmt _ -> SymbolEvent ()
 
   sem stmtLookup: TypeMap -> RtpplStmt -> [LanguageServerPayload]
   sem stmtLookup types =
   | _ -> []
   | stmt & ForLoopRtpplStmt { id = { v = name, i = info } }
-  | stmt & BindingRtpplStmt { id = { v = name, i = info } } ->
+  | stmt & BindingRtpplStmt { id = { v = name, i = info } }
+  | stmt & ReadRtpplStmt { dst = { v = name, i = info } } ->
     let documentation = lam. Some (stmtDocumentation stmt) in
     [
       LsDefinition {
         documentation=documentation,
-        kind = SymbolVariable (),
+        kind = stmtSymbol stmt,
         location = info,
         name = name,
         exported = false
@@ -70,8 +84,16 @@ lang RtpplLanguageServerCompiler =
       }
     ]
 
+  sem recursiveStmtLookup: TypeMap -> RtpplStmt -> [LanguageServerPayload]
+  sem recursiveStmtLookup types =| stmt ->
+    createAccumulators [
+      stmtLookup types,
+      createAccumulator sfold_RtpplStmt_RtpplStmt (recursiveStmtLookup types)
+    ] stmt
+
   sem topDocumentation: TypeMap -> RtpplTop -> String
   sem topDocumentation types =
+  | _ -> "Documentation unavailable"
   | FunctionDefRtpplTop { id = { v = name, i = info } } ->
     join [
       probtimeDefinition types "def" name,
@@ -90,9 +112,10 @@ lang RtpplLanguageServerCompiler =
 
   sem topDefinitionSymbol: RtpplTop -> SymbolKind
   sem topDefinitionSymbol =
+  | _ -> SymbolFile ()
   | FunctionDefRtpplTop _ -> SymbolFunction ()
-  | ModelDefRtpplTop _ -> SymbolEvent ()
-  | TemplateDefRtpplTop _ -> SymbolModule ()
+  | ModelDefRtpplTop _ -> SymbolModule ()
+  | TemplateDefRtpplTop _ -> SymbolStruct ()
 
   sem topLookup: TypeMap -> RtpplTop -> [LanguageServerPayload]
   sem topLookup types =
@@ -120,7 +143,7 @@ lang RtpplLanguageServerCompiler =
     createAccumulators [
       topLookup types,
       createAccumulator sfold_RtpplTop_RtpplTop       (recursiveTopLookup types),
-      createAccumulator sfold_RtpplTop_RtpplStmt      (stmtLookup types),
+      createAccumulator sfold_RtpplTop_RtpplStmt      (recursiveStmtLookup types),
       createAccumulator sfold_RtpplTop_RtpplTopParams (topParamsLookup types)
     ] top
 

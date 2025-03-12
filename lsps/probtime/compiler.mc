@@ -90,8 +90,13 @@ lang ProbTimeCompiler =
       ]
     }
 
-  sem mexprPruneNonParentIdentifier: Expr -> Expr
-  sem mexprPruneNonParentIdentifier =
+  -- In order to properly link according to the native ProbTime
+  -- constructs, we remove all identifiers that are not symbolized.
+  -- The ProbTime .syn file will use UNameSym for types which are
+  -- expected to define identifiers. The UNameSym will use nameSym
+  -- to generate a symbol for the identifier automatically.
+  sem mexprPruneNonSymbolizedIdentifier: Expr -> Expr
+  sem mexprPruneNonSymbolizedIdentifier =
   | expr -> expr
   | e & TmLam (expr & { ident = ident }) ->
     if nameHasSym ident then e else
@@ -106,10 +111,10 @@ lang ProbTimeCompiler =
       ident = nameNoSym ""
     }
 
-  sem mexprPruneNonParentIdentifiers: Expr -> Expr
-  sem mexprPruneNonParentIdentifiers =| expr ->
-    let expr = mexprPruneNonParentIdentifier expr in
-    smap_Expr_Expr mexprPruneNonParentIdentifiers expr
+  sem mexprPruneNonSymbolizedIdentifiers: Expr -> Expr
+  sem mexprPruneNonSymbolizedIdentifiers =| expr ->
+    let expr = mexprPruneNonSymbolizedIdentifier expr in
+    smap_Expr_Expr mexprPruneNonSymbolizedIdentifiers expr
 
   sem createChangeHandler: () -> (LSPCompilationParameters -> LSPCompilationResult)
   sem createChangeHandler =| _ ->
@@ -126,14 +131,9 @@ lang ProbTimeCompiler =
         eprintln (join ["Error parsing ", filename]);
         let diagnostics = map (compose toDiagnostic toError) errors in
         mapSingleton cmpString filename diagnostics
-      case Right program then  
+      case Right (rootProgram & ProgramRtpplProgram program) then  
         eprintln (join ["Parsed ", filename]);
         -- validateRtpplProgram program;
-
-        -- match identRtpplProgram program with
-        match program with
-          rootProgram & ProgramRtpplProgram program
-        in
 
         let env = initTopEnv rtpplDefaultOptions in
         match mapAccumL compileRtpplTop env program.tops with (topEnv, exprs) in
@@ -143,7 +143,7 @@ lang ProbTimeCompiler =
 
         -- BOUNDED EXPR --
         let boundedExpr = bindall_ exprs in
-        let prunedBoundedExpr = mexprPruneNonParentIdentifiers boundedExpr in
+        let prunedBoundedExpr = mexprPruneNonSymbolizedIdentifiers boundedExpr in
         -- eprintln (expr2str expr);
         match lsSymbolizeExpr runtimeSymEnv prunedBoundedExpr with {
           expr = symbolizedBoundedExpr

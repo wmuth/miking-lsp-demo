@@ -5,91 +5,29 @@ include "../../lsp-server/lsp/root.mc"
 include "../../lsp-server/lsp/utils.mc"
 
 include "./main.mc"
+include "./util.mc"
 
 let toDiagnostic = use LSPRoot in lam element. LsDiagnostic element
 let toError = use LSPRoot in addSeverity (Error ())
 let toWarning = use LSPRoot in addSeverity (Warning ())
 
-lang ProbTimeIdentifier = Rtppl
-  sem identTopParams : RtpplTopParams -> RtpplTopParams
-  sem identTopParams =
-  | params -> params
-  | ParamsRtpplTopParams (top & { params = params }) ->
-    -- [{id: {i: Info, v: Name}, ty: RtpplType}]
+lang MExprTypeExtractor = Rtppl + MExprAst + MExpr
+  sem extractTypes: Expr -> [(Name, Type)]
+  sem extractTypes =
+  | expr -> []
+  | TmLet { ident = ident, tyAnnot = tyAnnot, tyBody = tyBody } ->
+    [(ident, concreteType [tyAnnot, tyBody])]
 
-    let params = map (lam p.
-      let name = nameSetNewSym p.id.v in
-      { p with id = { p.id with v = name } }
-    ) params in
-
-    ParamsRtpplTopParams {
-      top with
-      params = params
-    }
-
-  sem identStmt : RtpplStmt -> RtpplStmt
-  sem identStmt =
-  | stmt -> stmt
-  | BindingRtpplStmt (stmt & { id = id & { v = name } }) ->
-    BindingRtpplStmt {
-      stmt with
-      id = {
-        id with
-        v = nameSetNewSym name
-      }
-    }
-
-  sem identTop : RtpplTop -> RtpplTop
-  sem identTop =
-  | top -> top
-  | FunctionDefRtpplTop (top & { id = id & { v = name } }) ->
-    FunctionDefRtpplTop {
-      top with
-      id = {
-        id with
-        v = nameSetNewSym name
-      }
-    }
-  | ModelDefRtpplTop (top & { id = id & { v = name } }) ->
-    ModelDefRtpplTop {
-      top with
-      id = {
-        id with
-        v = nameSetNewSym name
-      }
-    }
-  | TemplateDefRtpplTop (top & { id = id & { v = name } }) ->
-    TemplateDefRtpplTop {
-      top with
-      id = {
-        id with
-        v = nameSetNewSym name
-      }
-    }
-
-  sem identRtpplProgram : RtpplProgram -> RtpplProgram
-  sem identRtpplProgram =
-  | p -> p
-  | prog & (ProgramRtpplProgram p) ->
-    let transforms = [
-      identTop,
-      (smap_RtpplTop_RtpplStmt identStmt),
-      (smap_RtpplTop_RtpplTopParams identTopParams)
-    ] in
-
-    let getTop = flip (foldl (
-      lam acc. lam f. f acc
-    )) transforms in
-
-    ProgramRtpplProgram {
-      p with
-      tops = map getTop p.tops
-    }
+  sem recursiveExtractTypes: Expr -> [(Name, Type)]
+  sem recursiveExtractTypes =| expr ->
+    createAccumulators [
+      extractTypes,
+      createAccumulator sfold_Expr_Expr recursiveExtractTypes
+    ] expr
 end
 
 lang ProbTimeCompiler =
-  ProbTimeIdentifier
-  + LSPRoot + Rtppl + MExpr
+  MExprTypeExtractor + LSPRoot + Rtppl + MExpr
 
   type MExprSymbolized = {
     expr: Expr, -- With symbols
@@ -155,7 +93,7 @@ lang ProbTimeCompiler =
   sem mexprPruneNonParentIdentifier: Expr -> Expr
   sem mexprPruneNonParentIdentifier =
   | expr -> expr
-  | TmLam (expr & { ident = ident }) -> 
+  | TmLam (expr & { ident = ident, parentIdent = None () }) -> 
     TmLam {
       expr with
       ident = nameNoSym ""
@@ -170,41 +108,6 @@ lang ProbTimeCompiler =
   sem mexprPruneNonParentIdentifiers =| expr ->
     let expr = mexprPruneNonParentIdentifier expr in
     smap_Expr_Expr mexprPruneNonParentIdentifiers expr
-
-  sem createExprLanguageSupport: SymEnv -> Expr -> [LanguageServerPayload]
-  sem createExprLanguageSupport symEnv =| expr ->
-    match lsSymbolizeExpr symEnv expr with {
-      expr = symbolizedExpr,
-      diagnostics = symbolizeDiagnostics
-    } in
-
-    eprintln (expr2str symbolizedExpr);
-
-    match lsTypeCheckMExpr symbolizedExpr with {
-      expr = typeCheckedExpr,
-      diagnostics = typeCheckDiagnostics
-    } in
-
-    let languageSupport = exprToLanguageSupport typeCheckedExpr in
-    
-    join [
-      map toDiagnostic symbolizeDiagnostics,
-      map toDiagnostic typeCheckDiagnostics,
-      languageSupport
-    ]
-
-  sem createExprLinkerLanguageSupport: SymEnv -> Expr -> [LanguageServerPayload]
-  sem createExprLinkerLanguageSupport symEnv =| expr ->
-    let expr = mexprPruneNonParentIdentifiers expr in
-    -- eprintln (expr2str expr);
-
-    match lsSymbolizeExpr symEnv expr with {
-      expr = symbolizedExpr,
-      diagnostics = symbolizeDiagnostics
-    } in
-
-    let languageSupport = exprToLanguageSupportLinker symbolizedExpr in
-    languageSupport
 
   sem createChangeHandler: () -> (LSPCompilationParameters -> LSPCompilationResult)
   sem createChangeHandler =| _ ->
@@ -225,30 +128,46 @@ lang ProbTimeCompiler =
         eprintln (join ["Parsed ", filename]);
         -- validateRtpplProgram program;
 
-        match identRtpplProgram program with
+        -- match identRtpplProgram program with
+        match program with
           rootProgram & ProgramRtpplProgram program
         in
 
         let env = initTopEnv rtpplDefaultOptions in
-        match mapAccumL compileRtpplTop env program.tops with 
-        (
-          topEnv,
-          exprs
-        ) in
-
-        let boundedExpr = bindall_ exprs in
-        let fullExpr = bind_ runtime boundedExpr in
+        match mapAccumL compileRtpplTop env program.tops with (topEnv, exprs) in
         
         -- let ast = eliminateDuplicateCode (bind_ runtime rtpplExpr) in
-        -- match liftLambdasWithSolutions expr with (
-        --   solutions,
-        --   expr
-        -- ) in
+        -- match liftLambdasWithSolutions expr with (solutions, expr) in
+
+        -- BOUNDED EXPR --
+        let boundedExpr = bindall_ exprs in
+        let prunedBoundedExpr = mexprPruneNonParentIdentifiers boundedExpr in
+        -- eprintln (expr2str expr);
+        match lsSymbolizeExpr runtimeSymEnv prunedBoundedExpr with {
+          expr = symbolizedBoundedExpr
+        } in
+        -- END BOUNDED EXPR --
+
+        -- FULL EXPR --
+        let fullExpr = bind_ runtime boundedExpr in
+        match lsSymbolizeExpr runtimeSymEnv fullExpr with {
+          expr = symbolizedFullExpr,
+          diagnostics = symbolizeDiagnostics
+        } in
+        -- eprintln (expr2str symbolizedExpr);
+        match lsTypeCheckMExpr symbolizedFullExpr with {
+          expr = typeCheckedFullExpr,
+          diagnostics = typeCheckDiagnostics
+        } in
+        let types = (compose (mapFromSeq nameCmp) recursiveExtractTypes) typeCheckedFullExpr in
+        -- END FULL EXPR --
 
         let languageSupport = join [
-          createExprLanguageSupport runtimeSymEnv fullExpr,
-          createExprLinkerLanguageSupport runtimeSymEnv boundedExpr,
-          probtimeProgramToLanguageSupport rootProgram
+          map toDiagnostic symbolizeDiagnostics,
+          map toDiagnostic typeCheckDiagnostics,
+          exprToLanguageSupport typeCheckedFullExpr,
+          exprToLanguageSupportLinker symbolizedBoundedExpr,
+          probtimeProgramToLanguageSupport types rootProgram
         ] in
 
         eprintln (join ["Compiled ", filename]);

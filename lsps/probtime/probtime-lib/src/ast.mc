@@ -12515,7 +12515,7 @@ let _table =
                                     [ l1.info ],
                                     [ l2.info ] ],
                               e = [ ntVal3.1 ],
-                              id = [ { v = nameNoSym x.val, i = x.info } ],
+                              id = [ { v = nameSym x.val, i = x.info } ],
                               ty = [ ntVal2.1 ] }) },
              { nt = #var"RtpplTopAtom",
                label = {},
@@ -12551,7 +12551,7 @@ let _table =
                                   [ [ l3.info ],
                                     [ x1.info ],
                                     [ l4.info ] ],
-                              id = [ { v = nameNoSym x1.val, i = x1.info } ],
+                              id = [ { v = nameSym x1.val, i = x1.info } ],
                               ty = [ ntVal4.1 ] }) },
              { nt = kleene1,
                label = {},
@@ -12691,7 +12691,7 @@ let _table =
                                     val2.__br_terms,
                                     val3.__br_terms,
                                     [ l11.info ] ],
-                              id = [ { v = nameNoSym x2.val, i = x2.info } ],
+                              id = [ { v = nameSym x2.val, i = x2.info } ],
                               ty = [ ntVal8.1 ],
                               body =
                                 [ { ret =
@@ -12845,7 +12845,7 @@ let _table =
                                     val4.__br_terms,
                                     val5.__br_terms,
                                     [ l18.info ] ],
-                              id = [ { v = nameNoSym x4.val, i = x4.info } ],
+                              id = [ { v = nameSym x4.val, i = x4.info } ],
                               ty = [ ntVal12.1 ],
                               body =
                                 [ { ret =
@@ -12993,7 +12993,7 @@ let _table =
                                     val6.__br_terms,
                                     val7.__br_terms,
                                     [ l23.info ] ],
-                              id = [ { v = nameNoSym x6.val, i = x6.info } ],
+                              id = [ { v = nameSym x6.val, i = x6.info } ],
                               body = [ { body = val7.body, ports = val6.ports } ],
                               params = [ ntVal15.1 ] }) },
              { nt = kleene5,
@@ -13039,7 +13039,7 @@ let _table =
                              concat
                                [ { id =
                                      match
-                                       [ { v = nameNoSym x7.val, i = x7.info } ]
+                                       [ { v = nameSym x7.val, i = x7.info } ]
                                      with
                                        [ x8 ] ++ _
                                      in
@@ -13123,7 +13123,7 @@ let _table =
                              concat
                                [ { id =
                                      match
-                                       [ { v = nameNoSym x10.val, i = x10.info } ]
+                                       [ { v = nameSym x10.val, i = x10.info } ]
                                      with
                                        [ x11 ] ++ _
                                      in
@@ -13301,7 +13301,7 @@ let _table =
                                     val10.__br_terms,
                                     [ l33.info ] ],
                               e = [ ntVal21.1 ],
-                              id = [ { v = nameNoSym x15.val, i = x15.info } ],
+                              id = [ { v = nameSym x15.val, i = x15.info } ],
                               ty = val10.ty }) },
              { nt = #var"RtpplStmtAtom",
                label = {},
@@ -13554,7 +13554,7 @@ let _table =
                                     [ x20.info ],
                                     val12.__br_terms ],
                               proj = val12.proj,
-                              dst = [ { v = nameNoSym x20.val, i = x20.info } ],
+                              dst = [ { v = nameSym x20.val, i = x20.info } ],
                               port = [ { v = x19.val, i = x19.info } ] }) },
              { nt = alt6,
                label = {},

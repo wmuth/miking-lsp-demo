@@ -99,12 +99,12 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
 
       let usageResult = findUsageLinearly uri usages line character in
 
-      -- (
-      --   match usageResult with Some usage then
-      --     let str = join [info2str usage.location, ": ", strJoin ", " (map nameGetStr usage.names)] in
-      --     eprintln (join ["Usage result: ", str])
-      --   else ()
-      -- );
+      (
+        match usageResult with Some usage then
+          let str = join [info2str usage.location, ": ", strJoin ", " (map nameGetStr usage.names)] in
+          eprintln (join ["Usage result: ", str])
+        else ()
+      );
 
       progress.reportMsg 0.8 "Finding definitions";
       let definitions = optionMap (findDefinitions definitions) usageResult in

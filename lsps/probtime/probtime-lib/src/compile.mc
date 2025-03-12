@@ -369,14 +369,14 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
         ident = id, params = [], tyIdent = compileRtpplType ty,
         inexpr = uunit_, ty = _tyuk info, info = info } )
   | FunctionDefRtpplTop {
-      id = {v = id}, params = params, ty = ty,
+      id = {v = id, i = namePos}, params = params, ty = ty,
       body = {stmts = stmts, ret = ret}, info = info} ->
     let params = compileParams params in
     let tyAnnot = foldl addParamTypeAnnot (compileRtpplType ty) params in
     let retExpr = compileRtpplReturnExpr info ret in
     let body = compileRtpplStmts env retExpr stmts in
     ( env
-    , TmLet { parentIdent = None (),
+    , TmLet { parentIdent = Some (id, namePos),
         ident = id, tyAnnot = tyAnnot, tyBody = _tyuk info,
         body = foldl addParamToBody body params, inexpr = uunit_,
         ty = _tyuk info, info = info } )
@@ -444,7 +444,9 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
   sem addParamToBody acc =
   | (id, paramTy, info) ->
     TmLam {
-      ident = id, tyAnnot = _tyuk info, tyParam = paramTy, body = acc,
+      ident = id,
+      parentIdent = Some (id, info),
+      tyAnnot = _tyuk info, tyParam = paramTy, body = acc,
       ty = TyArrow {from = paramTy, to = tyTm acc, info = info}, info = info }
 
   sem buildPortTypesMap : RtpplTopEnv -> RtpplPort -> RtpplTopEnv
@@ -505,10 +507,12 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     let inferModelBind = TmLet { parentIdent = None (),
       ident = nameNoSym "inferModel", tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmLam {
+        parentIdent = None (),
         ident = nameNoSym "p", tyAnnot = _tyuk info, tyParam = _tyuk info,
         body = TmInfer {
           method = BPF {particles = _variable info (nameNoSym "p")},
           model = TmLam {
+            parentIdent = None (),
             ident = nameNoSym "", tyAnnot = _tyuk info, tyParam = _tyuk info,
             body = compileRtpplExpr model, ty = _tyuk info, info = info },
           ty = _tyuk info, info = info},
@@ -587,8 +591,10 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     with (loopVarId, tailExpr) in
     let bodyExpr = compileRtpplStmts env tailExpr body in
     let funExpr = TmLam {
+      parentIdent = None (),
       ident = loopVarId, tyAnnot = _tyuk info, tyParam = _tyuk info,
       body = TmLam {
+        parentIdent = None (),
         ident = id, tyAnnot = _tyuk info, tyParam = _tyuk info,
         body = bodyExpr, ty = _tyuk info, info = info },
       ty = _tyuk info, info = info
@@ -625,6 +631,7 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
     let recBind = {
       ident = loopId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmLam {
+        parentIdent = None (),
         ident = loopVarId, tyAnnot = _tyuk info, tyParam = _tyuk info,
         body = loopBody, ty = _tyuk info, info = info },
       info = info
@@ -859,6 +866,7 @@ lang RtpplCompileGenerated = RtpplCompileType
         , (stringToSid "1", dist) ]
     in
     TmLam {
+      parentIdent = None (),
       ident = tsv, tyAnnot = _tyuk info, tyParam = _tyuk info,
       body = TmMatch {
         target = _variable info tsv,
@@ -889,6 +897,7 @@ lang RtpplCompileGenerated = RtpplCompileType
         , (stringToSid "1", _unsafe samplesExpr) ]
     in
     TmLam {
+      parentIdent = None (),
       ident = tsv, tyAnnot = _tyuk info, tyParam = _tyuk info,
       body = TmMatch {
         target = _variable info tsv,
@@ -1104,6 +1113,7 @@ lang RtpplCompileGenerated = RtpplCompileType
       ty = _tyuk info, info = info
     } in
     let closeFilesExpr = TmLam {
+      parentIdent = None (),
       ident = nameNoSym "", tyAnnot = _tyuk info, tyParam = _tyuk info,
       body = bindall_ (map closeFileDescExpr fdports),
       ty = _tyuk info, info = info
@@ -1148,6 +1158,7 @@ lang RtpplCompileGenerated = RtpplCompileType
     TmLet { parentIdent = None (),
       ident = updateInputsId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmLam {
+        parentIdent = None (),
         ident = nameNoSym "", tyAnnot = _tyuk info, tyParam = _tyuk info,
         body = TmApp {
           lhs = TmApp {
@@ -1198,6 +1209,7 @@ lang RtpplCompileGenerated = RtpplCompileType
     TmLet { parentIdent = None (),
       ident = flushOutputsId, tyAnnot = _tyuk info, tyBody = _tyuk info,
       body = TmLam {
+        parentIdent = None (),
         ident = nameNoSym "", tyAnnot = _tyuk info, tyParam = _tyuk info,
         body = bindall_ (snoc (map flushPortData outputPorts) clearExpr),
         ty = _tyuk info, info = info},

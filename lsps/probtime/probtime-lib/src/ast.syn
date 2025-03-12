@@ -71,6 +71,17 @@ token UName {
   ty = Name,
 }
 
+token UNameSym {
+  base = UIdent,
+  wrap = nameSym,
+  ty = Name,
+}
+token LNameSym {
+  base = LIdent,
+  wrap = nameSym,
+  ty = Name,
+}
+
 token {fragment = OperatorTokenParser,}
 token {fragment = CommaTokenParser,}
 token {fragment = BracketTokenParser,}
@@ -79,31 +90,31 @@ token {fragment = RTPPLLineCommentParser,}
 
 prod Program : RtpplProgram = tops:RtpplTop* main:RtpplMain
 
-prod Constant : RtpplTop = "const" id:LName ":" ty:RtpplType "=" e:RtpplExpr
-prod TypeAlias : RtpplTop = "type" id:UName "=" ty:RtpplType
+prod Constant : RtpplTop = "const" id:LNameSym ":" ty:RtpplType "=" e:RtpplExpr
+prod TypeAlias : RtpplTop = "type" id:UNameSym "=" ty:RtpplType
 prod FunctionDef : RtpplTop =
-  "def" id:LName "(" params:RtpplTopParams ")" ":" ty:RtpplType
+  "def" id:LNameSym "(" params:RtpplTopParams ")" ":" ty:RtpplType
   "{" body:{stmts:RtpplStmt* ("return" ret:RtpplExpr)?} "}"
 prod ModelDef : RtpplTop =
-  "model" id:LName "(" params:RtpplTopParams ")" ":" ty:RtpplType
+  "model" id:LNameSym "(" params:RtpplTopParams ")" ":" ty:RtpplType
   "{" body:{stmts:RtpplStmt* ("return" ret:RtpplExpr)?} "}"
 prod TemplateDef : RtpplTop =
-  "template" id:UName "(" params:RtpplTopParams ")"
+  "template" id:UNameSym "(" params:RtpplTopParams ")"
   "{" body:{ports:RtpplPort* body:RtpplStmt*} "}"
 
 prod Params : RtpplTopParams =
-  (params:{id:LName ":" ty:RtpplType} ("," params:{id:LName ":" ty:RtpplType})*)?
+  (params:{id:LNameSym ":" ty:RtpplType} ("," params:{id:LNameSym ":" ty:RtpplType})*)?
 
 prod Input : RtpplPort = "input" id:LIdent ":" ty:RtpplType
 prod Output : RtpplPort = "output" id:LIdent ":" ty:RtpplType
 
-prod Binding : RtpplStmt = "var" id:LName (":" ty:RtpplType)? "=" e:RtpplExpr
+prod Binding : RtpplStmt = "var" id:LNameSym (":" ty:RtpplType)? "=" e:RtpplExpr
 prod Observe : RtpplStmt = "observe" e:RtpplExpr "~" d:RtpplExpr
 prod Assume : RtpplStmt = "sample" id:LName "~" d:RtpplExpr
 prod Infer : RtpplStmt = "infer" model:RtpplExpr "to" id:LName ("particles" p:RtpplExpr)?
 prod Degenerate : RtpplStmt = "degenerate"
 prod Resample : RtpplStmt = "resample"
-prod Read : RtpplStmt = "read" port:LIdent "to" (dst:LName ("." proj:LIdent)?)
+prod Read : RtpplStmt = "read" port:LIdent "to" (dst:LNameSym ("." proj:LIdent)?)
 prod Write : RtpplStmt = "write" src:RtpplExpr "to" port:LIdent ("offset" delay:RtpplExpr)?
 prod Condition : RtpplStmt =
   "if" cond:RtpplExpr ("update" id:LName)? "{" thn:RtpplStmt* "}" "else" "{" els:RtpplStmt* "}"

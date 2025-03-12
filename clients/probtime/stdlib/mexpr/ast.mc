@@ -315,6 +315,7 @@ end
 lang LamAst = Ast
   syn Expr =
   | TmLam {ident : Name,
+           parentIdent : Option (Name, Info),
            tyAnnot : Type,
            tyParam : Type,
            body : Expr,

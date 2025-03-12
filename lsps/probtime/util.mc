@@ -2,7 +2,32 @@ include "mexpr/mexpr.mc"
 
 let debugSym = true
 
-let probtimeCode = lam code. join ["```probtime\n", code, "\n```\n"]
+lang ProbTimeLanguageServerPrettyPrint = MExprPrettyPrint + MExprAst
+  sem probtimeCode =| code -> join ["```probtime\n", code, "\n```\n"]
+
+  sem probtimeDefinition types prefix =| name ->
+    probtimeCode ((compose join filterOption) [
+      Some (join [prefix, " "]),
+      Some (nameGetStr name),
+      optionMap (
+        lam ty. join [": ", type2str ty]
+      ) (mapLookup name types)
+    ])
+end
+
+-- Get first non-unknown type from list
+recursive let concreteType: use MExprAst in [Type] -> Type =
+  lam types.
+  use MExprAst in
+  switch types
+    case [] then
+      TyUnknown { info = NoInfo () }
+    case [t] ++ _ then
+      t
+    case [TyUnknown _] ++ rest then
+      concreteType rest
+  end
+end
 
 recursive let getAnyType = lam types.
   use MExprAst in

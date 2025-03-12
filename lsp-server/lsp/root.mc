@@ -145,6 +145,8 @@ lang LanguageServerUsage = LanguageServerRoot
   | LsUsage UsagePayload
 
   sem populateContext context =
+  -- | LsUsage _ -> context
+  -- | LsUsage { location=location, name=name & !(_, _noSymbol) } ->
   | LsUsage { location=location, name=name } ->
     { context with usages = mapInsertWith concat location [name] context.usages } 
 end

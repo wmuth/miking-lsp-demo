@@ -3,11 +3,7 @@ include "mexpr/pprint.mc"
 
 include "../../lib/utils.mc"
 include "./utils.mc"
-
 include "./root.mc"
-
-lang SuperPrettyPrint = MExprPrettyPrint
-end
 
 lang LSPHover = LSPRoot
   syn Message =

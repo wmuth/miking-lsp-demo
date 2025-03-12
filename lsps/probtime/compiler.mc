@@ -10,8 +10,86 @@ let toDiagnostic = use LSPRoot in lam element. LsDiagnostic element
 let toError = use LSPRoot in addSeverity (Error ())
 let toWarning = use LSPRoot in addSeverity (Warning ())
 
+lang ProbTimeIdentifier = Rtppl
+  sem identTopParams : RtpplTopParams -> RtpplTopParams
+  sem identTopParams =
+  | params -> params
+  | ParamsRtpplTopParams (top & { params = params }) ->
+    -- [{id: {i: Info, v: Name}, ty: RtpplType}]
+
+    let params = map (lam p.
+      let name = nameSetNewSym p.id.v in
+      { p with id = { p.id with v = name } }
+    ) params in
+
+    ParamsRtpplTopParams {
+      top with
+      params = params
+    }
+
+  sem identStmt : RtpplStmt -> RtpplStmt
+  sem identStmt =
+  | stmt -> stmt
+  | BindingRtpplStmt (stmt & { id = id & { v = name } }) ->
+    BindingRtpplStmt {
+      stmt with
+      id = {
+        id with
+        v = nameSetNewSym name
+      }
+    }
+
+  sem identTop : RtpplTop -> RtpplTop
+  sem identTop =
+  | top -> top
+  | FunctionDefRtpplTop (top & { id = id & { v = name } }) ->
+    FunctionDefRtpplTop {
+      top with
+      id = {
+        id with
+        v = nameSetNewSym name
+      }
+    }
+  | ModelDefRtpplTop (top & { id = id & { v = name } }) ->
+    ModelDefRtpplTop {
+      top with
+      id = {
+        id with
+        v = nameSetNewSym name
+      }
+    }
+  | TemplateDefRtpplTop (top & { id = id & { v = name } }) ->
+    TemplateDefRtpplTop {
+      top with
+      id = {
+        id with
+        v = nameSetNewSym name
+      }
+    }
+
+  sem identRtpplProgram : RtpplProgram -> RtpplProgram
+  sem identRtpplProgram =
+  | p -> p
+  | prog & (ProgramRtpplProgram p) ->
+    let transforms = [
+      identTop,
+      (smap_RtpplTop_RtpplStmt identStmt),
+      (smap_RtpplTop_RtpplTopParams identTopParams)
+    ] in
+
+    let getTop = flip (foldl (
+      lam acc. lam f. f acc
+    )) transforms in
+
+    ProgramRtpplProgram {
+      p with
+      tops = map getTop p.tops
+    }
+end
+
 lang ProbTimeCompiler =
-  LSPRoot + Rtppl + MExpr
+  ProbTimeIdentifier
+  + LSPRoot + Rtppl + MExpr
 
   type MExprSymbolized = {
     expr: Expr, -- With symbols
@@ -93,19 +171,21 @@ lang ProbTimeCompiler =
     let expr = mexprPruneNonParentIdentifier expr in
     smap_Expr_Expr mexprPruneNonParentIdentifiers expr
 
-  sem createExprLanguageSupport: String -> SymEnv -> Expr -> [LanguageServerPayload]
-  sem createExprLanguageSupport filename symEnv =| expr ->
+  sem createExprLanguageSupport: SymEnv -> Expr -> [LanguageServerPayload]
+  sem createExprLanguageSupport symEnv =| expr ->
     match lsSymbolizeExpr symEnv expr with {
       expr = symbolizedExpr,
       diagnostics = symbolizeDiagnostics
     } in
+
+    eprintln (expr2str symbolizedExpr);
 
     match lsTypeCheckMExpr symbolizedExpr with {
       expr = typeCheckedExpr,
       diagnostics = typeCheckDiagnostics
     } in
 
-    let languageSupport = exprToLanguageSupport filename typeCheckedExpr in
+    let languageSupport = exprToLanguageSupport typeCheckedExpr in
     
     join [
       map toDiagnostic symbolizeDiagnostics,
@@ -113,17 +193,17 @@ lang ProbTimeCompiler =
       languageSupport
     ]
 
-  sem createExprLinkerLanguageSupport: String -> SymEnv -> Expr -> [LanguageServerPayload]
-  sem createExprLinkerLanguageSupport filename symEnv =| expr ->
+  sem createExprLinkerLanguageSupport: SymEnv -> Expr -> [LanguageServerPayload]
+  sem createExprLinkerLanguageSupport symEnv =| expr ->
     let expr = mexprPruneNonParentIdentifiers expr in
-    eprintln (expr2str expr);
+    -- eprintln (expr2str expr);
 
     match lsSymbolizeExpr symEnv expr with {
       expr = symbolizedExpr,
       diagnostics = symbolizeDiagnostics
     } in
 
-    let languageSupport = exprToLanguageSupportLinker filename symbolizedExpr in
+    let languageSupport = exprToLanguageSupportLinker symbolizedExpr in
     languageSupport
 
   sem createChangeHandler: () -> (LSPCompilationParameters -> LSPCompilationResult)
@@ -158,7 +238,6 @@ lang ProbTimeCompiler =
 
         let boundedExpr = bindall_ exprs in
         let fullExpr = bind_ runtime boundedExpr in
-        -- eprintln (expr2str boundedExpr);
         
         -- let ast = eliminateDuplicateCode (bind_ runtime rtpplExpr) in
         -- match liftLambdasWithSolutions expr with (
@@ -167,9 +246,9 @@ lang ProbTimeCompiler =
         -- ) in
 
         let languageSupport = join [
-          createExprLanguageSupport filename runtimeSymEnv fullExpr,
-          createExprLinkerLanguageSupport filename runtimeSymEnv boundedExpr,
-          probtimeProgramToLanguageSupport filename rootProgram
+          createExprLanguageSupport runtimeSymEnv fullExpr,
+          createExprLinkerLanguageSupport runtimeSymEnv boundedExpr,
+          probtimeProgramToLanguageSupport rootProgram
         ] in
 
         eprintln (join ["Compiled ", filename]);

@@ -19,7 +19,7 @@
 		"patterns": [
 		  {
 			"comment": "let expression/semantic functions",
-			"match": "\\b(update|model|for|sample|return|observe|infer|write|output|input|samples|template|while|delay|read|var|let|def|in)[[:space:]]+(([[:lower:]_][[:word:]']*)|(#var\".*\"))",
+			"match": "\\b(delay|write|value|update|model|for|sample|return|observe|infer|write|output|input|samples|template|while|read|var|let|def|in)[[:space:]]+(([[:lower:]_][[:word:]']*))",
 			"captures": {
 			  "1": { "name": "keyword.probtime" },
 			  "2": { "name": "entity.name.function.binding.probtime" }
@@ -27,7 +27,23 @@
 		  },
 		  {
 			"comment": "type/syntax definition",
-			"match": "\\b(model|for|sample|return|observe|infer|write|output|input|samples|template|while|delay|read)[[:space:]]+(([[:upper:]][[:word:]']*)|(#type\".*\"))",
+			"match": "\\b(to|model|for|sample|return|observe|infer|write|output|input|samples|template|while|delay|read)[[:space:]]+(([[:upper:]][[:word:]']*))",
+			"captures": {
+			  "1": { "name": "keyword.probtime" },
+			  "2": { "name": "entity.name.type.binding.probtime" }
+			}
+		  },
+		  {
+			"comment": "to",
+			"match": "\\b(to)[[:space:]]+(([[:word:]]*))",
+			"captures": {
+			  "1": { "name": "keyword.probtime" },
+			  "2": { "name": "entity.name.type.binding.probtime" }
+			}
+		  },
+		  {
+			"comment": "particles",
+			"match": "\\b(particles)[[:space:]]+(([[:digit:]]*))",
 			"captures": {
 			  "1": { "name": "keyword.probtime" },
 			  "2": { "name": "entity.name.type.binding.probtime" }
@@ -66,7 +82,7 @@
 		  {
 			"comment": "Integer and floats",
 			"name": "support.function.probtime",
-			"match": "\\b(slli|srli|srai|floorfi|ceilfi|roundfi|int2float|stringIsFloat|string2float|float2string)\\b"
+			"match": "\\b(floatToString|intToString|value|slli|srli|srai|floorfi|ceilfi|roundfi|int2float|stringIsFloat|string2float|float2string)\\b"
 		  },
 		  {
 			"comment": "Characters",
@@ -91,7 +107,7 @@
 		  {
 			"comment": "Debug and I/O",
 			"name": "support.function.probtime",
-			"match": "\\b(print|printError|dprint|flushStdout|flushStderr|readLine|readBytesAsString|argv|readFile|writeFile|fileExists|deleteFile|command|error|exit)\\b"
+			"match": "\\b(printObs|printLine|print|printError|dprint|flushStdout|flushStderr|readLine|readBytesAsString|argv|readFile|writeFile|fileExists|deleteFile|command|error|exit)\\b"
 		  },
 		  {
 			"comment": "Constructor tags",
@@ -101,7 +117,7 @@
 		  {
 			"comment": "Symbols",
 			"name": "support.function.probtime",
-			"match": "\\b(eqsym|gensym|sym2hash)\\b"
+			"match": "\\b(Floateqsym|gensym|sym2hash)\\b"
 		  },
 		  {
 			"comment": "References",

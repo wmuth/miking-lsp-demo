@@ -1,58 +1,18 @@
 include "mexpr/mexpr.mc"
-
 include "probtime-lib/src/ast.mc"
-
 include "../../lsp-server/lsp/root.mc"
-
-let debugSym = true
-
-let probtimeCode = lam code. join ["```probtime\n", code, "\n```\n"]
-
-recursive let getAnyType = lam types.
-  use MExprAst in
-  switch types
-    case [] then
-      TyUnknown { info = NoInfo () }
-    case [t] then
-      t
-    case [TyUnknown _] ++ rest then
-      getAnyType rest
-    case [t] ++ rest then
-      t
-  end
-end
-
-let getSym = 
-  if debugSym then
-    lam name.
-      join [
-        "\n",
-        optionGetOr "No symbol" (optionMap (compose int2string sym2hash) (nameGetSym name))
-      ]
-    else
-      lam. ""
-
--- Basically do this:
--- let childTypes = sfold_Decl_Type (lam acc. lam ty.
---   join [acc, recursiveTypeLookup file env ty]
--- ) [] decl
--- But with less boilerplate.
-let createAccumulator: all a. all b. all acc. (([acc] -> a -> [acc]) -> [acc] -> b -> [acc]) -> (a -> [acc]) -> b -> [acc] =
-  lam sfold. lam generator. lam item.
-    sfold (lam acc. lam pat.
-      join [acc, generator pat]
-    ) [] item
+include "util.mc"
 
 lang RtpplLanguageServerCompiler = RtpplAst + LSPRoot
-  sem topParamsLookup: String -> RtpplTopParams -> [LanguageServerPayload]
-  sem topParamsLookup filename =
+  sem topParamsLookup: RtpplTopParams -> [LanguageServerPayload]
+  sem topParamsLookup =
   | _ -> []
   | ParamsRtpplTopParams { params = params } ->
     let paramLookup = lam param.
       match param with { id = { v=name, i=info } } in
       let documentation = join [
-        probtimeCode (join [nameGetStr name]),
-        "(param. ", getSym name, ")"
+        probtimeCode (join ["(parameter) var ", nameGetStr name]),
+        getSym name
       ] in
       [
         LsDefinition {
@@ -71,13 +31,13 @@ lang RtpplLanguageServerCompiler = RtpplAst + LSPRoot
 
     flatMap paramLookup params
 
-  sem stmtLookup: String -> RtpplStmt -> [LanguageServerPayload]
-  sem stmtLookup filename =
+  sem stmtLookup: RtpplStmt -> [LanguageServerPayload]
+  sem stmtLookup =
   | _ -> []
   | BindingRtpplStmt { id = { v = name, i = info } } ->
     let documentation = join [
       probtimeCode (join ["var ", nameGetStr name]),
-      "(var. ", getSym name, ")"
+      getSym name
     ] in
     [
       LsDefinition {
@@ -93,25 +53,67 @@ lang RtpplLanguageServerCompiler = RtpplAst + LSPRoot
       }
     ]
 
-  sem topLookup: String -> RtpplTop -> [LanguageServerPayload]
-  sem topLookup filename =| top ->
-    let stmts = sfold_RtpplTop_RtpplStmt (lam acc. lam stmt.
-      join [acc, stmtLookup filename stmt]
-    ) [] top in
+  sem topDocumentation: RtpplTop -> String
+  sem topDocumentation =
+  | FunctionDefRtpplTop { id = { v = name, i = info } } ->
+    join [
+      probtimeCode (join ["def ", nameGetStr name]),
+      getSym name
+    ]
+  | ModelDefRtpplTop { id = { v = name, i = info } } ->
+    join [
+      probtimeCode (join ["model ", nameGetStr name]),
+      getSym name
+    ]
+  | TemplateDefRtpplTop { id = { v = name, i = info } } ->
+    join [
+      probtimeCode (join ["template ", nameGetStr name]),
+      getSym name
+    ]
 
-    let topParams = sfold_RtpplTop_RtpplTopParams (lam acc. lam stmt.
-      join [acc, topParamsLookup filename stmt]
-    ) [] top in
+  sem topDefinitionSymbol: RtpplTop -> SymbolKind
+  sem topDefinitionSymbol =
+  | FunctionDefRtpplTop _ -> SymbolFunction ()
+  | ModelDefRtpplTop _ -> SymbolEvent ()
+  | TemplateDefRtpplTop _ -> SymbolModule ()
 
-    join [stmts, topParams]
+  sem topLookup: RtpplTop -> [LanguageServerPayload]
+  sem topLookup =
+  | _ -> []
+  | top & FunctionDefRtpplTop { id = { v = name, i = info } }
+  | top & ModelDefRtpplTop { id = { v = name, i = info } }
+  | top & TemplateDefRtpplTop { id = { v = name, i = info } } ->
+    let documentation = topDocumentation top in
+    [
+      LsDefinition {
+        documentation=lam. Some documentation,
+        kind = topDefinitionSymbol top,
+        location = info,
+        name = name,
+        exported = true
+      },
+      LsHover {
+        location = info,
+        toString = lam. Some documentation
+      }
+    ]
 
-  sem recursiveProgramLookup: String -> RtpplProgram -> [LanguageServerPayload]
-  sem recursiveProgramLookup filename =| program & ProgramRtpplProgram { tops = tops } ->
-    flatMap (topLookup filename) tops
+  sem recursiveTopLookup: RtpplTop -> [LanguageServerPayload]
+  sem recursiveTopLookup =| top ->    
+    createAccumulators [
+      topLookup,
+      createAccumulator sfold_RtpplTop_RtpplTop recursiveTopLookup,
+      createAccumulator sfold_RtpplTop_RtpplStmt stmtLookup,
+      createAccumulator sfold_RtpplTop_RtpplTopParams topParamsLookup
+    ] top
 
-  sem probtimeProgramToLanguageSupport: String -> RtpplProgram -> [LanguageServerPayload]
-  sem probtimeProgramToLanguageSupport filename =| program ->
-    recursiveProgramLookup filename program
+  sem recursiveProgramLookup: RtpplProgram -> [LanguageServerPayload]
+  sem recursiveProgramLookup =| program & ProgramRtpplProgram { tops = tops } ->
+    flatMap recursiveTopLookup tops
+
+  sem probtimeProgramToLanguageSupport: RtpplProgram -> [LanguageServerPayload]
+  sem probtimeProgramToLanguageSupport =| program ->
+    recursiveProgramLookup program
 end
 
 lang MExprLanguageServerCompiler =
@@ -125,103 +127,57 @@ lang MExprLanguageServerCompiler =
 
   sem getTypeNamesRecursively : Type -> [Name]
   sem getTypeNamesRecursively =| typ ->
-    let myTypes = getTypeNames typ in
-    sfold_Type_Type (lam acc. lam ty.
-      join [acc, getTypeNamesRecursively ty]
-    ) myTypes typ
+    createAccumulators [
+      getTypeNames,
+      createAccumulator sfold_Type_Type getTypeNamesRecursively
+    ] typ
 
-  sem typeLookup: String -> Type -> [LanguageServerPayload]
-  sem typeLookup filename =
+  sem typeLookup: Type -> [LanguageServerPayload]
+  sem typeLookup =
   | _ -> []
 
-  -- sem exprDocumentation: Expr -> String
-  -- sem exprDocumentation =
-  -- | TmLet { ident=ident, tyAnnot=tyAnnot, tyBody=tyBody, info=info } ->
-  --   join [
-  --     probtimeCode (join ["var ", nameGetStr ident, ": ", type2str (getAnyType [tyAnnot, tyBody])]),
-  --     "(let. ", getSym ident, ")"
-  --   ]
-  -- | TmVar { ident=ident, ty=ty, info=info } ->
-  --   join [
-  --     probtimeCode (join ["var ", nameGetStr ident, ": ", type2str ty]),
-  --     "(var. ", getSym ident, ")"
-  --   ]
-
-  sem exprLookup: String -> Expr -> [LanguageServerPayload]
-  sem exprLookup filename =
+  sem exprLookup: Expr -> [LanguageServerPayload]
+  sem exprLookup =
   | _ -> []
-  -- | expr & TmLet { ident=ident, tyAnnot=tyAnnot, tyBody=tyBody, info=info } ->
-  --   let documentation = exprDocumentation expr in
-  --   [
-  --     LsHover {
-  --       location = info,
-  --       toString = lam. Some documentation
-  --     }
-  --   ]
-  | expr & TmVar { ident=ident, ty=ty, info=info } ->
-    -- let documentation = exprDocumentation expr in
+  | TmVar { ident=ident, ty=ty, info=info } ->
     [
       LsUsage {
         location = info,
         name = ident
       }
-      -- LsHover {
-      --   location = info,
-      --   toString = lam. Some documentation
-      -- }
     ]
 
-  sem patLookup: String -> Pat -> [LanguageServerPayload]
-  sem patLookup filename =
+  sem patLookup: Pat -> [LanguageServerPayload]
+  sem patLookup =
   | _ -> []
 
-  sem recursiveTypeLookup: String -> Type -> [LanguageServerPayload]
-  sem recursiveTypeLookup filename =| ty ->
-    let self = typeLookup filename ty in
+  sem recursiveTypeLookup: Type -> [LanguageServerPayload]
+  sem recursiveTypeLookup =| ty ->
+    createAccumulators [
+      typeLookup,
+      createAccumulator sfold_Type_Type recursiveTypeLookup
+    ] ty
 
-    let childTypes = sfold_Type_Type (lam acc. lam ty.
-      let types = recursiveTypeLookup filename ty in
-      join [acc, types]
-    ) [] ty in
+  sem recursivePatLookup: Pat -> [LanguageServerPayload]
+  sem recursivePatLookup =| pat ->
+    createAccumulators [
+      patLookup,
+      createAccumulator sfold_Pat_Pat recursivePatLookup,
+      createAccumulator sfold_Pat_Type recursiveTypeLookup
+    ] pat
 
-    join [self, childTypes]
+  sem recursiveExprLookup: Expr -> [LanguageServerPayload]
+  sem recursiveExprLookup =| expr ->
+    createAccumulators [
+      exprLookup,
+      createAccumulator sfold_Expr_Expr recursiveExprLookup,
+      createAccumulator sfold_Expr_Type recursiveTypeLookup,
+      createAccumulator sfold_Expr_Pat recursivePatLookup
+    ] expr
 
-  sem recursivePatLookup: String -> Pat -> [LanguageServerPayload]
-  sem recursivePatLookup filename =| pat ->
-    let self = patLookup filename pat in
-
-    let childTypes = sfold_Pat_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup filename ty]
-    ) [] pat in
-
-    let childPatterns = sfold_Pat_Pat (
-      lam acc. lam pat.
-        join [acc, recursivePatLookup filename pat]
-    ) [] pat in
-
-    join [self, childTypes, childPatterns]
-
-  sem recursiveExprLookup: String -> Expr -> [LanguageServerPayload]
-  sem recursiveExprLookup filename =| expr ->
-    let self = exprLookup filename expr in
-
-    let childTypes = sfold_Expr_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup filename ty]
-    ) [] expr in
-
-    let childExprs = sfold_Expr_Expr (lam acc. lam expr.
-      join [acc, recursiveExprLookup filename expr]
-    ) [] expr in
-
-    let childPatterns = sfold_Expr_Pat (lam acc. lam pat.
-      join [acc, recursivePatLookup filename pat]
-    ) [] expr in
-
-    join [self, childExprs, childPatterns, childTypes]
-
-  sem exprToLanguageSupport: String -> Expr -> [LanguageServerPayload]
-  sem exprToLanguageSupport filename =| expr ->
-    recursiveExprLookup filename expr
+  sem exprToLanguageSupport: Expr -> [LanguageServerPayload]
+  sem exprToLanguageSupport =| expr ->
+    recursiveExprLookup expr
 end
 
 lang MExprLanguageServerLinkerCompiler =
@@ -235,91 +191,64 @@ lang MExprLanguageServerLinkerCompiler =
 
   sem getTypeNamesRecursively : Type -> [Name]
   sem getTypeNamesRecursively =| typ ->
-    let myTypes = getTypeNames typ in
-    sfold_Type_Type (lam acc. lam ty.
-      join [acc, getTypeNamesRecursively ty]
-    ) myTypes typ
+    createAccumulators [
+      getTypeNames,
+      createAccumulator sfold_Type_Type getTypeNamesRecursively
+    ] typ
 
-  sem typeLookup: String -> Type -> [LanguageServerPayload]
-  sem typeLookup filename =
+  sem typeLookup: Type -> [LanguageServerPayload]
+  sem typeLookup =
   | _ -> []
 
-  sem exprLookup: String -> Expr -> [LanguageServerPayload]
-  sem exprLookup filename =
+  sem exprLookup: Expr -> [LanguageServerPayload]
+  sem exprLookup =
   | _ -> []
-  -- | TmLet { ident=ident, parentIdent=Some (_, info), tyAnnot=tyAnnot, tyBody=tyBody } ->
-  --   let documentation = join [
-  --     probtimeCode (join ["var ", nameGetStr ident, ": ", type2str (getAnyType [tyAnnot, tyBody])]),
-  --     "(let. ", getSym ident, ")"
-  --   ] in
-  --   [
-  --     LsDefinition {
-  --       documentation=lam. Some documentation,
-  --       exported = false,
-  --       kind = SymbolVariable (),
-  --       location = info,
-  --       name = ident
-  --     }
-  --   ]
   | TmVar { ident=ident & !("", _), ty=ty, info=info } ->
     [
+      LsHover {
+        location = info,
+        toString = lam. Some (join [
+          probtimeCode (join ["var ", nameGetStr ident, ": ", type2str ty]),
+          getSym ident
+        ])
+      },
       LsUsage {
         location = info,
         name = ident
       }
     ]
 
-  sem patLookup: String -> Pat -> [LanguageServerPayload]
-  sem patLookup filename =
+  sem patLookup: Pat -> [LanguageServerPayload]
+  sem patLookup =
   | _ -> []
 
-  sem recursiveTypeLookup: String -> Type -> [LanguageServerPayload]
-  sem recursiveTypeLookup filename =| ty ->
-    let self = typeLookup filename ty in
+  sem recursiveTypeLookup: Type -> [LanguageServerPayload]
+  sem recursiveTypeLookup =| ty ->
+    createAccumulators [
+      typeLookup,
+      createAccumulator sfold_Type_Type recursiveTypeLookup
+    ] ty
 
-    let childTypes = sfold_Type_Type (lam acc. lam ty.
-      let types = recursiveTypeLookup filename ty in
-      join [acc, types]
-    ) [] ty in
+  sem recursivePatLookup: Pat -> [LanguageServerPayload]
+  sem recursivePatLookup =| pat ->
+    createAccumulators [
+      patLookup,
+      createAccumulator sfold_Pat_Pat recursivePatLookup,
+      createAccumulator sfold_Pat_Type recursiveTypeLookup
+    ] pat
 
-    join [self, childTypes]
+  sem recursiveExprLookup: Expr -> [LanguageServerPayload]
+  sem recursiveExprLookup =| expr ->
+    createAccumulators [
+      exprLookup,
+      createAccumulator sfold_Expr_Expr recursiveExprLookup,
+      createAccumulator sfold_Expr_Type recursiveTypeLookup,
+      createAccumulator sfold_Expr_Pat recursivePatLookup
+    ] expr
 
-  sem recursivePatLookup: String -> Pat -> [LanguageServerPayload]
-  sem recursivePatLookup filename =| pat ->
-    let self = patLookup filename pat in
-
-    let childTypes = sfold_Pat_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup filename ty]
-    ) [] pat in
-
-    let childPatterns = sfold_Pat_Pat (
-      lam acc. lam pat.
-        join [acc, recursivePatLookup filename pat]
-    ) [] pat in
-
-    join [self, childTypes, childPatterns]
-
-  sem recursiveExprLookup: String -> Expr -> [LanguageServerPayload]
-  sem recursiveExprLookup filename =| expr ->
-    let self = exprLookup filename expr in
-
-    let childTypes = sfold_Expr_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup filename ty]
-    ) [] expr in
-
-    let childExprs = sfold_Expr_Expr (lam acc. lam expr.
-      join [acc, recursiveExprLookup filename expr]
-    ) [] expr in
-
-    let childPatterns = sfold_Expr_Pat (lam acc. lam pat.
-      join [acc, recursivePatLookup filename pat]
-    ) [] expr in
-
-    join [self, childExprs, childPatterns, childTypes]
-
-  sem exprToLanguageSupport: String -> Expr -> [LanguageServerPayload]
-  sem exprToLanguageSupport filename =| expr ->
-    recursiveExprLookup filename expr
+  sem exprToLanguageSupport: Expr -> [LanguageServerPayload]
+  sem exprToLanguageSupport =| expr ->
+    recursiveExprLookup expr
 end
 
 let exprToLanguageSupport = use MExprLanguageServerCompiler in exprToLanguageSupport

@@ -59,18 +59,24 @@ lang LSPWorkspaceSymbol = LSPRoot + LSPSymbolKind
         mapUnionWith concat acc file.definitions
     ) (mapEmpty nameCmp) files in
 
+    let definitions = mapMap (
+      filter (lam definition. definition.exported)
+    ) definitions in
+
+    let definitions = mapFilter (
+      lam definitions.
+        geqi (length definitions) 1
+    ) definitions in
+
     let definitions = mapToSeq definitions in
-    -- let definitions = filter (
-    --   lam definition.
-    --     match definition with (_, definition) in
-    --     definition.exported
-    -- ) definitions in
+
     let definitions = filter (
       lam definition.
         match definition with (name, _) in
         let name = (compose str2lower nameGetStr) name in
         strStartsWith query name
     ) definitions in
+
     let definitions = take 10 definitions in
 
     -- let definitionResult = findDefinitionLinearly uri definitions line character in

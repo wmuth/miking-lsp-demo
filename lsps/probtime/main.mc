@@ -36,17 +36,29 @@ lang RtpplLanguageServerCompiler =
 
     flatMap paramLookup params
 
+  sem stmtDocumentation: RtpplStmt -> String
+  sem stmtDocumentation =
+  | _ -> ""
+  | ForLoopRtpplStmt { id = { v = name, i = info } } ->
+    join [
+      probtimeCode (join ["for ", nameGetStr name]),
+      getSym name
+    ]
+  | BindingRtpplStmt { id = { v = name, i = info } } ->
+    join [
+      probtimeCode (join ["var ", nameGetStr name]),
+      getSym name
+    ]
+
   sem stmtLookup: TypeMap -> RtpplStmt -> [LanguageServerPayload]
   sem stmtLookup types =
   | _ -> []
-  | BindingRtpplStmt { id = { v = name, i = info } } ->
-    let documentation = join [
-      probtimeCode (join ["var ", nameGetStr name]),
-      getSym name
-    ] in
+  | stmt & ForLoopRtpplStmt { id = { v = name, i = info } }
+  | stmt & BindingRtpplStmt { id = { v = name, i = info } } ->
+    let documentation = lam. Some (stmtDocumentation stmt) in
     [
       LsDefinition {
-        documentation=lam. Some documentation,
+        documentation=documentation,
         kind = SymbolVariable (),
         location = info,
         name = name,
@@ -54,7 +66,7 @@ lang RtpplLanguageServerCompiler =
       },
       LsHover {
         location = info,
-        toString = lam. Some documentation
+        toString = documentation
       }
     ]
 
@@ -88,10 +100,10 @@ lang RtpplLanguageServerCompiler =
   | top & FunctionDefRtpplTop { id = { v = name, i = info } }
   | top & ModelDefRtpplTop { id = { v = name, i = info } }
   | top & TemplateDefRtpplTop { id = { v = name, i = info } } ->
-    let documentation = topDocumentation types top in
+    let documentation = lam. Some (topDocumentation types top) in
     [
       LsDefinition {
-        documentation=lam. Some documentation,
+        documentation=documentation,
         kind = topDefinitionSymbol top,
         location = info,
         name = name,
@@ -99,7 +111,7 @@ lang RtpplLanguageServerCompiler =
       },
       LsHover {
         location = info,
-        toString = lam. Some documentation
+        toString = documentation
       }
     ]
 
@@ -219,7 +231,7 @@ lang MExprLanguageServerLinkerCompiler =
       LsHover {
         location = info,
         toString = lam. Some (join [
-          probtimeCode (join ["var ", nameGetStr ident, ": ", type2str ty]),
+          probtimeCode (join ["(linker) var ", nameGetStr ident, ": ", type2str ty]),
           getSym ident
         ])
       },

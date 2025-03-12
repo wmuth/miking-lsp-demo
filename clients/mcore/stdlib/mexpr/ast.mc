@@ -315,7 +315,7 @@ end
 lang LamAst = Ast
   syn Expr =
   | TmLam {ident : Name,
-           parentIdent : Option (Name, Info),
+          --  parentIdent : Option (Name, Info),
            tyAnnot : Type,
            tyParam : Type,
            body : Expr,
@@ -356,7 +356,7 @@ end
 lang LetAst = Ast + VarAst
   syn Expr =
   | TmLet {ident : Name,
-           parentIdent : Option (Name, Info),
+          --  parentIdent : Option (Name, Info),
            tyAnnot : Type,
            tyBody : Type,
            body : Expr,

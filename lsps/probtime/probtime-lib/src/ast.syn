@@ -119,7 +119,7 @@ prod Write : RtpplStmt = "write" src:RtpplExpr "to" port:LIdent ("offset" delay:
 prod Condition : RtpplStmt =
   "if" cond:RtpplExpr ("update" id:LName)? "{" thn:RtpplStmt* "}" "else" "{" els:RtpplStmt* "}"
 prod Delay : RtpplStmt = "delay" ns:RtpplExpr
-prod ForLoop : RtpplStmt = "for" id:LName "in" e:RtpplExpr ("update" upd:LName)? "{" body:RtpplStmt* "}"
+prod ForLoop : RtpplStmt = "for" id:LNameSym "in" e:RtpplExpr ("update" upd:LName)? "{" body:RtpplStmt* "}"
 prod WhileLoop : RtpplStmt = "while" cond:RtpplExpr ("update" upd:LName)? "{" body:RtpplStmt* "}"
 
 prod IdentPlusStmt : RtpplStmt = id:LName next:RtpplStmtNoIdent

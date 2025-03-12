@@ -13957,7 +13957,7 @@ let _table =
                                     val17.__br_terms,
                                     [ l61.info ] ],
                               e = [ ntVal34.1 ],
-                              id = [ { v = nameNoSym x24.val, i = x24.info } ],
+                              id = [ { v = nameSym x24.val, i = x24.info } ],
                               body = val17.body,
                               upd = val18.upd }) },
              { nt = alt9,

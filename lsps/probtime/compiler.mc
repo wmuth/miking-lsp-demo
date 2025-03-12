@@ -93,12 +93,14 @@ lang ProbTimeCompiler =
   sem mexprPruneNonParentIdentifier: Expr -> Expr
   sem mexprPruneNonParentIdentifier =
   | expr -> expr
-  | TmLam (expr & { ident = ident, parentIdent = None () }) -> 
+  | e & TmLam (expr & { ident = ident }) ->
+    if nameHasSym ident then e else
     TmLam {
       expr with
       ident = nameNoSym ""
     }
-  | TmLet (expr & { parentIdent = None () }) ->
+  | e & TmLet (expr & { ident = ident }) ->
+    if nameHasSym ident then e else
     TmLet {
       expr with
       ident = nameNoSym ""

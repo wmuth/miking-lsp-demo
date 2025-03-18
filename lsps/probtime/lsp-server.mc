@@ -8,20 +8,24 @@ let onClose: String -> () =
 
 mexpr
 
-let config = defaultLSPOptions.config in
 let options = {
   defaultLSPOptions with
-  config = config,
+  config = defaultLSPOptions.config,
   serverName = "ProbTime",
   extension = "rpl",
   indexWorkspace = false,
   pruneMessages = true,
-  printClientMessages = true
+  printClientMessages = false,
+  benchmark = true,
+
+  hoverShowDefinitionPrefix = Some identity
 } in
 
+let changeHandler = use ProbTimeCompiler in createChangeHandler () in
+
 let lspStartParameters: use LSPRoot in LSPStartParameters = {
-  onOpen   = use ProbTimeCompiler in createChangeHandler (),
-  onChange = use ProbTimeCompiler in createChangeHandler (),
+  onOpen   = changeHandler,
+  onChange = changeHandler,
   onClose  = onClose,
   options  = options
 } in

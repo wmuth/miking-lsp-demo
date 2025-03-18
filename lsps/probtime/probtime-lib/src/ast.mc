@@ -4884,7 +4884,7 @@ end
 lang BindingRtpplStmtAst =
   RtpplBaseAst
   type BindingRtpplStmtRecord =
-    {e: RtpplExpr, id: {i: Info, v: Name}, ty: Option RtpplType, info: Info}
+    {e: Option RtpplExpr, id: {i: Info, v: Name}, ty: Option RtpplType, info: Info}
   syn RtpplStmt =
   | BindingRtpplStmt BindingRtpplStmtRecord
   sem smapAccumL_RtpplStmt_RtpplExpr f acc =
@@ -4892,7 +4892,12 @@ lang BindingRtpplStmtAst =
     match
       match
         let e = x.e in
-        f acc e
+        optionMapAccum
+          (lam acc1.
+             lam x1.
+               f acc1 x1)
+          acc
+          e
       with
         (acc, e)
       in
@@ -5306,7 +5311,7 @@ end
 lang IdentPlusStmtRtpplStmtAst =
   RtpplBaseAst
   type IdentPlusStmtRtpplStmtRecord =
-    {id: {i: Info, v: Name}, info: Info, next: RtpplStmtNoIdent}
+    {id: {i: Info, v: Name}, info: Info, next: Option RtpplStmtNoIdent}
   syn RtpplStmt =
   | IdentPlusStmtRtpplStmt IdentPlusStmtRtpplStmtRecord
   sem smapAccumL_RtpplStmt_RtpplStmtNoIdent f acc =
@@ -5314,7 +5319,12 @@ lang IdentPlusStmtRtpplStmtAst =
     match
       match
         let next = x.next in
-        f acc next
+        optionMapAccum
+          (lam acc1.
+             lam x1.
+               f acc1 x1)
+          acc
+          next
       with
         (acc, next)
       in
@@ -7955,8 +7965,12 @@ lang BindingRtpplStmtOp =
             x.e
           with
             [ x1 ] ++ _
-          in
-          x1,
+          then
+            Some
+              x1
+          else
+            None
+              {},
         id =
           match
             x.id
@@ -8354,8 +8368,12 @@ lang IdentPlusStmtRtpplStmtOp =
             x.next
           with
             [ x2 ] ++ _
-          in
-          x2 })
+          then
+            Some
+              x2
+          else
+            None
+              {} })
 end
 lang ReassignRtpplStmtNoIdentOp =
   RtpplStmtNoIdentOpBase
@@ -10372,29 +10390,31 @@ let _table =
        let alt5 = nameSym "alt" in
        let alt6 = nameSym "alt" in
        let alt7 = nameSym "alt" in
+       let alt8 = nameSym "alt" in
        let kleene6 = nameSym "kleene" in
        let kleene7 = nameSym "kleene" in
-       let alt8 = nameSym "alt" in
-       let kleene8 = nameSym "kleene" in
        let alt9 = nameSym "alt" in
-       let kleene9 = nameSym "kleene" in
+       let kleene8 = nameSym "kleene" in
        let alt10 = nameSym "alt" in
-       let kleene10 = nameSym "kleene" in
+       let kleene9 = nameSym "kleene" in
        let alt11 = nameSym "alt" in
-       let kleene11 = nameSym "kleene" in
        let alt12 = nameSym "alt" in
-       let kleene12 = nameSym "kleene" in
+       let kleene10 = nameSym "kleene" in
        let alt13 = nameSym "alt" in
-       let kleene13 = nameSym "kleene" in
+       let kleene11 = nameSym "kleene" in
        let alt14 = nameSym "alt" in
+       let kleene12 = nameSym "kleene" in
+       let alt15 = nameSym "alt" in
+       let kleene13 = nameSym "kleene" in
+       let alt16 = nameSym "alt" in
        let kleene14 = nameSym "kleene" in
        let kleene15 = nameSym "kleene" in
        let kleene16 = nameSym "kleene" in
        let kleene17 = nameSym "kleene" in
-       let alt15 = nameSym "alt" in
-       let alt16 = nameSym "alt" in
-       let kleene18 = nameSym "kleene" in
        let alt17 = nameSym "alt" in
+       let alt18 = nameSym "alt" in
+       let kleene18 = nameSym "kleene" in
+       let alt19 = nameSym "alt" in
        let kleene19 = nameSym "kleene" in
        let #var"RtpplProgram_lclosed" = nameSym "RtpplProgram_lclosed"
        in
@@ -10527,7 +10547,7 @@ let _table =
            let finalizeRtpplProgramOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -10538,19 +10558,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig p.content tops
                           in
-                          let res148 = unsplit_RtpplProgramOp top in
+                          let res152 = unsplit_RtpplProgramOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplProgram
-                                { info = res148.0 })
+                              (res152.0, BadRtpplProgram
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -10566,7 +10586,7 @@ let _table =
                      {}, BadRtpplProgram
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config1 =
              { parenAllowed = #frozen"parenAllowed_RtpplTopOp",
@@ -10648,7 +10668,7 @@ let _table =
            let finalizeRtpplTopOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -10659,19 +10679,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig1 p.content tops
                           in
-                          let res148 = unsplit_RtpplTopOp top in
+                          let res152 = unsplit_RtpplTopOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplTop
-                                { info = res148.0 })
+                              (res152.0, BadRtpplTop
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -10687,7 +10707,7 @@ let _table =
                      {}, BadRtpplTop
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config2 =
              { parenAllowed = #frozen"parenAllowed_RtpplTopParamsOp",
@@ -10773,7 +10793,7 @@ let _table =
            let finalizeRtpplTopParamsOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -10784,19 +10804,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig2 p.content tops
                           in
-                          let res148 = unsplit_RtpplTopParamsOp top in
+                          let res152 = unsplit_RtpplTopParamsOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplTopParams
-                                { info = res148.0 })
+                              (res152.0, BadRtpplTopParams
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -10812,7 +10832,7 @@ let _table =
                      {}, BadRtpplTopParams
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config3 =
              { parenAllowed = #frozen"parenAllowed_RtpplStmtOp",
@@ -10894,7 +10914,7 @@ let _table =
            let finalizeRtpplStmtOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -10905,19 +10925,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig3 p.content tops
                           in
-                          let res148 = unsplit_RtpplStmtOp top in
+                          let res152 = unsplit_RtpplStmtOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplStmt
-                                { info = res148.0 })
+                              (res152.0, BadRtpplStmt
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -10933,7 +10953,7 @@ let _table =
                      {}, BadRtpplStmt
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config4 =
              { parenAllowed = #frozen"parenAllowed_RtpplStmtNoIdentOp",
@@ -11020,7 +11040,7 @@ let _table =
            let finalizeRtpplStmtNoIdentOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11031,19 +11051,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig4 p.content tops
                           in
-                          let res148 = unsplit_RtpplStmtNoIdentOp top in
+                          let res152 = unsplit_RtpplStmtNoIdentOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplStmtNoIdent
-                                { info = res148.0 })
+                              (res152.0, BadRtpplStmtNoIdent
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11059,7 +11079,7 @@ let _table =
                      {}, BadRtpplStmtNoIdent
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config5 =
              { parenAllowed = #frozen"parenAllowed_RtpplExprOp",
@@ -11141,7 +11161,7 @@ let _table =
            let finalizeRtpplExprOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11152,19 +11172,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig5 p.content tops
                           in
-                          let res148 = unsplit_RtpplExprOp top in
+                          let res152 = unsplit_RtpplExprOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplExpr
-                                { info = res148.0 })
+                              (res152.0, BadRtpplExpr
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11180,7 +11200,7 @@ let _table =
                      {}, BadRtpplExpr
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config6 =
              { parenAllowed = #frozen"parenAllowed_RtpplExprNoIdentOp",
@@ -11267,7 +11287,7 @@ let _table =
            let finalizeRtpplExprNoIdentOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11278,19 +11298,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig6 p.content tops
                           in
-                          let res148 = unsplit_RtpplExprNoIdentOp top in
+                          let res152 = unsplit_RtpplExprNoIdentOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplExprNoIdent
-                                { info = res148.0 })
+                              (res152.0, BadRtpplExprNoIdent
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11306,7 +11326,7 @@ let _table =
                      {}, BadRtpplExprNoIdent
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config7 =
              { parenAllowed = #frozen"parenAllowed_RtpplTypeOp",
@@ -11388,7 +11408,7 @@ let _table =
            let finalizeRtpplTypeOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11399,19 +11419,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig7 p.content tops
                           in
-                          let res148 = unsplit_RtpplTypeOp top in
+                          let res152 = unsplit_RtpplTypeOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplType
-                                { info = res148.0 })
+                              (res152.0, BadRtpplType
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11427,7 +11447,7 @@ let _table =
                      {}, BadRtpplType
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config8 =
              { parenAllowed = #frozen"parenAllowed_RtpplTypeNoIdentOp",
@@ -11514,7 +11534,7 @@ let _table =
            let finalizeRtpplTypeNoIdentOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11525,19 +11545,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig8 p.content tops
                           in
-                          let res148 = unsplit_RtpplTypeNoIdentOp top in
+                          let res152 = unsplit_RtpplTypeNoIdentOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplTypeNoIdent
-                                { info = res148.0 })
+                              (res152.0, BadRtpplTypeNoIdent
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11553,7 +11573,7 @@ let _table =
                      {}, BadRtpplTypeNoIdent
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config9 =
              { parenAllowed = #frozen"parenAllowed_RtpplConstOp",
@@ -11637,7 +11657,7 @@ let _table =
            let finalizeRtpplConstOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11648,19 +11668,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig9 p.content tops
                           in
-                          let res148 = unsplit_RtpplConstOp top in
+                          let res152 = unsplit_RtpplConstOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplConst
-                                { info = res148.0 })
+                              (res152.0, BadRtpplConst
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11676,7 +11696,7 @@ let _table =
                      {}, BadRtpplConst
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config10 =
              { parenAllowed = #frozen"parenAllowed_RtpplPortOp",
@@ -11758,7 +11778,7 @@ let _table =
            let finalizeRtpplPortOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11769,19 +11789,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig10 p.content tops
                           in
-                          let res148 = unsplit_RtpplPortOp top in
+                          let res152 = unsplit_RtpplPortOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplPort
-                                { info = res148.0 })
+                              (res152.0, BadRtpplPort
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11797,7 +11817,7 @@ let _table =
                      {}, BadRtpplPort
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config11 =
              { parenAllowed = #frozen"parenAllowed_RtpplMainOp",
@@ -11879,7 +11899,7 @@ let _table =
            let finalizeRtpplMainOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -11890,19 +11910,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig11 p.content tops
                           in
-                          let res148 = unsplit_RtpplMainOp top in
+                          let res152 = unsplit_RtpplMainOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplMain
-                                { info = res148.0 })
+                              (res152.0, BadRtpplMain
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -11918,7 +11938,7 @@ let _table =
                      {}, BadRtpplMain
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config12 =
              { parenAllowed = #frozen"parenAllowed_RtpplExtOp",
@@ -12000,7 +12020,7 @@ let _table =
            let finalizeRtpplExtOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -12011,19 +12031,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig12 p.content tops
                           in
-                          let res148 = unsplit_RtpplExtOp top in
+                          let res152 = unsplit_RtpplExtOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplExt
-                                { info = res148.0 })
+                              (res152.0, BadRtpplExt
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -12039,7 +12059,7 @@ let _table =
                      {}, BadRtpplExt
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config13 =
              { parenAllowed = #frozen"parenAllowed_RtpplTaskOp",
@@ -12121,7 +12141,7 @@ let _table =
            let finalizeRtpplTaskOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -12132,19 +12152,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig13 p.content tops
                           in
-                          let res148 = unsplit_RtpplTaskOp top in
+                          let res152 = unsplit_RtpplTaskOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplTask
-                                { info = res148.0 })
+                              (res152.0, BadRtpplTask
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -12160,7 +12180,7 @@ let _table =
                      {}, BadRtpplTask
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config14 =
              { parenAllowed = #frozen"parenAllowed_RtpplConnectionOp",
@@ -12246,7 +12266,7 @@ let _table =
            let finalizeRtpplConnectionOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -12257,19 +12277,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig14 p.content tops
                           in
-                          let res148 = unsplit_RtpplConnectionOp top in
+                          let res152 = unsplit_RtpplConnectionOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplConnection
-                                { info = res148.0 })
+                              (res152.0, BadRtpplConnection
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -12285,7 +12305,7 @@ let _table =
                      {}, BadRtpplConnection
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            let config15 =
              { parenAllowed = #frozen"parenAllowed_RtpplPortSpecOp",
@@ -12371,7 +12391,7 @@ let _table =
            let finalizeRtpplPortSpecOp =
              lam p: {errors: Ref [(Info, [Char])], content: String}.
                lam st.
-                 let res148 =
+                 let res152 =
                    optionBind
                      st
                      (lam st.
@@ -12382,19 +12402,19 @@ let _table =
                         then
                           let errs = breakableDefaultHighlight reportConfig15 p.content tops
                           in
-                          let res148 = unsplit_RtpplPortSpecOp top in
+                          let res152 = unsplit_RtpplPortSpecOp top in
                           match
                             null errs
                           with
                             true
                           then
                             Some
-                              res148
+                              res152
                           else
                             (modref p.errors (concat (deref p.errors) errs))
                             ; Some
-                              (res148.0, BadRtpplPortSpec
-                                { info = res148.0 })
+                              (res152.0, BadRtpplPortSpec
+                                { info = res152.0 })
                         else
                           (modref
                                p.errors
@@ -12410,7 +12430,7 @@ let _table =
                      {}, BadRtpplPortSpec
                      { info = NoInfo
                            {} })
-                   res148
+                   res152
            in
            [ { nt = kleene,
                label = {},
@@ -13260,49 +13280,87 @@ let _table =
                          { __br_info = mergeInfo l31.info ntVal20.0,
                            __br_terms = [ l31.info ],
                            ty = [ ntVal20.1 ] } },
-             { nt = #var"RtpplStmtAtom",
+             { nt = alt4,
                label = {},
-               rhs =
-                 [ litSym "var",
-                   tokSym (LIdentRepr
-                        {}),
-                   ntSym alt3,
-                   litSym "=",
-                   ntSym #var"RtpplExpr" ],
+               rhs = "",
                action =
                  lam state29: {errors: Ref [(Info, [Char])], content: String}.
                    lam res29.
                      match
                        res29
                      with
-                       [ LitParsed l32,
-                         TokParsed (LIdentTok x15),
-                         UserSym val10,
-                         LitParsed l33,
+                       ""
+                     in
+                     asDyn
+                         { __br_info = NoInfo
+                               {},
+                           __br_terms = "",
+                           e = "",
+                           ty = "" } },
+             { nt = alt4,
+               label = {},
+               rhs =
+                 [ ntSym alt3,
+                   litSym "=",
+                   ntSym #var"RtpplExpr" ],
+               action =
+                 lam state30: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res30.
+                     match
+                       res30
+                     with
+                       [ UserSym val10,
+                         LitParsed l32,
                          UserSym ntVal21 ]
                      in
                      let val10: {ty: [RtpplType], __br_info: Info, __br_terms: [Info]} = fromDyn val10
                        in
                        let ntVal21: (Info, RtpplExpr) = fromDyn ntVal21 in
                        asDyn
+                         { __br_info =
+                             foldl
+                               mergeInfo
+                               val10.__br_info
+                               [ l32.info,
+                                 ntVal21.0 ],
+                           __br_terms = concat val10.__br_terms [ l32.info ],
+                           e = [ ntVal21.1 ],
+                           ty = val10.ty } },
+             { nt = #var"RtpplStmtAtom",
+               label = {},
+               rhs =
+                 [ litSym "var",
+                   tokSym (LIdentRepr
+                        {}),
+                   ntSym alt4 ],
+               action =
+                 lam state31: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res31.
+                     match
+                       res31
+                     with
+                       [ LitParsed l33,
+                         TokParsed (LIdentTok x15),
+                         UserSym val11 ]
+                     in
+                     let val11: {e: [RtpplExpr], ty: [RtpplType], __br_info: Info, __br_terms: [Info]} = fromDyn val11
+                       in
+                       asDyn
                          (BindingRtpplStmtOp
                             { __br_info =
                                 foldl
                                   mergeInfo
-                                  l32.info
+                                  l33.info
                                   [ x15.info,
-                                    val10.__br_info,
-                                    l33.info,
-                                    ntVal21.0 ],
+                                    val11.__br_info ],
                               __br_terms =
                                 join
-                                  [ [ l32.info ],
+                                  [ [ l33.info ],
                                     [ x15.info ],
-                                    val10.__br_terms,
-                                    [ l33.info ] ],
-                              e = [ ntVal21.1 ],
+                                    val11.__br_terms ],
+                              e = val11.e,
                               id = [ { v = nameSym x15.val, i = x15.info } ],
-                              ty = val10.ty }) },
+                              ty = val11.ty }) },
              { nt = #var"RtpplStmtAtom",
                label = {},
                rhs =
@@ -13311,10 +13369,10 @@ let _table =
                    litSym "~",
                    ntSym #var"RtpplExpr" ],
                action =
-                 lam state30: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res30.
+                 lam state32: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res32.
                      match
-                       res30
+                       res32
                      with
                        [ LitParsed l34,
                          UserSym ntVal22,
@@ -13344,10 +13402,10 @@ let _table =
                    litSym "~",
                    ntSym #var"RtpplExpr" ],
                action =
-                 lam state31: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res31.
+                 lam state33: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res33.
                      match
-                       res31
+                       res33
                      with
                        [ LitParsed l36,
                          TokParsed (LIdentTok x16),
@@ -13371,14 +13429,14 @@ let _table =
                                     [ l37.info ] ],
                               id = [ { v = nameNoSym x16.val, i = x16.info } ],
                               d = [ ntVal24.1 ] }) },
-             { nt = alt4,
+             { nt = alt5,
                label = {},
                rhs = "",
                action =
-                 lam state32: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res32.
+                 lam state34: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res34.
                      match
-                       res32
+                       res34
                      with
                        ""
                      in
@@ -13387,16 +13445,16 @@ let _table =
                                {},
                            __br_terms = "",
                            p = "" } },
-             { nt = alt4,
+             { nt = alt5,
                label = {},
                rhs =
                  [ litSym "particles",
                    ntSym #var"RtpplExpr" ],
                action =
-                 lam state33: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res33.
+                 lam state35: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res35.
                      match
-                       res33
+                       res35
                      with
                        [ LitParsed l38,
                          UserSym ntVal25 ]
@@ -13414,21 +13472,21 @@ let _table =
                    litSym "to",
                    tokSym (LIdentRepr
                         {}),
-                   ntSym alt4 ],
+                   ntSym alt5 ],
                action =
-                 lam state34: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res34.
+                 lam state36: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res36.
                      match
-                       res34
+                       res36
                      with
                        [ LitParsed l39,
                          UserSym ntVal26,
                          LitParsed l40,
                          TokParsed (LIdentTok x17),
-                         UserSym val11 ]
+                         UserSym val12 ]
                      in
                      let ntVal26: (Info, RtpplExpr) = fromDyn ntVal26 in
-                       let val11: {p: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val11
+                       let val12: {p: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val12
                        in
                        asDyn
                          (InferRtpplStmtOp
@@ -13439,24 +13497,24 @@ let _table =
                                   [ ntVal26.0,
                                     l40.info,
                                     x17.info,
-                                    val11.__br_info ],
+                                    val12.__br_info ],
                               __br_terms =
                                 join
                                   [ [ l39.info ],
                                     [ l40.info ],
                                     [ x17.info ],
-                                    val11.__br_terms ],
+                                    val12.__br_terms ],
                               id = [ { v = nameNoSym x17.val, i = x17.info } ],
-                              p = val11.p,
+                              p = val12.p,
                               model = [ ntVal26.1 ] }) },
              { nt = #var"RtpplStmtAtom",
                label = {},
                rhs = [ litSym "degenerate" ],
                action =
-                 lam state35: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res35.
+                 lam state37: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res37.
                      match
-                       res35
+                       res37
                      with
                        [ LitParsed l41 ]
                      in
@@ -13467,24 +13525,24 @@ let _table =
                label = {},
                rhs = [ litSym "resample" ],
                action =
-                 lam state36: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res36.
+                 lam state38: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res38.
                      match
-                       res36
+                       res38
                      with
                        [ LitParsed l42 ]
                      in
                      asDyn
                          (ResampleRtpplStmtOp
                             { __br_info = l42.info, __br_terms = [ l42.info ] }) },
-             { nt = alt5,
+             { nt = alt6,
                label = {},
                rhs = "",
                action =
-                 lam state37: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res37.
+                 lam state39: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res39.
                      match
-                       res37
+                       res39
                      with
                        ""
                      in
@@ -13493,17 +13551,17 @@ let _table =
                                {},
                            __br_terms = "",
                            proj = "" } },
-             { nt = alt5,
+             { nt = alt6,
                label = {},
                rhs =
                  [ litSym ".",
                    tokSym (LIdentRepr
                         {}) ],
                action =
-                 lam state38: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res38.
+                 lam state40: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res40.
                      match
-                       res38
+                       res40
                      with
                        [ LitParsed l43,
                          TokParsed (LIdentTok x18) ]
@@ -13521,20 +13579,20 @@ let _table =
                    litSym "to",
                    tokSym (LIdentRepr
                         {}),
-                   ntSym alt5 ],
+                   ntSym alt6 ],
                action =
-                 lam state39: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res39.
+                 lam state41: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res41.
                      match
-                       res39
+                       res41
                      with
                        [ LitParsed l44,
                          TokParsed (LIdentTok x19),
                          LitParsed l45,
                          TokParsed (LIdentTok x20),
-                         UserSym val12 ]
+                         UserSym val13 ]
                      in
-                     let val12: {proj: [{i: Info, v: String}], __br_info: Info, __br_terms: [Info]} = fromDyn val12
+                     let val13: {proj: [{i: Info, v: String}], __br_info: Info, __br_terms: [Info]} = fromDyn val13
                        in
                        asDyn
                          (ReadRtpplStmtOp
@@ -13545,25 +13603,25 @@ let _table =
                                   [ x19.info,
                                     l45.info,
                                     x20.info,
-                                    val12.__br_info ],
+                                    val13.__br_info ],
                               __br_terms =
                                 join
                                   [ [ l44.info ],
                                     [ x19.info ],
                                     [ l45.info ],
                                     [ x20.info ],
-                                    val12.__br_terms ],
-                              proj = val12.proj,
+                                    val13.__br_terms ],
+                              proj = val13.proj,
                               dst = [ { v = nameSym x20.val, i = x20.info } ],
                               port = [ { v = x19.val, i = x19.info } ] }) },
-             { nt = alt6,
+             { nt = alt7,
                label = {},
                rhs = "",
                action =
-                 lam state40: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res40.
+                 lam state42: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res42.
                      match
-                       res40
+                       res42
                      with
                        ""
                      in
@@ -13572,16 +13630,16 @@ let _table =
                                {},
                            __br_terms = "",
                            delay = "" } },
-             { nt = alt6,
+             { nt = alt7,
                label = {},
                rhs =
                  [ litSym "offset",
                    ntSym #var"RtpplExpr" ],
                action =
-                 lam state41: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res41.
+                 lam state43: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res43.
                      match
-                       res41
+                       res43
                      with
                        [ LitParsed l46,
                          UserSym ntVal27 ]
@@ -13599,21 +13657,21 @@ let _table =
                    litSym "to",
                    tokSym (LIdentRepr
                         {}),
-                   ntSym alt6 ],
+                   ntSym alt7 ],
                action =
-                 lam state42: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res42.
+                 lam state44: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res44.
                      match
-                       res42
+                       res44
                      with
                        [ LitParsed l47,
                          UserSym ntVal28,
                          LitParsed l48,
                          TokParsed (LIdentTok x21),
-                         UserSym val13 ]
+                         UserSym val14 ]
                      in
                      let ntVal28: (Info, RtpplExpr) = fromDyn ntVal28 in
-                       let val13: {delay: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val13
+                       let val14: {delay: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val14
                        in
                        asDyn
                          (WriteRtpplStmtOp
@@ -13624,24 +13682,24 @@ let _table =
                                   [ ntVal28.0,
                                     l48.info,
                                     x21.info,
-                                    val13.__br_info ],
+                                    val14.__br_info ],
                               __br_terms =
                                 join
                                   [ [ l47.info ],
                                     [ l48.info ],
                                     [ x21.info ],
-                                    val13.__br_terms ],
+                                    val14.__br_terms ],
                               port = [ { v = x21.val, i = x21.info } ],
-                              delay = val13.delay,
+                              delay = val14.delay,
                               src = [ ntVal28.1 ] }) },
-             { nt = alt7,
+             { nt = alt8,
                label = {},
                rhs = "",
                action =
-                 lam state43: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res43.
+                 lam state45: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res45.
                      match
-                       res43
+                       res45
                      with
                        ""
                      in
@@ -13650,17 +13708,17 @@ let _table =
                                {},
                            __br_terms = "",
                            id = "" } },
-             { nt = alt7,
+             { nt = alt8,
                label = {},
                rhs =
                  [ litSym "update",
                    tokSym (LIdentRepr
                         {}) ],
                action =
-                 lam state44: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res44.
+                 lam state46: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res46.
                      match
-                       res44
+                       res46
                      with
                        [ LitParsed l49,
                          TokParsed (LIdentTok x22) ]
@@ -13675,59 +13733,22 @@ let _table =
                  [ ntSym #var"RtpplStmt",
                    ntSym kleene6 ],
                action =
-                 lam state45: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res45.
-                     match
-                       res45
-                     with
-                       [ UserSym ntVal29,
-                         UserSym val14 ]
-                     in
-                     let ntVal29: (Info, RtpplStmt) = fromDyn ntVal29 in
-                       let val14: {thn: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val14
-                       in
-                       asDyn
-                         { __br_info = mergeInfo ntVal29.0 val14.__br_info,
-                           __br_terms = val14.__br_terms,
-                           thn = concat [ ntVal29.1 ] val14.thn } },
-             { nt = kleene6,
-               label = {},
-               rhs = "",
-               action =
-                 lam state46: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res46.
-                     match
-                       res46
-                     with
-                       ""
-                     in
-                     asDyn
-                         { __br_info = NoInfo
-                               {},
-                           __br_terms = "",
-                           thn = "" } },
-             { nt = kleene7,
-               label = {},
-               rhs =
-                 [ ntSym #var"RtpplStmt",
-                   ntSym kleene7 ],
-               action =
                  lam state47: {errors: Ref [(Info, [Char])], content: String}.
                    lam res47.
                      match
                        res47
                      with
-                       [ UserSym ntVal30,
+                       [ UserSym ntVal29,
                          UserSym val15 ]
                      in
-                     let ntVal30: (Info, RtpplStmt) = fromDyn ntVal30 in
-                       let val15: {els: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val15
+                     let ntVal29: (Info, RtpplStmt) = fromDyn ntVal29 in
+                       let val15: {thn: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val15
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal30.0 val15.__br_info,
+                         { __br_info = mergeInfo ntVal29.0 val15.__br_info,
                            __br_terms = val15.__br_terms,
-                           els = concat [ ntVal30.1 ] val15.els } },
-             { nt = kleene7,
+                           thn = concat [ ntVal29.1 ] val15.thn } },
+             { nt = kleene6,
                label = {},
                rhs = "",
                action =
@@ -13742,13 +13763,50 @@ let _table =
                          { __br_info = NoInfo
                                {},
                            __br_terms = "",
+                           thn = "" } },
+             { nt = kleene7,
+               label = {},
+               rhs =
+                 [ ntSym #var"RtpplStmt",
+                   ntSym kleene7 ],
+               action =
+                 lam state49: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res49.
+                     match
+                       res49
+                     with
+                       [ UserSym ntVal30,
+                         UserSym val16 ]
+                     in
+                     let ntVal30: (Info, RtpplStmt) = fromDyn ntVal30 in
+                       let val16: {els: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val16
+                       in
+                       asDyn
+                         { __br_info = mergeInfo ntVal30.0 val16.__br_info,
+                           __br_terms = val16.__br_terms,
+                           els = concat [ ntVal30.1 ] val16.els } },
+             { nt = kleene7,
+               label = {},
+               rhs = "",
+               action =
+                 lam state50: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res50.
+                     match
+                       res50
+                     with
+                       ""
+                     in
+                     asDyn
+                         { __br_info = NoInfo
+                               {},
+                           __br_terms = "",
                            els = "" } },
              { nt = #var"RtpplStmtAtom",
                label = {},
                rhs =
                  [ litSym "if",
                    ntSym #var"RtpplExpr",
-                   ntSym alt7,
+                   ntSym alt8,
                    litSym "{",
                    ntSym kleene6,
                    litSym "}",
@@ -13757,28 +13815,28 @@ let _table =
                    ntSym kleene7,
                    litSym "}" ],
                action =
-                 lam state49: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res49.
+                 lam state51: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res51.
                      match
-                       res49
+                       res51
                      with
                        [ LitParsed l50,
                          UserSym ntVal31,
-                         UserSym val16,
+                         UserSym val17,
                          LitParsed l51,
-                         UserSym val14,
+                         UserSym val15,
                          LitParsed l52,
                          LitParsed l53,
                          LitParsed l54,
-                         UserSym val15,
+                         UserSym val16,
                          LitParsed l55 ]
                      in
                      let ntVal31: (Info, RtpplExpr) = fromDyn ntVal31 in
-                       let val16: {id: [{i: Info, v: Name}], __br_info: Info, __br_terms: [Info]} = fromDyn val16
+                       let val17: {id: [{i: Info, v: Name}], __br_info: Info, __br_terms: [Info]} = fromDyn val17
                        in
-                       let val14: {thn: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val14
+                       let val15: {thn: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val15
                        in
-                       let val15: {els: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val15
+                       let val16: {els: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val16
                        in
                        asDyn
                          (ConditionRtpplStmtOp
@@ -13787,28 +13845,28 @@ let _table =
                                   mergeInfo
                                   l50.info
                                   [ ntVal31.0,
-                                    val16.__br_info,
+                                    val17.__br_info,
                                     l51.info,
-                                    val14.__br_info,
+                                    val15.__br_info,
                                     l52.info,
                                     l53.info,
                                     l54.info,
-                                    val15.__br_info,
+                                    val16.__br_info,
                                     l55.info ],
                               __br_terms =
                                 join
                                   [ [ l50.info ],
-                                    val16.__br_terms,
+                                    val17.__br_terms,
                                     [ l51.info ],
-                                    val14.__br_terms,
+                                    val15.__br_terms,
                                     [ l52.info ],
                                     [ l53.info ],
                                     [ l54.info ],
-                                    val15.__br_terms,
+                                    val16.__br_terms,
                                     [ l55.info ] ],
-                              id = val16.id,
-                              thn = val14.thn,
-                              els = val15.els,
+                              id = val17.id,
+                              thn = val15.thn,
+                              els = val16.els,
                               cond = [ ntVal31.1 ] }) },
              { nt = #var"RtpplStmtAtom",
                label = {},
@@ -13816,10 +13874,10 @@ let _table =
                  [ litSym "delay",
                    ntSym #var"RtpplExpr" ],
                action =
-                 lam state50: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res50.
+                 lam state52: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res52.
                      match
-                       res50
+                       res52
                      with
                        [ LitParsed l56,
                          UserSym ntVal32 ]
@@ -13830,14 +13888,14 @@ let _table =
                             { __br_info = mergeInfo l56.info ntVal32.0,
                               __br_terms = [ l56.info ],
                               ns = [ ntVal32.1 ] }) },
-             { nt = alt8,
+             { nt = alt9,
                label = {},
                rhs = "",
                action =
-                 lam state51: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res51.
+                 lam state53: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res53.
                      match
-                       res51
+                       res53
                      with
                        ""
                      in
@@ -13846,17 +13904,17 @@ let _table =
                                {},
                            __br_terms = "",
                            upd = "" } },
-             { nt = alt8,
+             { nt = alt9,
                label = {},
                rhs =
                  [ litSym "update",
                    tokSym (LIdentRepr
                         {}) ],
                action =
-                 lam state52: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res52.
+                 lam state54: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res54.
                      match
-                       res52
+                       res54
                      with
                        [ LitParsed l57,
                          TokParsed (LIdentTok x23) ]
@@ -13871,29 +13929,29 @@ let _table =
                  [ ntSym #var"RtpplStmt",
                    ntSym kleene8 ],
                action =
-                 lam state53: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res53.
+                 lam state55: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res55.
                      match
-                       res53
+                       res55
                      with
                        [ UserSym ntVal33,
-                         UserSym val17 ]
+                         UserSym val18 ]
                      in
                      let ntVal33: (Info, RtpplStmt) = fromDyn ntVal33 in
-                       let val17: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val17
+                       let val18: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val18
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal33.0 val17.__br_info,
-                           __br_terms = val17.__br_terms,
-                           body = concat [ ntVal33.1 ] val17.body } },
+                         { __br_info = mergeInfo ntVal33.0 val18.__br_info,
+                           __br_terms = val18.__br_terms,
+                           body = concat [ ntVal33.1 ] val18.body } },
              { nt = kleene8,
                label = {},
                rhs = "",
                action =
-                 lam state54: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res54.
+                 lam state56: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res56.
                      match
-                       res54
+                       res56
                      with
                        ""
                      in
@@ -13910,29 +13968,29 @@ let _table =
                         {}),
                    litSym "in",
                    ntSym #var"RtpplExpr",
-                   ntSym alt8,
+                   ntSym alt9,
                    litSym "{",
                    ntSym kleene8,
                    litSym "}" ],
                action =
-                 lam state55: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res55.
+                 lam state57: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res57.
                      match
-                       res55
+                       res57
                      with
                        [ LitParsed l58,
                          TokParsed (LIdentTok x24),
                          LitParsed l59,
                          UserSym ntVal34,
-                         UserSym val18,
+                         UserSym val19,
                          LitParsed l60,
-                         UserSym val17,
+                         UserSym val18,
                          LitParsed l61 ]
                      in
                      let ntVal34: (Info, RtpplExpr) = fromDyn ntVal34 in
-                       let val18: {upd: [{i: Info, v: Name}], __br_info: Info, __br_terms: [Info]} = fromDyn val18
+                       let val19: {upd: [{i: Info, v: Name}], __br_info: Info, __br_terms: [Info]} = fromDyn val19
                        in
-                       let val17: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val17
+                       let val18: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val18
                        in
                        asDyn
                          (ForLoopRtpplStmtOp
@@ -13943,31 +14001,31 @@ let _table =
                                   [ x24.info,
                                     l59.info,
                                     ntVal34.0,
-                                    val18.__br_info,
+                                    val19.__br_info,
                                     l60.info,
-                                    val17.__br_info,
+                                    val18.__br_info,
                                     l61.info ],
                               __br_terms =
                                 join
                                   [ [ l58.info ],
                                     [ x24.info ],
                                     [ l59.info ],
-                                    val18.__br_terms,
+                                    val19.__br_terms,
                                     [ l60.info ],
-                                    val17.__br_terms,
+                                    val18.__br_terms,
                                     [ l61.info ] ],
                               e = [ ntVal34.1 ],
                               id = [ { v = nameSym x24.val, i = x24.info } ],
-                              body = val17.body,
-                              upd = val18.upd }) },
-             { nt = alt9,
+                              body = val18.body,
+                              upd = val19.upd }) },
+             { nt = alt10,
                label = {},
                rhs = "",
                action =
-                 lam state56: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res56.
+                 lam state58: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res58.
                      match
-                       res56
+                       res58
                      with
                        ""
                      in
@@ -13976,17 +14034,17 @@ let _table =
                                {},
                            __br_terms = "",
                            upd = "" } },
-             { nt = alt9,
+             { nt = alt10,
                label = {},
                rhs =
                  [ litSym "update",
                    tokSym (LIdentRepr
                         {}) ],
                action =
-                 lam state57: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res57.
+                 lam state59: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res59.
                      match
-                       res57
+                       res59
                      with
                        [ LitParsed l62,
                          TokParsed (LIdentTok x25) ]
@@ -14001,29 +14059,29 @@ let _table =
                  [ ntSym #var"RtpplStmt",
                    ntSym kleene9 ],
                action =
-                 lam state58: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res58.
+                 lam state60: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res60.
                      match
-                       res58
+                       res60
                      with
                        [ UserSym ntVal35,
-                         UserSym val19 ]
+                         UserSym val20 ]
                      in
                      let ntVal35: (Info, RtpplStmt) = fromDyn ntVal35 in
-                       let val19: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val19
+                       let val20: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val20
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal35.0 val19.__br_info,
-                           __br_terms = val19.__br_terms,
-                           body = concat [ ntVal35.1 ] val19.body } },
+                         { __br_info = mergeInfo ntVal35.0 val20.__br_info,
+                           __br_terms = val20.__br_terms,
+                           body = concat [ ntVal35.1 ] val20.body } },
              { nt = kleene9,
                label = {},
                rhs = "",
                action =
-                 lam state59: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res59.
+                 lam state61: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res61.
                      match
-                       res59
+                       res61
                      with
                        ""
                      in
@@ -14037,27 +14095,27 @@ let _table =
                rhs =
                  [ litSym "while",
                    ntSym #var"RtpplExpr",
-                   ntSym alt9,
+                   ntSym alt10,
                    litSym "{",
                    ntSym kleene9,
                    litSym "}" ],
                action =
-                 lam state60: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res60.
+                 lam state62: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res62.
                      match
-                       res60
+                       res62
                      with
                        [ LitParsed l63,
                          UserSym ntVal36,
-                         UserSym val20,
+                         UserSym val21,
                          LitParsed l64,
-                         UserSym val19,
+                         UserSym val20,
                          LitParsed l65 ]
                      in
                      let ntVal36: (Info, RtpplExpr) = fromDyn ntVal36 in
-                       let val20: {upd: [{i: Info, v: Name}], __br_info: Info, __br_terms: [Info]} = fromDyn val20
+                       let val21: {upd: [{i: Info, v: Name}], __br_info: Info, __br_terms: [Info]} = fromDyn val21
                        in
-                       let val19: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val19
+                       let val20: {body: [RtpplStmt], __br_info: Info, __br_terms: [Info]} = fromDyn val20
                        in
                        asDyn
                          (WhileLoopRtpplStmtOp
@@ -14066,50 +14124,28 @@ let _table =
                                   mergeInfo
                                   l63.info
                                   [ ntVal36.0,
-                                    val20.__br_info,
+                                    val21.__br_info,
                                     l64.info,
-                                    val19.__br_info,
+                                    val20.__br_info,
                                     l65.info ],
                               __br_terms =
                                 join
                                   [ [ l63.info ],
-                                    val20.__br_terms,
+                                    val21.__br_terms,
                                     [ l64.info ],
-                                    val19.__br_terms,
+                                    val20.__br_terms,
                                     [ l65.info ] ],
-                              body = val19.body,
+                              body = val20.body,
                               cond = [ ntVal36.1 ],
-                              upd = val20.upd }) },
-             { nt = #var"RtpplStmtAtom",
-               label = {},
-               rhs =
-                 [ tokSym (LIdentRepr
-                        {}),
-                   ntSym #var"RtpplStmtNoIdent" ],
-               action =
-                 lam state61: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res61.
-                     match
-                       res61
-                     with
-                       [ TokParsed (LIdentTok x26),
-                         UserSym ntVal37 ]
-                     in
-                     let ntVal37: (Info, RtpplStmtNoIdent) = fromDyn ntVal37 in
-                       asDyn
-                         (IdentPlusStmtRtpplStmtOp
-                            { __br_info = mergeInfo x26.info ntVal37.0,
-                              __br_terms = [ x26.info ],
-                              id = [ { v = nameNoSym x26.val, i = x26.info } ],
-                              next = [ ntVal37.1 ] }) },
-             { nt = alt10,
+                              upd = val21.upd }) },
+             { nt = alt11,
                label = {},
                rhs = "",
                action =
-                 lam state62: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res62.
+                 lam state63: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res63.
                      match
-                       res62
+                       res63
                      with
                        ""
                      in
@@ -14117,85 +14153,45 @@ let _table =
                          { __br_info = NoInfo
                                {},
                            __br_terms = "",
-                           proj = "" } },
-             { nt = alt10,
+                           next = "" } },
+             { nt = alt11,
                label = {},
-               rhs =
-                 [ litSym ".",
-                   tokSym (LIdentRepr
-                        {}) ],
-               action =
-                 lam state63: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res63.
-                     match
-                       res63
-                     with
-                       [ LitParsed l66,
-                         TokParsed (LIdentTok x27) ]
-                     in
-                     asDyn
-                         { __br_info = mergeInfo l66.info x27.info,
-                           __br_terms = concat [ l66.info ] [ x27.info ],
-                           proj = [ { v = x27.val, i = x27.info } ] } },
-             { nt = #var"RtpplStmtNoIdentAtom",
-               label = {},
-               rhs =
-                 [ ntSym alt10,
-                   litSym "=",
-                   ntSym #var"RtpplExpr" ],
+               rhs = [ ntSym #var"RtpplStmtNoIdent" ],
                action =
                  lam state64: {errors: Ref [(Info, [Char])], content: String}.
                    lam res64.
                      match
                        res64
                      with
-                       [ UserSym val21,
-                         LitParsed l67,
-                         UserSym ntVal38 ]
+                       [ UserSym ntVal37 ]
                      in
-                     let val21: {proj: [{i: Info, v: String}], __br_info: Info, __br_terms: [Info]} = fromDyn val21
-                       in
-                       let ntVal38: (Info, RtpplExpr) = fromDyn ntVal38 in
+                     let ntVal37: (Info, RtpplStmtNoIdent) = fromDyn ntVal37 in
                        asDyn
-                         (ReassignRtpplStmtNoIdentOp
-                            { __br_info =
-                                foldl
-                                  mergeInfo
-                                  val21.__br_info
-                                  [ l67.info,
-                                    ntVal38.0 ],
-                              __br_terms = concat val21.__br_terms [ l67.info ],
-                              e = [ ntVal38.1 ],
-                              proj = val21.proj }) },
-             { nt = kleene10,
+                         { __br_info = ntVal37.0, __br_terms = "", next = [ ntVal37.1 ] } },
+             { nt = #var"RtpplStmtAtom",
                label = {},
                rhs =
-                 [ litSym ",",
-                   ntSym #var"RtpplExpr",
-                   ntSym kleene10 ],
+                 [ tokSym (LIdentRepr
+                        {}),
+                   ntSym alt11 ],
                action =
                  lam state65: {errors: Ref [(Info, [Char])], content: String}.
                    lam res65.
                      match
                        res65
                      with
-                       [ LitParsed l68,
-                         UserSym ntVal39,
+                       [ TokParsed (LIdentTok x26),
                          UserSym val22 ]
                      in
-                     let ntVal39: (Info, RtpplExpr) = fromDyn ntVal39 in
-                       let val22: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val22
+                     let val22: {next: [RtpplStmtNoIdent], __br_info: Info, __br_terms: [Info]} = fromDyn val22
                        in
                        asDyn
-                         { __br_info =
-                             foldl
-                               mergeInfo
-                               l68.info
-                               [ ntVal39.0,
-                                 val22.__br_info ],
-                           __br_terms = concat [ l68.info ] val22.__br_terms,
-                           args = concat [ ntVal39.1 ] val22.args } },
-             { nt = kleene10,
+                         (IdentPlusStmtRtpplStmtOp
+                            { __br_info = mergeInfo x26.info val22.__br_info,
+                              __br_terms = concat [ x26.info ] val22.__br_terms,
+                              id = [ { v = nameNoSym x26.val, i = x26.info } ],
+                              next = val22.next }) },
+             { nt = alt12,
                label = {},
                rhs = "",
                action =
@@ -14210,15 +14206,92 @@ let _table =
                          { __br_info = NoInfo
                                {},
                            __br_terms = "",
-                           args = "" } },
-             { nt = alt11,
+                           proj = "" } },
+             { nt = alt12,
                label = {},
-               rhs = "",
+               rhs =
+                 [ litSym ".",
+                   tokSym (LIdentRepr
+                        {}) ],
                action =
                  lam state67: {errors: Ref [(Info, [Char])], content: String}.
                    lam res67.
                      match
                        res67
+                     with
+                       [ LitParsed l66,
+                         TokParsed (LIdentTok x27) ]
+                     in
+                     asDyn
+                         { __br_info = mergeInfo l66.info x27.info,
+                           __br_terms = concat [ l66.info ] [ x27.info ],
+                           proj = [ { v = x27.val, i = x27.info } ] } },
+             { nt = #var"RtpplStmtNoIdentAtom",
+               label = {},
+               rhs =
+                 [ ntSym alt12,
+                   litSym "=",
+                   ntSym #var"RtpplExpr" ],
+               action =
+                 lam state68: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res68.
+                     match
+                       res68
+                     with
+                       [ UserSym val23,
+                         LitParsed l67,
+                         UserSym ntVal38 ]
+                     in
+                     let val23: {proj: [{i: Info, v: String}], __br_info: Info, __br_terms: [Info]} = fromDyn val23
+                       in
+                       let ntVal38: (Info, RtpplExpr) = fromDyn ntVal38 in
+                       asDyn
+                         (ReassignRtpplStmtNoIdentOp
+                            { __br_info =
+                                foldl
+                                  mergeInfo
+                                  val23.__br_info
+                                  [ l67.info,
+                                    ntVal38.0 ],
+                              __br_terms = concat val23.__br_terms [ l67.info ],
+                              e = [ ntVal38.1 ],
+                              proj = val23.proj }) },
+             { nt = kleene10,
+               label = {},
+               rhs =
+                 [ litSym ",",
+                   ntSym #var"RtpplExpr",
+                   ntSym kleene10 ],
+               action =
+                 lam state69: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res69.
+                     match
+                       res69
+                     with
+                       [ LitParsed l68,
+                         UserSym ntVal39,
+                         UserSym val24 ]
+                     in
+                     let ntVal39: (Info, RtpplExpr) = fromDyn ntVal39 in
+                       let val24: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val24
+                       in
+                       asDyn
+                         { __br_info =
+                             foldl
+                               mergeInfo
+                               l68.info
+                               [ ntVal39.0,
+                                 val24.__br_info ],
+                           __br_terms = concat [ l68.info ] val24.__br_terms,
+                           args = concat [ ntVal39.1 ] val24.args } },
+             { nt = kleene10,
+               label = {},
+               rhs = "",
+               action =
+                 lam state70: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res70.
+                     match
+                       res70
                      with
                        ""
                      in
@@ -14227,44 +14300,60 @@ let _table =
                                {},
                            __br_terms = "",
                            args = "" } },
-             { nt = alt11,
+             { nt = alt13,
+               label = {},
+               rhs = "",
+               action =
+                 lam state71: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res71.
+                     match
+                       res71
+                     with
+                       ""
+                     in
+                     asDyn
+                         { __br_info = NoInfo
+                               {},
+                           __br_terms = "",
+                           args = "" } },
+             { nt = alt13,
                label = {},
                rhs =
                  [ ntSym #var"RtpplExpr",
                    ntSym kleene10 ],
                action =
-                 lam state68: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res68.
+                 lam state72: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res72.
                      match
-                       res68
+                       res72
                      with
                        [ UserSym ntVal40,
-                         UserSym val22 ]
+                         UserSym val24 ]
                      in
                      let ntVal40: (Info, RtpplExpr) = fromDyn ntVal40 in
-                       let val22: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val22
+                       let val24: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val24
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal40.0 val22.__br_info,
-                           __br_terms = val22.__br_terms,
-                           args = concat [ ntVal40.1 ] val22.args } },
+                         { __br_info = mergeInfo ntVal40.0 val24.__br_info,
+                           __br_terms = val24.__br_terms,
+                           args = concat [ ntVal40.1 ] val24.args } },
              { nt = #var"RtpplStmtNoIdentAtom",
                label = {},
                rhs =
                  [ litSym "(",
-                   ntSym alt11,
+                   ntSym alt13,
                    litSym ")" ],
                action =
-                 lam state69: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res69.
+                 lam state73: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res73.
                      match
-                       res69
+                       res73
                      with
                        [ LitParsed l69,
-                         UserSym val23,
+                         UserSym val25,
                          LitParsed l70 ]
                      in
-                     let val23: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val23
+                     let val25: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val25
                        in
                        asDyn
                          (FunctionCallSRtpplStmtNoIdentOp
@@ -14272,14 +14361,14 @@ let _table =
                                 foldl
                                   mergeInfo
                                   l69.info
-                                  [ val23.__br_info,
+                                  [ val25.__br_info,
                                     l70.info ],
                               __br_terms =
                                 join
                                   [ [ l69.info ],
-                                    val23.__br_terms,
+                                    val25.__br_terms,
                                     [ l70.info ] ],
-                              args = val23.args }) },
+                              args = val25.args }) },
              { nt = #var"RtpplExprAtom",
                label = {},
                rhs =
@@ -14287,10 +14376,10 @@ let _table =
                         {}),
                    ntSym #var"RtpplExprNoIdent" ],
                action =
-                 lam state70: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res70.
+                 lam state74: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res74.
                      match
-                       res70
+                       res74
                      with
                        [ TokParsed (LIdentTok x28),
                          UserSym ntVal41 ]
@@ -14306,10 +14395,10 @@ let _table =
                label = {},
                rhs = "",
                action =
-                 lam state71: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res71.
+                 lam state75: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res75.
                      match
-                       res71
+                       res75
                      with
                        ""
                      in
@@ -14325,17 +14414,17 @@ let _table =
                    ntSym #var"RtpplExpr",
                    ntSym kleene11 ],
                action =
-                 lam state72: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res72.
+                 lam state76: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res76.
                      match
-                       res72
+                       res76
                      with
                        [ LitParsed l71,
                          UserSym ntVal42,
-                         UserSym val24 ]
+                         UserSym val26 ]
                      in
                      let ntVal42: (Info, RtpplExpr) = fromDyn ntVal42 in
-                       let val24: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val24
+                       let val26: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val26
                        in
                        asDyn
                          { __br_info =
@@ -14343,17 +14432,17 @@ let _table =
                                mergeInfo
                                l71.info
                                [ ntVal42.0,
-                                 val24.__br_info ],
-                           __br_terms = concat [ l71.info ] val24.__br_terms,
-                           args = concat [ ntVal42.1 ] val24.args } },
+                                 val26.__br_info ],
+                           __br_terms = concat [ l71.info ] val26.__br_terms,
+                           args = concat [ ntVal42.1 ] val26.args } },
              { nt = kleene11,
                label = {},
                rhs = "",
                action =
-                 lam state73: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res73.
+                 lam state77: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res77.
                      match
-                       res73
+                       res77
                      with
                        ""
                      in
@@ -14362,14 +14451,14 @@ let _table =
                                {},
                            __br_terms = "",
                            args = "" } },
-             { nt = alt12,
+             { nt = alt14,
                label = {},
                rhs = "",
                action =
-                 lam state74: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res74.
+                 lam state78: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res78.
                      match
-                       res74
+                       res78
                      with
                        ""
                      in
@@ -14378,44 +14467,44 @@ let _table =
                                {},
                            __br_terms = "",
                            args = "" } },
-             { nt = alt12,
+             { nt = alt14,
                label = {},
                rhs =
                  [ ntSym #var"RtpplExpr",
                    ntSym kleene11 ],
                action =
-                 lam state75: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res75.
+                 lam state79: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res79.
                      match
-                       res75
+                       res79
                      with
                        [ UserSym ntVal43,
-                         UserSym val24 ]
+                         UserSym val26 ]
                      in
                      let ntVal43: (Info, RtpplExpr) = fromDyn ntVal43 in
-                       let val24: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val24
+                       let val26: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val26
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal43.0 val24.__br_info,
-                           __br_terms = val24.__br_terms,
-                           args = concat [ ntVal43.1 ] val24.args } },
+                         { __br_info = mergeInfo ntVal43.0 val26.__br_info,
+                           __br_terms = val26.__br_terms,
+                           args = concat [ ntVal43.1 ] val26.args } },
              { nt = #var"RtpplExprNoIdentAtom",
                label = {},
                rhs =
                  [ litSym "(",
-                   ntSym alt12,
+                   ntSym alt14,
                    litSym ")" ],
                action =
-                 lam state76: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res76.
+                 lam state80: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res80.
                      match
-                       res76
+                       res80
                      with
                        [ LitParsed l72,
-                         UserSym val25,
+                         UserSym val27,
                          LitParsed l73 ]
                      in
-                     let val25: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val25
+                     let val27: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val27
                        in
                        asDyn
                          (FunctionCallERtpplExprNoIdentOp
@@ -14423,14 +14512,14 @@ let _table =
                                 foldl
                                   mergeInfo
                                   l72.info
-                                  [ val25.__br_info,
+                                  [ val27.__br_info,
                                     l73.info ],
                               __br_terms =
                                 join
                                   [ [ l72.info ],
-                                    val25.__br_terms,
+                                    val27.__br_terms,
                                     [ l73.info ] ],
-                              args = val25.args }) },
+                              args = val27.args }) },
              { nt = #var"RtpplExprNoIdentAtom",
                label = {},
                rhs =
@@ -14438,10 +14527,10 @@ let _table =
                    tokSym (LIdentRepr
                         {}) ],
                action =
-                 lam state77: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res77.
+                 lam state81: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res81.
                      match
-                       res77
+                       res81
                      with
                        [ LitParsed l74,
                          TokParsed (LIdentTok x29) ]
@@ -14458,10 +14547,10 @@ let _table =
                    ntSym #var"RtpplExpr",
                    litSym "]" ],
                action =
-                 lam state78: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res78.
+                 lam state82: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res82.
                      match
-                       res78
+                       res82
                      with
                        [ LitParsed l75,
                          UserSym ntVal44,
@@ -14485,17 +14574,17 @@ let _table =
                    ntSym #var"RtpplExpr",
                    ntSym kleene12 ],
                action =
-                 lam state79: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res79.
+                 lam state83: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res83.
                      match
-                       res79
+                       res83
                      with
                        [ LitParsed l77,
                          UserSym ntVal45,
-                         UserSym val26 ]
+                         UserSym val28 ]
                      in
                      let ntVal45: (Info, RtpplExpr) = fromDyn ntVal45 in
-                       let val26: {elems: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val26
+                       let val28: {elems: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val28
                        in
                        asDyn
                          { __br_info =
@@ -14503,17 +14592,17 @@ let _table =
                                mergeInfo
                                l77.info
                                [ ntVal45.0,
-                                 val26.__br_info ],
-                           __br_terms = concat [ l77.info ] val26.__br_terms,
-                           elems = concat [ ntVal45.1 ] val26.elems } },
+                                 val28.__br_info ],
+                           __br_terms = concat [ l77.info ] val28.__br_terms,
+                           elems = concat [ ntVal45.1 ] val28.elems } },
              { nt = kleene12,
                label = {},
                rhs = "",
                action =
-                 lam state80: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res80.
+                 lam state84: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res84.
                      match
-                       res80
+                       res84
                      with
                        ""
                      in
@@ -14522,14 +14611,14 @@ let _table =
                                {},
                            __br_terms = "",
                            elems = "" } },
-             { nt = alt13,
+             { nt = alt15,
                label = {},
                rhs = "",
                action =
-                 lam state81: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res81.
+                 lam state85: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res85.
                      match
-                       res81
+                       res85
                      with
                        ""
                      in
@@ -14538,44 +14627,44 @@ let _table =
                                {},
                            __br_terms = "",
                            elems = "" } },
-             { nt = alt13,
+             { nt = alt15,
                label = {},
                rhs =
                  [ ntSym #var"RtpplExpr",
                    ntSym kleene12 ],
                action =
-                 lam state82: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res82.
+                 lam state86: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res86.
                      match
-                       res82
+                       res86
                      with
                        [ UserSym ntVal46,
-                         UserSym val26 ]
+                         UserSym val28 ]
                      in
                      let ntVal46: (Info, RtpplExpr) = fromDyn ntVal46 in
-                       let val26: {elems: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val26
+                       let val28: {elems: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val28
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal46.0 val26.__br_info,
-                           __br_terms = val26.__br_terms,
-                           elems = concat [ ntVal46.1 ] val26.elems } },
+                         { __br_info = mergeInfo ntVal46.0 val28.__br_info,
+                           __br_terms = val28.__br_terms,
+                           elems = concat [ ntVal46.1 ] val28.elems } },
              { nt = #var"RtpplExprAtom",
                label = {},
                rhs =
                  [ litSym "[",
-                   ntSym alt13,
+                   ntSym alt15,
                    litSym "]" ],
                action =
-                 lam state83: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res83.
+                 lam state87: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res87.
                      match
-                       res83
+                       res87
                      with
                        [ LitParsed l78,
-                         UserSym val27,
+                         UserSym val29,
                          LitParsed l79 ]
                      in
-                     let val27: {elems: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val27
+                     let val29: {elems: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val29
                        in
                        asDyn
                          (ArrayLitRtpplExprOp
@@ -14583,14 +14672,14 @@ let _table =
                                 foldl
                                   mergeInfo
                                   l78.info
-                                  [ val27.__br_info,
+                                  [ val29.__br_info,
                                     l79.info ],
                               __br_terms =
                                 join
                                   [ [ l78.info ],
-                                    val27.__br_terms,
+                                    val29.__br_terms,
                                     [ l79.info ] ],
-                              elems = val27.elems }) },
+                              elems = val29.elems }) },
              { nt = kleene13,
                label = {},
                rhs =
@@ -14601,19 +14690,19 @@ let _table =
                    ntSym #var"RtpplExpr",
                    ntSym kleene13 ],
                action =
-                 lam state84: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res84.
+                 lam state88: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res88.
                      match
-                       res84
+                       res88
                      with
                        [ LitParsed l80,
                          TokParsed (LIdentTok x30),
                          LitParsed l81,
                          UserSym ntVal47,
-                         UserSym val28 ]
+                         UserSym val30 ]
                      in
                      let ntVal47: (Info, RtpplExpr) = fromDyn ntVal47 in
-                       let val28: {fields: [{e: RtpplExpr, id: {i: Info, v: String}}], __br_info: Info, __br_terms: [Info]} = fromDyn val28
+                       let val30: {fields: [{e: RtpplExpr, id: {i: Info, v: String}}], __br_info: Info, __br_terms: [Info]} = fromDyn val30
                        in
                        asDyn
                          { __br_info =
@@ -14623,13 +14712,13 @@ let _table =
                                [ x30.info,
                                  l81.info,
                                  ntVal47.0,
-                                 val28.__br_info ],
+                                 val30.__br_info ],
                            __br_terms =
                              join
                                [ [ l80.info ],
                                  [ x30.info ],
                                  [ l81.info ],
-                                 val28.__br_terms ],
+                                 val30.__br_terms ],
                            fields =
                              concat
                                [ { e =
@@ -14646,15 +14735,15 @@ let _table =
                                        [ x32 ] ++ _
                                      in
                                      x32 } ]
-                               val28.fields } },
+                               val30.fields } },
              { nt = kleene13,
                label = {},
                rhs = "",
                action =
-                 lam state85: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res85.
+                 lam state89: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res89.
                      match
-                       res85
+                       res89
                      with
                        ""
                      in
@@ -14663,14 +14752,14 @@ let _table =
                                {},
                            __br_terms = "",
                            fields = "" } },
-             { nt = alt14,
+             { nt = alt16,
                label = {},
                rhs = "",
                action =
-                 lam state86: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res86.
+                 lam state90: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res90.
                      match
-                       res86
+                       res90
                      with
                        ""
                      in
@@ -14679,7 +14768,7 @@ let _table =
                                {},
                            __br_terms = "",
                            fields = "" } },
-             { nt = alt14,
+             { nt = alt16,
                label = {},
                rhs =
                  [ tokSym (LIdentRepr
@@ -14688,18 +14777,18 @@ let _table =
                    ntSym #var"RtpplExpr",
                    ntSym kleene13 ],
                action =
-                 lam state87: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res87.
+                 lam state91: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res91.
                      match
-                       res87
+                       res91
                      with
                        [ TokParsed (LIdentTok x33),
                          LitParsed l82,
                          UserSym ntVal48,
-                         UserSym val28 ]
+                         UserSym val30 ]
                      in
                      let ntVal48: (Info, RtpplExpr) = fromDyn ntVal48 in
-                       let val28: {fields: [{e: RtpplExpr, id: {i: Info, v: String}}], __br_info: Info, __br_terms: [Info]} = fromDyn val28
+                       let val30: {fields: [{e: RtpplExpr, id: {i: Info, v: String}}], __br_info: Info, __br_terms: [Info]} = fromDyn val30
                        in
                        asDyn
                          { __br_info =
@@ -14708,12 +14797,12 @@ let _table =
                                x33.info
                                [ l82.info,
                                  ntVal48.0,
-                                 val28.__br_info ],
+                                 val30.__br_info ],
                            __br_terms =
                              join
                                [ [ x33.info ],
                                  [ l82.info ],
-                                 val28.__br_terms ],
+                                 val30.__br_terms ],
                            fields =
                              concat
                                [ { e =
@@ -14730,24 +14819,24 @@ let _table =
                                        [ x35 ] ++ _
                                      in
                                      x35 } ]
-                               val28.fields } },
+                               val30.fields } },
              { nt = #var"RtpplExprAtom",
                label = {},
                rhs =
                  [ litSym "{",
-                   ntSym alt14,
+                   ntSym alt16,
                    litSym "}" ],
                action =
-                 lam state88: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res88.
+                 lam state92: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res92.
                      match
-                       res88
+                       res92
                      with
                        [ LitParsed l83,
-                         UserSym val29,
+                         UserSym val31,
                          LitParsed l84 ]
                      in
-                     let val29: {fields: [{e: RtpplExpr, id: {i: Info, v: String}}], __br_info: Info, __br_terms: [Info]} = fromDyn val29
+                     let val31: {fields: [{e: RtpplExpr, id: {i: Info, v: String}}], __br_info: Info, __br_terms: [Info]} = fromDyn val31
                        in
                        asDyn
                          (RecordLitRtpplExprOp
@@ -14755,22 +14844,22 @@ let _table =
                                 foldl
                                   mergeInfo
                                   l83.info
-                                  [ val29.__br_info,
+                                  [ val31.__br_info,
                                     l84.info ],
                               __br_terms =
                                 join
                                   [ [ l83.info ],
-                                    val29.__br_terms,
+                                    val31.__br_terms,
                                     [ l84.info ] ],
-                              fields = val29.fields }) },
+                              fields = val31.fields }) },
              { nt = #var"RtpplExprAtom",
                label = {},
                rhs = [ ntSym #var"RtpplConst" ],
                action =
-                 lam state89: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res89.
+                 lam state93: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res93.
                      match
-                       res89
+                       res93
                      with
                        [ UserSym ntVal49 ]
                      in
@@ -14785,10 +14874,10 @@ let _table =
                    ntSym #var"RtpplExpr",
                    litSym "|" ],
                action =
-                 lam state90: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res90.
+                 lam state94: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res94.
                      match
-                       res90
+                       res94
                      with
                        [ LitParsed l85,
                          UserSym ntVal50,
@@ -14809,10 +14898,10 @@ let _table =
                label = {},
                rhs = [ litSym "samples" ],
                action =
-                 lam state91: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res91.
+                 lam state95: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res95.
                      match
-                       res91
+                       res95
                      with
                        [ LitParsed l87 ]
                      in
@@ -14829,10 +14918,10 @@ let _table =
                    ntSym #var"RtpplExpr",
                    litSym ")" ],
                action =
-                 lam state92: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res92.
+                 lam state96: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res96.
                      match
-                       res92
+                       res96
                      with
                        [ LitParsed l88,
                          LitParsed l89,
@@ -14872,10 +14961,10 @@ let _table =
                    ntSym #var"RtpplExpr",
                    litSym ")" ],
                action =
-                 lam state93: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res93.
+                 lam state97: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res97.
                      match
-                       res93
+                       res97
                      with
                        [ LitParsed l92,
                          LitParsed l93,
@@ -14913,10 +15002,10 @@ let _table =
                    ntSym #var"RtpplExpr",
                    litSym ")" ],
                action =
-                 lam state94: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res94.
+                 lam state98: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res98.
                      match
-                       res94
+                       res98
                      with
                        [ LitParsed l96,
                          LitParsed l97,
@@ -14949,10 +15038,10 @@ let _table =
                    ntSym #var"RtpplExpr",
                    litSym ")" ],
                action =
-                 lam state95: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res95.
+                 lam state99: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res99.
                      match
-                       res95
+                       res99
                      with
                        [ LitParsed l99,
                          LitParsed l100,
@@ -14986,10 +15075,10 @@ let _table =
                label = {},
                rhs = [ litSym "+" ],
                action =
-                 lam state96: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res96.
+                 lam state100: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res100.
                      match
-                       res96
+                       res100
                      with
                        [ LitParsed l103 ]
                      in
@@ -15000,10 +15089,10 @@ let _table =
                label = {},
                rhs = [ litSym "-" ],
                action =
-                 lam state97: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res97.
+                 lam state101: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res101.
                      match
-                       res97
+                       res101
                      with
                        [ LitParsed l104 ]
                      in
@@ -15014,10 +15103,10 @@ let _table =
                label = {},
                rhs = [ litSym "*" ],
                action =
-                 lam state98: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res98.
+                 lam state102: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res102.
                      match
-                       res98
+                       res102
                      with
                        [ LitParsed l105 ]
                      in
@@ -15028,10 +15117,10 @@ let _table =
                label = {},
                rhs = [ litSym "/" ],
                action =
-                 lam state99: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res99.
+                 lam state103: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res103.
                      match
-                       res99
+                       res103
                      with
                        [ LitParsed l106 ]
                      in
@@ -15042,10 +15131,10 @@ let _table =
                label = {},
                rhs = [ litSym "==" ],
                action =
-                 lam state100: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res100.
+                 lam state104: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res104.
                      match
-                       res100
+                       res104
                      with
                        [ LitParsed l107 ]
                      in
@@ -15056,10 +15145,10 @@ let _table =
                label = {},
                rhs = [ litSym "!=" ],
                action =
-                 lam state101: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res101.
+                 lam state105: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res105.
                      match
-                       res101
+                       res105
                      with
                        [ LitParsed l108 ]
                      in
@@ -15070,10 +15159,10 @@ let _table =
                label = {},
                rhs = [ litSym "<" ],
                action =
-                 lam state102: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res102.
+                 lam state106: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res106.
                      match
-                       res102
+                       res106
                      with
                        [ LitParsed l109 ]
                      in
@@ -15084,10 +15173,10 @@ let _table =
                label = {},
                rhs = [ litSym ">" ],
                action =
-                 lam state103: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res103.
+                 lam state107: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res107.
                      match
-                       res103
+                       res107
                      with
                        [ LitParsed l110 ]
                      in
@@ -15098,10 +15187,10 @@ let _table =
                label = {},
                rhs = [ litSym "<=" ],
                action =
-                 lam state104: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res104.
+                 lam state108: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res108.
                      match
-                       res104
+                       res108
                      with
                        [ LitParsed l111 ]
                      in
@@ -15112,10 +15201,10 @@ let _table =
                label = {},
                rhs = [ litSym ">=" ],
                action =
-                 lam state105: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res105.
+                 lam state109: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res109.
                      match
-                       res105
+                       res109
                      with
                        [ LitParsed l112 ]
                      in
@@ -15126,10 +15215,10 @@ let _table =
                label = {},
                rhs = [ litSym "&&" ],
                action =
-                 lam state106: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res106.
+                 lam state110: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res110.
                      match
-                       res106
+                       res110
                      with
                        [ LitParsed l113 ]
                      in
@@ -15140,10 +15229,10 @@ let _table =
                label = {},
                rhs = [ litSym "||" ],
                action =
-                 lam state107: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res107.
+                 lam state111: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res111.
                      match
-                       res107
+                       res111
                      with
                        [ LitParsed l114 ]
                      in
@@ -15156,29 +15245,29 @@ let _table =
                  [ ntSym #var"RtpplExt",
                    ntSym kleene14 ],
                action =
-                 lam state108: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res108.
+                 lam state112: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res112.
                      match
-                       res108
+                       res112
                      with
                        [ UserSym ntVal58,
-                         UserSym val30 ]
+                         UserSym val32 ]
                      in
                      let ntVal58: (Info, RtpplExt) = fromDyn ntVal58 in
-                       let val30: {ext: [RtpplExt], __br_info: Info, __br_terms: [Info]} = fromDyn val30
+                       let val32: {ext: [RtpplExt], __br_info: Info, __br_terms: [Info]} = fromDyn val32
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal58.0 val30.__br_info,
-                           __br_terms = val30.__br_terms,
-                           ext = concat [ ntVal58.1 ] val30.ext } },
+                         { __br_info = mergeInfo ntVal58.0 val32.__br_info,
+                           __br_terms = val32.__br_terms,
+                           ext = concat [ ntVal58.1 ] val32.ext } },
              { nt = kleene14,
                label = {},
                rhs = "",
                action =
-                 lam state109: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res109.
+                 lam state113: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res113.
                      match
-                       res109
+                       res113
                      with
                        ""
                      in
@@ -15193,29 +15282,29 @@ let _table =
                  [ ntSym #var"RtpplTask",
                    ntSym kleene15 ],
                action =
-                 lam state110: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res110.
+                 lam state114: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res114.
                      match
-                       res110
+                       res114
                      with
                        [ UserSym ntVal59,
-                         UserSym val31 ]
+                         UserSym val33 ]
                      in
                      let ntVal59: (Info, RtpplTask) = fromDyn ntVal59 in
-                       let val31: {tasks: [RtpplTask], __br_info: Info, __br_terms: [Info]} = fromDyn val31
+                       let val33: {tasks: [RtpplTask], __br_info: Info, __br_terms: [Info]} = fromDyn val33
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal59.0 val31.__br_info,
-                           __br_terms = val31.__br_terms,
-                           tasks = concat [ ntVal59.1 ] val31.tasks } },
+                         { __br_info = mergeInfo ntVal59.0 val33.__br_info,
+                           __br_terms = val33.__br_terms,
+                           tasks = concat [ ntVal59.1 ] val33.tasks } },
              { nt = kleene15,
                label = {},
                rhs = "",
                action =
-                 lam state111: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res111.
+                 lam state115: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res115.
                      match
-                       res111
+                       res115
                      with
                        ""
                      in
@@ -15230,29 +15319,29 @@ let _table =
                  [ ntSym #var"RtpplConnection",
                    ntSym kleene16 ],
                action =
-                 lam state112: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res112.
+                 lam state116: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res116.
                      match
-                       res112
+                       res116
                      with
                        [ UserSym ntVal60,
-                         UserSym val32 ]
+                         UserSym val34 ]
                      in
                      let ntVal60: (Info, RtpplConnection) = fromDyn ntVal60 in
-                       let val32: {__br_info: Info, __br_terms: [Info], connections: [RtpplConnection]} = fromDyn val32
+                       let val34: {__br_info: Info, __br_terms: [Info], connections: [RtpplConnection]} = fromDyn val34
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal60.0 val32.__br_info,
-                           __br_terms = val32.__br_terms,
-                           connections = concat [ ntVal60.1 ] val32.connections } },
+                         { __br_info = mergeInfo ntVal60.0 val34.__br_info,
+                           __br_terms = val34.__br_terms,
+                           connections = concat [ ntVal60.1 ] val34.connections } },
              { nt = kleene16,
                label = {},
                rhs = "",
                action =
-                 lam state113: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res113.
+                 lam state117: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res117.
                      match
-                       res113
+                       res117
                      with
                        ""
                      in
@@ -15271,23 +15360,23 @@ let _table =
                    ntSym kleene16,
                    litSym "}" ],
                action =
-                 lam state114: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res114.
+                 lam state118: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res118.
                      match
-                       res114
+                       res118
                      with
                        [ LitParsed l115,
                          LitParsed l116,
-                         UserSym val30,
-                         UserSym val31,
                          UserSym val32,
+                         UserSym val33,
+                         UserSym val34,
                          LitParsed l117 ]
                      in
-                     let val30: {ext: [RtpplExt], __br_info: Info, __br_terms: [Info]} = fromDyn val30
+                     let val32: {ext: [RtpplExt], __br_info: Info, __br_terms: [Info]} = fromDyn val32
                        in
-                       let val31: {tasks: [RtpplTask], __br_info: Info, __br_terms: [Info]} = fromDyn val31
+                       let val33: {tasks: [RtpplTask], __br_info: Info, __br_terms: [Info]} = fromDyn val33
                        in
-                       let val32: {__br_info: Info, __br_terms: [Info], connections: [RtpplConnection]} = fromDyn val32
+                       let val34: {__br_info: Info, __br_terms: [Info], connections: [RtpplConnection]} = fromDyn val34
                        in
                        asDyn
                          (MainRtpplMainOp
@@ -15296,21 +15385,21 @@ let _table =
                                   mergeInfo
                                   l115.info
                                   [ l116.info,
-                                    val30.__br_info,
-                                    val31.__br_info,
                                     val32.__br_info,
+                                    val33.__br_info,
+                                    val34.__br_info,
                                     l117.info ],
                               __br_terms =
                                 join
                                   [ [ l115.info ],
                                     [ l116.info ],
-                                    val30.__br_terms,
-                                    val31.__br_terms,
                                     val32.__br_terms,
+                                    val33.__br_terms,
+                                    val34.__br_terms,
                                     [ l117.info ] ],
-                              ext = val30.ext,
-                              tasks = val31.tasks,
-                              connections = val32.connections }) },
+                              ext = val32.ext,
+                              tasks = val33.tasks,
+                              connections = val34.connections }) },
              { nt = #var"RtpplExtAtom",
                label = {},
                rhs =
@@ -15322,10 +15411,10 @@ let _table =
                    litSym "rate",
                    ntSym #var"RtpplExpr" ],
                action =
-                 lam state115: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res115.
+                 lam state119: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res119.
                      match
-                       res115
+                       res119
                      with
                        [ LitParsed l118,
                          TokParsed (LIdentTok x36),
@@ -15367,10 +15456,10 @@ let _table =
                    litSym "rate",
                    ntSym #var"RtpplExpr" ],
                action =
-                 lam state116: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res116.
+                 lam state120: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res120.
                      match
-                       res116
+                       res120
                      with
                        [ LitParsed l121,
                          TokParsed (LIdentTok x37),
@@ -15408,17 +15497,17 @@ let _table =
                    ntSym #var"RtpplExpr",
                    ntSym kleene17 ],
                action =
-                 lam state117: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res117.
+                 lam state121: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res121.
                      match
-                       res117
+                       res121
                      with
                        [ LitParsed l124,
                          UserSym ntVal65,
-                         UserSym val33 ]
+                         UserSym val35 ]
                      in
                      let ntVal65: (Info, RtpplExpr) = fromDyn ntVal65 in
-                       let val33: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val33
+                       let val35: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val35
                        in
                        asDyn
                          { __br_info =
@@ -15426,17 +15515,17 @@ let _table =
                                mergeInfo
                                l124.info
                                [ ntVal65.0,
-                                 val33.__br_info ],
-                           __br_terms = concat [ l124.info ] val33.__br_terms,
-                           args = concat [ ntVal65.1 ] val33.args } },
+                                 val35.__br_info ],
+                           __br_terms = concat [ l124.info ] val35.__br_terms,
+                           args = concat [ ntVal65.1 ] val35.args } },
              { nt = kleene17,
                label = {},
                rhs = "",
                action =
-                 lam state118: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res118.
+                 lam state122: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res122.
                      match
-                       res118
+                       res122
                      with
                        ""
                      in
@@ -15445,14 +15534,14 @@ let _table =
                                {},
                            __br_terms = "",
                            args = "" } },
-             { nt = alt15,
+             { nt = alt17,
                label = {},
                rhs = "",
                action =
-                 lam state119: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res119.
+                 lam state123: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res123.
                      match
-                       res119
+                       res123
                      with
                        ""
                      in
@@ -15461,27 +15550,27 @@ let _table =
                                {},
                            __br_terms = "",
                            args = "" } },
-             { nt = alt15,
+             { nt = alt17,
                label = {},
                rhs =
                  [ ntSym #var"RtpplExpr",
                    ntSym kleene17 ],
                action =
-                 lam state120: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res120.
+                 lam state124: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res124.
                      match
-                       res120
+                       res124
                      with
                        [ UserSym ntVal66,
-                         UserSym val33 ]
+                         UserSym val35 ]
                      in
                      let ntVal66: (Info, RtpplExpr) = fromDyn ntVal66 in
-                       let val33: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val33
+                       let val35: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val35
                        in
                        asDyn
-                         { __br_info = mergeInfo ntVal66.0 val33.__br_info,
-                           __br_terms = val33.__br_terms,
-                           args = concat [ ntVal66.1 ] val33.args } },
+                         { __br_info = mergeInfo ntVal66.0 val35.__br_info,
+                           __br_terms = val35.__br_terms,
+                           args = concat [ ntVal66.1 ] val35.args } },
              { nt = #var"RtpplTaskAtom",
                label = {},
                rhs =
@@ -15492,28 +15581,28 @@ let _table =
                    tokSym (UIdentRepr
                         {}),
                    litSym "(",
-                   ntSym alt15,
+                   ntSym alt17,
                    litSym ")",
                    litSym "importance",
                    tokSym (IntRepr
                         {}) ],
                action =
-                 lam state121: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res121.
+                 lam state125: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res125.
                      match
-                       res121
+                       res125
                      with
                        [ LitParsed l125,
                          TokParsed (LIdentTok x38),
                          LitParsed l126,
                          TokParsed (UIdentTok x39),
                          LitParsed l127,
-                         UserSym val34,
+                         UserSym val36,
                          LitParsed l128,
                          LitParsed l129,
                          TokParsed (IntTok x40) ]
                      in
-                     let val34: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val34
+                     let val36: {args: [RtpplExpr], __br_info: Info, __br_terms: [Info]} = fromDyn val36
                        in
                        asDyn
                          (TaskRtpplTaskOp
@@ -15525,7 +15614,7 @@ let _table =
                                     l126.info,
                                     x39.info,
                                     l127.info,
-                                    val34.__br_info,
+                                    val36.__br_info,
                                     l128.info,
                                     l129.info,
                                     x40.info ],
@@ -15536,13 +15625,13 @@ let _table =
                                     [ l126.info ],
                                     [ x39.info ],
                                     [ l127.info ],
-                                    val34.__br_terms,
+                                    val36.__br_terms,
                                     [ l128.info ],
                                     [ l129.info ],
                                     [ x40.info ] ],
                               id = [ { v = nameNoSym x38.val, i = x38.info } ],
                               p = [ { v = x40.val, i = x40.info } ],
-                              args = val34.args,
+                              args = val36.args,
                               templateId = [ { v = nameNoSym x39.val, i = x39.info } ] }) },
              { nt = #var"RtpplConnectionAtom",
                label = {},
@@ -15551,10 +15640,10 @@ let _table =
                    litSym "->",
                    ntSym #var"RtpplPortSpec" ],
                action =
-                 lam state122: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res122.
+                 lam state126: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res126.
                      match
-                       res122
+                       res126
                      with
                        [ UserSym ntVal67,
                          LitParsed l130,
@@ -15573,14 +15662,14 @@ let _table =
                               __br_terms = [ l130.info ],
                               to = [ ntVal68.1 ],
                               from = [ ntVal67.1 ] }) },
-             { nt = alt16,
+             { nt = alt18,
                label = {},
                rhs = "",
                action =
-                 lam state123: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res123.
+                 lam state127: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res127.
                      match
-                       res123
+                       res127
                      with
                        ""
                      in
@@ -15589,17 +15678,17 @@ let _table =
                                {},
                            __br_terms = "",
                            id = "" } },
-             { nt = alt16,
+             { nt = alt18,
                label = {},
                rhs =
                  [ litSym ".",
                    tokSym (LIdentRepr
                         {}) ],
                action =
-                 lam state124: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res124.
+                 lam state128: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res128.
                      match
-                       res124
+                       res128
                      with
                        [ LitParsed l131,
                          TokParsed (LIdentTok x41) ]
@@ -15613,32 +15702,32 @@ let _table =
                rhs =
                  [ tokSym (LIdentRepr
                         {}),
-                   ntSym alt16 ],
+                   ntSym alt18 ],
                action =
-                 lam state125: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res125.
+                 lam state129: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res129.
                      match
-                       res125
+                       res129
                      with
                        [ TokParsed (LIdentTok x42),
-                         UserSym val35 ]
+                         UserSym val37 ]
                      in
-                     let val35: {id: [{i: Info, v: String}], __br_info: Info, __br_terms: [Info]} = fromDyn val35
+                     let val37: {id: [{i: Info, v: String}], __br_info: Info, __br_terms: [Info]} = fromDyn val37
                        in
                        asDyn
                          (PortSpecRtpplPortSpecOp
-                            { __br_info = mergeInfo x42.info val35.__br_info,
-                              __br_terms = concat [ x42.info ] val35.__br_terms,
-                              id = val35.id,
+                            { __br_info = mergeInfo x42.info val37.__br_info,
+                              __br_terms = concat [ x42.info ] val37.__br_terms,
+                              id = val37.id,
                               port = [ { v = nameNoSym x42.val, i = x42.info } ] }) },
              { nt = #var"RtpplTypeAtom",
                label = {},
                rhs = [ litSym "Int" ],
                action =
-                 lam state126: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res126.
+                 lam state130: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res130.
                      match
-                       res126
+                       res130
                      with
                        [ LitParsed l132 ]
                      in
@@ -15649,10 +15738,10 @@ let _table =
                label = {},
                rhs = [ litSym "Float" ],
                action =
-                 lam state127: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res127.
+                 lam state131: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res131.
                      match
-                       res127
+                       res131
                      with
                        [ LitParsed l133 ]
                      in
@@ -15663,10 +15752,10 @@ let _table =
                label = {},
                rhs = [ litSym "Bool" ],
                action =
-                 lam state128: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res128.
+                 lam state132: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res132.
                      match
-                       res128
+                       res132
                      with
                        [ LitParsed l134 ]
                      in
@@ -15677,10 +15766,10 @@ let _table =
                label = {},
                rhs = [ litSym "String" ],
                action =
-                 lam state129: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res129.
+                 lam state133: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res133.
                      match
-                       res129
+                       res133
                      with
                        [ LitParsed l135 ]
                      in
@@ -15691,10 +15780,10 @@ let _table =
                label = {},
                rhs = [ litSym "Unit" ],
                action =
-                 lam state130: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res130.
+                 lam state134: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res134.
                      match
-                       res130
+                       res134
                      with
                        [ LitParsed l136 ]
                      in
@@ -15708,10 +15797,10 @@ let _table =
                    ntSym #var"RtpplType",
                    litSym "]" ],
                action =
-                 lam state131: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res131.
+                 lam state135: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res135.
                      match
-                       res131
+                       res135
                      with
                        [ LitParsed l137,
                          UserSym ntVal69,
@@ -15738,19 +15827,19 @@ let _table =
                    ntSym #var"RtpplType",
                    ntSym kleene18 ],
                action =
-                 lam state132: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res132.
+                 lam state136: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res136.
                      match
-                       res132
+                       res136
                      with
                        [ LitParsed l139,
                          TokParsed (LIdentTok x43),
                          LitParsed l140,
                          UserSym ntVal70,
-                         UserSym val36 ]
+                         UserSym val38 ]
                      in
                      let ntVal70: (Info, RtpplType) = fromDyn ntVal70 in
-                       let val36: {fields: [{id: {i: Info, v: String}, ty: RtpplType}], __br_info: Info, __br_terms: [Info]} = fromDyn val36
+                       let val38: {fields: [{id: {i: Info, v: String}, ty: RtpplType}], __br_info: Info, __br_terms: [Info]} = fromDyn val38
                        in
                        asDyn
                          { __br_info =
@@ -15760,13 +15849,13 @@ let _table =
                                [ x43.info,
                                  l140.info,
                                  ntVal70.0,
-                                 val36.__br_info ],
+                                 val38.__br_info ],
                            __br_terms =
                              join
                                [ [ l139.info ],
                                  [ x43.info ],
                                  [ l140.info ],
-                                 val36.__br_terms ],
+                                 val38.__br_terms ],
                            fields =
                              concat
                                [ { id =
@@ -15783,15 +15872,15 @@ let _table =
                                        [ x45 ] ++ _
                                      in
                                      x45 } ]
-                               val36.fields } },
+                               val38.fields } },
              { nt = kleene18,
                label = {},
                rhs = "",
                action =
-                 lam state133: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res133.
+                 lam state137: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res137.
                      match
-                       res133
+                       res137
                      with
                        ""
                      in
@@ -15800,14 +15889,14 @@ let _table =
                                {},
                            __br_terms = "",
                            fields = "" } },
-             { nt = alt17,
+             { nt = alt19,
                label = {},
                rhs = "",
                action =
-                 lam state134: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res134.
+                 lam state138: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res138.
                      match
-                       res134
+                       res138
                      with
                        ""
                      in
@@ -15816,7 +15905,7 @@ let _table =
                                {},
                            __br_terms = "",
                            fields = "" } },
-             { nt = alt17,
+             { nt = alt19,
                label = {},
                rhs =
                  [ tokSym (LIdentRepr
@@ -15825,18 +15914,18 @@ let _table =
                    ntSym #var"RtpplType",
                    ntSym kleene18 ],
                action =
-                 lam state135: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res135.
+                 lam state139: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res139.
                      match
-                       res135
+                       res139
                      with
                        [ TokParsed (LIdentTok x46),
                          LitParsed l141,
                          UserSym ntVal71,
-                         UserSym val36 ]
+                         UserSym val38 ]
                      in
                      let ntVal71: (Info, RtpplType) = fromDyn ntVal71 in
-                       let val36: {fields: [{id: {i: Info, v: String}, ty: RtpplType}], __br_info: Info, __br_terms: [Info]} = fromDyn val36
+                       let val38: {fields: [{id: {i: Info, v: String}, ty: RtpplType}], __br_info: Info, __br_terms: [Info]} = fromDyn val38
                        in
                        asDyn
                          { __br_info =
@@ -15845,12 +15934,12 @@ let _table =
                                x46.info
                                [ l141.info,
                                  ntVal71.0,
-                                 val36.__br_info ],
+                                 val38.__br_info ],
                            __br_terms =
                              join
                                [ [ x46.info ],
                                  [ l141.info ],
-                                 val36.__br_terms ],
+                                 val38.__br_terms ],
                            fields =
                              concat
                                [ { id =
@@ -15867,24 +15956,24 @@ let _table =
                                        [ x48 ] ++ _
                                      in
                                      x48 } ]
-                               val36.fields } },
+                               val38.fields } },
              { nt = #var"RtpplTypeAtom",
                label = {},
                rhs =
                  [ litSym "{",
-                   ntSym alt17,
+                   ntSym alt19,
                    litSym "}" ],
                action =
-                 lam state136: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res136.
+                 lam state140: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res140.
                      match
-                       res136
+                       res140
                      with
                        [ LitParsed l142,
-                         UserSym val37,
+                         UserSym val39,
                          LitParsed l143 ]
                      in
-                     let val37: {fields: [{id: {i: Info, v: String}, ty: RtpplType}], __br_info: Info, __br_terms: [Info]} = fromDyn val37
+                     let val39: {fields: [{id: {i: Info, v: String}, ty: RtpplType}], __br_info: Info, __br_terms: [Info]} = fromDyn val39
                        in
                        asDyn
                          (RecordRtpplTypeOp
@@ -15892,22 +15981,22 @@ let _table =
                                 foldl
                                   mergeInfo
                                   l142.info
-                                  [ val37.__br_info,
+                                  [ val39.__br_info,
                                     l143.info ],
                               __br_terms =
                                 join
                                   [ [ l142.info ],
-                                    val37.__br_terms,
+                                    val39.__br_terms,
                                     [ l143.info ] ],
-                              fields = val37.fields }) },
+                              fields = val39.fields }) },
              { nt = #var"RtpplTypeInfix",
                label = {},
                rhs = [ litSym "->" ],
                action =
-                 lam state137: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res137.
+                 lam state141: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res141.
                      match
-                       res137
+                       res141
                      with
                        [ LitParsed l144 ]
                      in
@@ -15922,10 +16011,10 @@ let _table =
                    ntSym #var"RtpplType",
                    litSym ")" ],
                action =
-                 lam state138: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res138.
+                 lam state142: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res142.
                      match
-                       res138
+                       res142
                      with
                        [ LitParsed l145,
                          LitParsed l146,
@@ -15955,10 +16044,10 @@ let _table =
                         {}),
                    ntSym #var"RtpplTypeNoIdent" ],
                action =
-                 lam state139: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res139.
+                 lam state143: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res143.
                      match
-                       res139
+                       res143
                      with
                        [ TokParsed (UIdentTok x49),
                          UserSym ntVal73 ]
@@ -15974,10 +16063,10 @@ let _table =
                label = {},
                rhs = "",
                action =
-                 lam state140: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res140.
+                 lam state144: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res144.
                      match
-                       res140
+                       res144
                      with
                        ""
                      in
@@ -15993,17 +16082,17 @@ let _table =
                    ntSym #var"RtpplType",
                    ntSym kleene19 ],
                action =
-                 lam state141: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res141.
+                 lam state145: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res145.
                      match
-                       res141
+                       res145
                      with
                        [ LitParsed l148,
                          UserSym ntVal74,
-                         UserSym val38 ]
+                         UserSym val40 ]
                      in
                      let ntVal74: (Info, RtpplType) = fromDyn ntVal74 in
-                       let val38: {args: [RtpplType], __br_info: Info, __br_terms: [Info]} = fromDyn val38
+                       let val40: {args: [RtpplType], __br_info: Info, __br_terms: [Info]} = fromDyn val40
                        in
                        asDyn
                          { __br_info =
@@ -16011,17 +16100,17 @@ let _table =
                                mergeInfo
                                l148.info
                                [ ntVal74.0,
-                                 val38.__br_info ],
-                           __br_terms = concat [ l148.info ] val38.__br_terms,
-                           args = concat [ ntVal74.1 ] val38.args } },
+                                 val40.__br_info ],
+                           __br_terms = concat [ l148.info ] val40.__br_terms,
+                           args = concat [ ntVal74.1 ] val40.args } },
              { nt = kleene19,
                label = {},
                rhs = "",
                action =
-                 lam state142: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res142.
+                 lam state146: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res146.
                      match
-                       res142
+                       res146
                      with
                        ""
                      in
@@ -16038,18 +16127,18 @@ let _table =
                    ntSym kleene19,
                    litSym ")" ],
                action =
-                 lam state143: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res143.
+                 lam state147: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res147.
                      match
-                       res143
+                       res147
                      with
                        [ LitParsed l149,
                          UserSym ntVal75,
-                         UserSym val38,
+                         UserSym val40,
                          LitParsed l150 ]
                      in
                      let ntVal75: (Info, RtpplType) = fromDyn ntVal75 in
-                       let val38: {args: [RtpplType], __br_info: Info, __br_terms: [Info]} = fromDyn val38
+                       let val40: {args: [RtpplType], __br_info: Info, __br_terms: [Info]} = fromDyn val40
                        in
                        asDyn
                          (ApplicationRtpplTypeNoIdentOp
@@ -16058,23 +16147,23 @@ let _table =
                                   mergeInfo
                                   l149.info
                                   [ ntVal75.0,
-                                    val38.__br_info,
+                                    val40.__br_info,
                                     l150.info ],
                               __br_terms =
                                 join
                                   [ [ l149.info ],
-                                    val38.__br_terms,
+                                    val40.__br_terms,
                                     [ l150.info ] ],
-                              args = concat [ ntVal75.1 ] val38.args }) },
+                              args = concat [ ntVal75.1 ] val40.args }) },
              { nt = #var"RtpplConstAtom",
                label = {},
                rhs = [ tokSym (IntRepr
                         {}) ],
                action =
-                 lam state144: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res144.
+                 lam state148: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res148.
                      match
-                       res144
+                       res148
                      with
                        [ TokParsed (IntTok x50) ]
                      in
@@ -16088,10 +16177,10 @@ let _table =
                rhs = [ tokSym (FloatRepr
                         {}) ],
                action =
-                 lam state145: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res145.
+                 lam state149: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res149.
                      match
-                       res145
+                       res149
                      with
                        [ TokParsed (FloatTok x51) ]
                      in
@@ -16105,10 +16194,10 @@ let _table =
                rhs = [ tokSym (BoolRepr
                         {}) ],
                action =
-                 lam state146: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res146.
+                 lam state150: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res150.
                      match
-                       res146
+                       res150
                      with
                        [ TokParsed (BoolTok x52) ]
                      in
@@ -16122,10 +16211,10 @@ let _table =
                rhs = [ tokSym (StringRepr
                         {}) ],
                action =
-                 lam state147: {errors: Ref [(Info, [Char])], content: String}.
-                   lam res147.
+                 lam state151: {errors: Ref [(Info, [Char])], content: String}.
+                   lam res151.
                      match
-                       res147
+                       res151
                      with
                        [ TokParsed (StringTok x53) ]
                      in
@@ -17687,8 +17776,8 @@ let parseRtppl =
       use ParseRtppl
       in
       let config16 = { errors = ref "", content = content } in
-      let res148 = parseWithTable _table filename config16 content in
-      let #var"X" = (res148, deref config16.errors) in
+      let res152 = parseWithTable _table filename config16 content in
+      let #var"X" = (res152, deref config16.errors) in
       match
         #var"X"
       with
@@ -17697,10 +17786,10 @@ let parseRtppl =
         match
           fromDyn dyn
         with
-          (_, res148)
+          (_, res152)
         in
         Right
-            res148
+            res152
       else match
         #var"X"
       with

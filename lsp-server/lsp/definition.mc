@@ -57,7 +57,12 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
   sem findDefinitions: Map Name [LSPDefinition] -> UsageInformation -> [DefinitionInformation]
   sem findDefinitions definitions =| usage ->
     let locations = filterMap (lam name. mapLookup name definitions) usage.names in
-    flatMap (map (lam definition. { from = usage.location, to = definition.location })) locations
+    flatMap (filterMap (
+      lam definition. match definition.location with Some location then
+        Some ({ from = usage.location, to = location })
+      else
+        None ()
+    )) locations
 
   sem findGotosLinearly: Map Info [Info] -> URI -> Int -> Int -> [DefinitionInformation]
   sem findGotosLinearly gotos uri line =| character ->
@@ -108,9 +113,7 @@ lang LSPGotoDefinition = LSPRoot + LSPProgress
 
       progress.reportMsg 0.8 "Finding definitions";
       let definitions = optionMap (findDefinitions definitions) usageResult in
-
       let locations = (compose join filterOption) [definitions] in
-
       let response = generateLocationLinks id locations in
 
       progress.finish (None ());

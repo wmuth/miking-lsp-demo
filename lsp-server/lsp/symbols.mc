@@ -92,7 +92,7 @@ lang LSPWorkspaceSymbol = LSPRoot + LSPSymbolKind
       match definition with (name, definitions) in
       filterMap (
         lam definition.
-          match generateLocationLinks__LSPWorkspaceSymbol definition.location with Some location then
+          match optionBind definition.location generateLocationLinks__LSPWorkspaceSymbol with Some location then
             Some (jsonKeyObject [
               ("name", JsonString (nameGetStr name)),
               ("kind", JsonInt (getSymbolKind definition.kind)),

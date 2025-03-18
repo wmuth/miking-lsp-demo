@@ -1,8 +1,11 @@
 include "mexpr/mexpr.mc"
+include "probtime-lib/src/rtppl.mc"
 
-let debugSym = true
+let debugSym = false
 
-lang ProbTimeLanguageServerPrettyPrint = MExprPrettyPrint + MExprAst
+lang ProbTimeLanguageServerPrettyPrint =
+  Rtppl + MExprPrettyPrint + MExprAst
+
   sem probtimeCode =| code -> join ["```probtime\n", code, "\n```\n"]
 
   sem probtimeDefinition types prefix =| name ->
@@ -22,10 +25,10 @@ recursive let concreteType: use MExprAst in [Type] -> Type =
   switch types
     case [] then
       TyUnknown { info = NoInfo () }
-    case [t] ++ _ then
-      t
     case [TyUnknown _] ++ rest then
       concreteType rest
+    case [t] ++ _ then
+      t
   end
 end
 

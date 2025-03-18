@@ -3,12 +3,13 @@ include "probtime-lib/src/ast.mc"
 include "../../lsp-server/lsp/root.mc"
 include "util.mc"
 
-lang RtpplLanguageServerCompiler =
+lang RtpplLanguageServerBase =
   RtpplAst + LSPRoot + MExprAst
   + MExprPrettyPrint + ProbTimeLanguageServerPrettyPrint
-
   type TypeMap = Map Name Type
+end
 
+lang RtpplLanguageServerCompiler = RtpplLanguageServerBase
   sem topParamsLookup: TypeMap -> RtpplTopParams -> [LanguageServerPayload]
   sem topParamsLookup types =
   | _ -> []
@@ -23,7 +24,7 @@ lang RtpplLanguageServerCompiler =
         LsDefinition {
           documentation=lam. Some documentation,
           kind = SymbolVariable (),
-          location = info,
+          location = Some info,
           name = name,
           exported = false
         },
@@ -36,23 +37,30 @@ lang RtpplLanguageServerCompiler =
 
     flatMap paramLookup params
 
-  sem stmtDocumentation: RtpplStmt -> String
-  sem stmtDocumentation =
+  sem recursiveTopParamsLookup: TypeMap -> RtpplTopParams -> [LanguageServerPayload]
+  sem recursiveTopParamsLookup types =| params ->
+    createAccumulators [
+      topParamsLookup types,
+      createAccumulator sfold_RtpplTopParams_RtpplTopParams (topParamsLookup types)
+    ] params
+
+  sem stmtDocumentation: TypeMap -> RtpplStmt -> String
+  sem stmtDocumentation types =
   | _ -> ""
   | ForLoopRtpplStmt { id = { v = name, i = info } } ->
     join [
-      probtimeCode (join ["for ", nameGetStr name]),
+      probtimeDefinition types "for" name,
       getSym name
     ]
   | BindingRtpplStmt { id = { v = name, i = info } } ->
     join [
-      probtimeCode (join ["var ", nameGetStr name]),
+      probtimeDefinition types "var" name,
       getSym name
     ]
   | ReadRtpplStmt { port = { v = portStr }, dst = { v = name, i = info } } ->
     eprintln (join ["Read ", portStr, " to ", nameGetStr name]);
     join [
-      probtimeCode (join ["read ", portStr, " to ", nameGetStr name]),
+      probtimeDefinition types (join ["read ", portStr, " to"]) name,
       getSym name
     ]
 
@@ -69,12 +77,12 @@ lang RtpplLanguageServerCompiler =
   | stmt & ForLoopRtpplStmt { id = { v = name, i = info } }
   | stmt & BindingRtpplStmt { id = { v = name, i = info } }
   | stmt & ReadRtpplStmt { dst = { v = name, i = info } } ->
-    let documentation = lam. Some (stmtDocumentation stmt) in
+    let documentation = lam. Some (stmtDocumentation types stmt) in
     [
       LsDefinition {
         documentation=documentation,
         kind = stmtSymbol stmt,
-        location = info,
+        location = Some info,
         name = name,
         exported = false
       },
@@ -91,14 +99,40 @@ lang RtpplLanguageServerCompiler =
       createAccumulator sfold_RtpplStmt_RtpplStmt (recursiveStmtLookup types)
     ] stmt
 
+  sem splitFunctionType: Type -> [Type]
+  sem splitFunctionType =
+  | ty -> [ty]
+  | TyArrow { from=from, to=to } -> flatMap splitFunctionType [from, to]
+
   sem topDocumentation: TypeMap -> RtpplTop -> String
   sem topDocumentation types =
   | _ -> "Documentation unavailable"
-  | FunctionDefRtpplTop { id = { v = name, i = info } } ->
-    join [
-      probtimeDefinition types "def" name,
-      getSym name
-    ]
+  | FunctionDefRtpplTop {
+    id = { v = name, i = info },
+    params = ParamsRtpplTopParams { params = params }
+  } ->
+    match mapLookup name types with Some ty then
+      let types = splitFunctionType ty in
+      let params = zipWith (lam ty. lam param.
+        match param with { id = { v = paramName } } in
+        join [
+          nameGetStr paramName,
+          ": ",
+          type2str ty
+        ]
+      ) types params in
+      let retType = type2str (last types) in
+      join [
+        probtimeCode (join [
+          "def ", nameGetStr name, "(", strJoin ", " params, "): ", retType
+        ]),
+        getSym name
+      ]
+    else
+      join [
+        probtimeDefinition types "def" name,
+        getSym name
+      ]
   | ModelDefRtpplTop { id = { v = name, i = info } } ->
     join [
       probtimeDefinition types "model" name,
@@ -128,7 +162,7 @@ lang RtpplLanguageServerCompiler =
       LsDefinition {
         documentation=documentation,
         kind = topDefinitionSymbol top,
-        location = info,
+        location = Some info,
         name = name,
         exported = true
       },
@@ -144,7 +178,7 @@ lang RtpplLanguageServerCompiler =
       topLookup types,
       createAccumulator sfold_RtpplTop_RtpplTop       (recursiveTopLookup types),
       createAccumulator sfold_RtpplTop_RtpplStmt      (recursiveStmtLookup types),
-      createAccumulator sfold_RtpplTop_RtpplTopParams (topParamsLookup types)
+      createAccumulator sfold_RtpplTop_RtpplTopParams (recursiveTopParamsLookup types)
     ] top
 
   sem probtimeProgramToLanguageSupport: TypeMap -> RtpplProgram -> [LanguageServerPayload]
@@ -153,108 +187,33 @@ lang RtpplLanguageServerCompiler =
     flatMap (recursiveTopLookup types) tops
 end
 
-lang MExprLanguageServerCompiler =
-  MExpr + MExprAst + LSPRoot
-  + MExprPrettyPrint + ProbTimeLanguageServerPrettyPrint
-
-  sem getTypeNames : Type -> [Name]
-  sem getTypeNames =
+lang MExprLanguageServerLinkerCompiler = RtpplLanguageServerBase
+  sem getTypeNames : TypeMap -> Type -> [Name]
+  sem getTypeNames types =
   | _ -> []
   | TyCon { ident=ident, info=info } ->
     [ident]
 
-  sem getTypeNamesRecursively : Type -> [Name]
-  sem getTypeNamesRecursively =| typ ->
+  sem getTypeNamesRecursively : TypeMap -> Type -> [Name]
+  sem getTypeNamesRecursively types =| typ ->
     createAccumulators [
-      getTypeNames,
-      createAccumulator sfold_Type_Type getTypeNamesRecursively
+      getTypeNames types,
+      createAccumulator sfold_Type_Type (getTypeNamesRecursively types)
     ] typ
 
-  sem typeLookup: Type -> [LanguageServerPayload]
-  sem typeLookup =
+  sem typeLookup: TypeMap -> Type -> [LanguageServerPayload]
+  sem typeLookup types =
   | _ -> []
 
-  sem exprLookup: Expr -> [LanguageServerPayload]
-  sem exprLookup =
+  sem exprLookup: TypeMap -> Expr -> [LanguageServerPayload]
+  sem exprLookup types =
   | _ -> []
   | TmVar { ident=ident, ty=ty, info=info } ->
-    [
+    if not (nameHasSym ident) then [] else [
       LsHover {
         location = info,
         toString = lam. Some (join [
-          probtimeCode (join ["(mexpr) var ", nameGetStr ident, ": ", type2str ty]),
-          getSym ident
-        ])
-      }
-      -- LsUsage {
-      --   location = info,
-      --   name = ident
-      -- }
-    ]
-
-  sem patLookup: Pat -> [LanguageServerPayload]
-  sem patLookup =
-  | _ -> []
-
-  sem recursiveTypeLookup: Type -> [LanguageServerPayload]
-  sem recursiveTypeLookup =| ty ->
-    createAccumulators [
-      typeLookup,
-      createAccumulator sfold_Type_Type recursiveTypeLookup
-    ] ty
-
-  sem recursivePatLookup: Pat -> [LanguageServerPayload]
-  sem recursivePatLookup =| pat ->
-    createAccumulators [
-      patLookup,
-      createAccumulator sfold_Pat_Pat   recursivePatLookup,
-      createAccumulator sfold_Pat_Type  recursiveTypeLookup
-    ] pat
-
-  sem recursiveExprLookup: Expr -> [LanguageServerPayload]
-  sem recursiveExprLookup =| expr ->
-    createAccumulators [
-      exprLookup,
-      createAccumulator sfold_Expr_Expr recursiveExprLookup,
-      createAccumulator sfold_Expr_Type recursiveTypeLookup,
-      createAccumulator sfold_Expr_Pat  recursivePatLookup
-    ] expr
-
-  sem exprToLanguageSupport: Expr -> [LanguageServerPayload]
-  sem exprToLanguageSupport =| expr ->
-    recursiveExprLookup expr
-end
-
-lang MExprLanguageServerLinkerCompiler =
-  MExpr + MExprAst + LSPRoot
-  + MExprPrettyPrint + ProbTimeLanguageServerPrettyPrint
-
-  sem getTypeNames : Type -> [Name]
-  sem getTypeNames =
-  | _ -> []
-  | TyCon { ident=ident, info=info } ->
-    [ident]
-
-  sem getTypeNamesRecursively : Type -> [Name]
-  sem getTypeNamesRecursively =| typ ->
-    createAccumulators [
-      getTypeNames,
-      createAccumulator sfold_Type_Type getTypeNamesRecursively
-    ] typ
-
-  sem typeLookup: Type -> [LanguageServerPayload]
-  sem typeLookup =
-  | _ -> []
-
-  sem exprLookup: Expr -> [LanguageServerPayload]
-  sem exprLookup =
-  | _ -> []
-  | TmVar { ident=ident & !("", _), ty=ty, info=info } ->
-    [
-      LsHover {
-        location = info,
-        toString = lam. Some (join [
-          probtimeCode (join ["(linker) var ", nameGetStr ident, ": ", type2str ty]),
+          probtimeDefinition types "var" ident,
           getSym ident
         ])
       },
@@ -264,39 +223,38 @@ lang MExprLanguageServerLinkerCompiler =
       }
     ]
 
-  sem patLookup: Pat -> [LanguageServerPayload]
-  sem patLookup =
+  sem patLookup: TypeMap -> Pat -> [LanguageServerPayload]
+  sem patLookup types =
   | _ -> []
 
-  sem recursiveTypeLookup: Type -> [LanguageServerPayload]
-  sem recursiveTypeLookup =| ty ->
+  sem recursiveTypeLookup: TypeMap -> Type -> [LanguageServerPayload]
+  sem recursiveTypeLookup types =| ty ->
     createAccumulators [
-      typeLookup,
-      createAccumulator sfold_Type_Type recursiveTypeLookup
+      typeLookup types,
+      createAccumulator sfold_Type_Type (recursiveTypeLookup types)
     ] ty
 
-  sem recursivePatLookup: Pat -> [LanguageServerPayload]
-  sem recursivePatLookup =| pat ->
+  sem recursivePatLookup: TypeMap -> Pat -> [LanguageServerPayload]
+  sem recursivePatLookup types =| pat ->
     createAccumulators [
-      patLookup,
-      createAccumulator sfold_Pat_Pat   recursivePatLookup,
-      createAccumulator sfold_Pat_Type  recursiveTypeLookup
+      patLookup types,
+      createAccumulator sfold_Pat_Pat   (recursivePatLookup types),
+      createAccumulator sfold_Pat_Type  (recursiveTypeLookup types)
     ] pat
 
-  sem recursiveExprLookup: Expr -> [LanguageServerPayload]
-  sem recursiveExprLookup =| expr ->
+  sem recursiveExprLookup: TypeMap -> Expr -> [LanguageServerPayload]
+  sem recursiveExprLookup types =| expr ->
     createAccumulators [
-      exprLookup,
-      createAccumulator sfold_Expr_Expr recursiveExprLookup,
-      createAccumulator sfold_Expr_Type recursiveTypeLookup,
-      createAccumulator sfold_Expr_Pat  recursivePatLookup
+      exprLookup types,
+      createAccumulator sfold_Expr_Expr (recursiveExprLookup types),
+      createAccumulator sfold_Expr_Type (recursiveTypeLookup types),
+      createAccumulator sfold_Expr_Pat  (recursivePatLookup types)
     ] expr
 
-  sem exprToLanguageSupport: Expr -> [LanguageServerPayload]
-  sem exprToLanguageSupport =| expr ->
-    recursiveExprLookup expr
+  sem exprToLanguageSupport: TypeMap -> Expr -> [LanguageServerPayload]
+  sem exprToLanguageSupport types =| expr ->
+    recursiveExprLookup types expr
 end
 
-let exprToLanguageSupport = use MExprLanguageServerCompiler in exprToLanguageSupport
 let exprToLanguageSupportLinker = use MExprLanguageServerLinkerCompiler in exprToLanguageSupport
 let probtimeProgramToLanguageSupport = use RtpplLanguageServerCompiler in probtimeProgramToLanguageSupport

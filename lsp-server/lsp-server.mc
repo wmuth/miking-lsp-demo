@@ -25,7 +25,17 @@ let executeRequest: use LSPRoot in LSPStartParameters -> LSPEnvironment -> use L
       sendNotification = sendNotification
     } in
     
+    let t1 = wallTimeMs () in
     let result = use LSP in execute executionContext message in
+    
+    (
+      if parameters.options.benchmark then
+        let t2 = wallTimeMs () in
+        let time = subf t2 t1 in
+        eprintln (join ["Time taken: ", float2string time, "ms"])
+      else
+        ()
+    );
 
     (
       match result.response with Some response then

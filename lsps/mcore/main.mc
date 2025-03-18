@@ -66,12 +66,12 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
   sem getTypeNames =
   | _ -> []
   | TyCon { ident=ident, info=info } ->
-    eprintln (join ["getTypeNames: ", nameGetStr ident]);
+    -- eprintln (join ["getTypeNames: ", nameGetStr ident]);
     [ident]
 
   sem getTypeNamesRecursively : Type -> [Name]
   sem getTypeNamesRecursively =| typ ->
-    eprintln (join ["getTypeNamesRecursively: ", type2str typ]);
+    -- eprintln (join ["getTypeNamesRecursively: ", type2str typ]);
     let myTypes = getTypeNames typ in
     sfold_Type_Type (lam acc. lam ty.
       join [acc, getTypeNamesRecursively ty]
@@ -189,7 +189,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         LsDefinition {
           documentation=lam. None (),
           kind = SymbolFunction (),
-          location = binding.info,
+          location = Some binding.info,
           name = binding.ident,
           exported = false
         }
@@ -211,7 +211,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           documentation=lam. Some documentation,
           exported = false,
           kind = SymbolVariable (),
-          location = info,
+          location = Some info,
           name = ident
         }
       ]
@@ -231,7 +231,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           documentation=lam. None (),
           exported = false,
           kind = SymbolTypeParameter (),
-          location = info,
+          location = Some info,
           name = ident
         }
       ]
@@ -264,7 +264,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           documentation=lam. None (),
           exported = false,
           kind = SymbolTypeParameter (),
-          location = info,
+          location = Some info,
           name = ident
         }
       ]
@@ -291,7 +291,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
       env,
       [
         let super = getTypeNamesRecursively ty in
-        eprintln (join ["Supers: ", strJoin ", " (map nameGetStr super)]);
+        -- eprintln (join ["Supers: ", strJoin ", " (map nameGetStr super)]);
         LsType {
           location = info,
           ident = ident,
@@ -301,7 +301,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           documentation=lam. None (),
           exported = false,
           kind = SymbolConstructor (),
-          location = info,
+          location = Some info,
           name = ident
         },
         LsHover {
@@ -363,7 +363,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
       LsDefinition {
         documentation=lam. None (),
         kind = SymbolConstructor (),
-        location = info,
+        location = Some info,
         name = ident,
         exported = false
       },
@@ -412,7 +412,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         LsDefinition {
           documentation=lam. None (),
           kind = SymbolTypeParameter (),
-          location = info,
+          location = Some info,
           name = ident
         },
         LsType {
@@ -436,7 +436,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         LsDefinition {
           documentation=lam. None (),
           kind = SymbolTypeParameter (),
-          location = info,
+          location = Some info,
           name = ident
         }
       ],
@@ -445,7 +445,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           LsDefinition {
             documentation=lam. None (),
             kind = SymbolEnumMember (),
-            location = info,
+            location = Some info,
             name = def.ident
           }
         ]
@@ -465,7 +465,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         LsDefinition {
           documentation=lam. None (),
           kind = SymbolVariable (),
-          location = infoWithFilename filename info,
+          location = Some (infoWithFilename filename info),
           name = binding.ident
         }
       ]
@@ -482,7 +482,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
       LsDefinition {
         documentation=lam. None (),
         kind = SymbolModule (),
-        location = info,
+        location = Some info,
         name = ident
       }
     ]
@@ -505,7 +505,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         LsDefinition {
           documentation=lam. None (),
           kind = SymbolFunction (),
-          location = info,
+          location = Some info,
           name = ident
         }
       ],
@@ -513,7 +513,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         LsDefinition {
           documentation=lam. None (),
           kind = SymbolVariable (),
-          location = info,
+          location = Some info,
           name = arg.ident
         }  
       ) (optionGetOr [] args)
@@ -640,7 +640,7 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
             documentation=lam. None (),
             exported = false,
             kind = SymbolFile (),
-            location = makeInfo (posVal path 1 0) (posVal path 1 0),
+            location = Some (makeInfo (posVal path 1 0) (posVal path 1 0)),
             name = fileName
           },
           LsUsage {

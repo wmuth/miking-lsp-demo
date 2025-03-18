@@ -46,6 +46,8 @@ end
 lang MLangTypeCheckedRoot = MLangBase
   type MLangTypeCheckedFile = {
     expr: Option Expr, -- With symbols
+    tcEnv: TCEnv,
+    compositionEnv: CompositionCheckEnv,
     diagnostics: [DiagnosticWithSeverity]
   }
 end
@@ -123,6 +125,11 @@ lang MLangRoot =
     _getDiagnostics file (Symbolized ()),
     optionMapOr [] (lam v. v.diagnostics) file.typeChecked
   ]
+
+  sem getSymEnv : MLangFile -> Option SymEnv
+  sem getSymEnv =
+  | _ -> None ()
+  | { status=Symbolized () | TypeChecked (), symbolized=Some symbolized } -> Some symbolized.symEnv
 
   sem getFileDiagnostics : MLangFile -> [DiagnosticWithSeverity]
   sem getFileDiagnostics =| file ->

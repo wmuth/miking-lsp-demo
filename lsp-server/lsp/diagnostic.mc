@@ -1,4 +1,5 @@
 include "root.mc"
+include "utils.mc"
 
 let mini: Int -> Int -> Int =
   lam a. lam b. if leqi a b then a else b

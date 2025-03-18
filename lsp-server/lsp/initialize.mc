@@ -107,9 +107,9 @@ lang LSPInitialize =
               ("typeDefinitionProvider", JsonBool true),
               ("typeHierarchyProvider", JsonBool true),
               ("completionProvider", jsonKeyObject [
-                ("triggerCharacters", JsonArray [
-                  JsonString "."
-                ])
+                -- ("triggerCharacters", JsonArray [
+                --   JsonString "."
+                -- ])
               ])
             ]),
             ("serverInfo", jsonKeyObject [

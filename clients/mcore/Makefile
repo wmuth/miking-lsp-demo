@@ -10,7 +10,7 @@ clean:
 	npm run clean
 	rm -rf out lsp-server mcore stdlib
 
-client/out/extension.js: $(JS_FILES) $(TS_FILES) $(JSON_FILES)
+client/out/extension.js: $(JS_FILES) $(TS_FILES) $(JSON_FILES) clean
 	mkdir -p mcore out
 	cp -r ../../{lsp-server,lib} mcore
 	mkdir -p mcore/lsps/mcore

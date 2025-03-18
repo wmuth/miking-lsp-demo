@@ -51,11 +51,6 @@ lang MLangSymbolizer = MLangRoot + MLangLinker
     namespaceEnv = mapUnion a.namespaceEnv b.namespaceEnv
   }
 
-  sem getSymEnv : SymEnv -> MLangFile -> SymEnv
-  sem getSymEnv default =
-  | { status=Symbolized (), symbolized=Some symbolized } -> symbolized.symEnv
-  | _ -> default
-
   sem env2str : SymEnv -> String
   sem env2str =| env ->
     let f = lam value.
@@ -85,7 +80,7 @@ lang MLangSymbolizer = MLangRoot + MLangLinker
     } in
 
     let linkerResult = getIncludedFiles getFile includes in
-    let symEnvs = map (getSymEnv symEnvEmpty) linkerResult.files in
+    let symEnvs = map (compose (optionGetOr symEnvEmpty) getSymEnv) linkerResult.files in
     let symEnv = foldl mergeSymEnv symEnvEmpty symEnvs in
 
     -- Ugly hacking to not make symbolizeExpr

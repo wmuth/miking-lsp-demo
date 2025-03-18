@@ -84,6 +84,19 @@ let _emptyCompositionCheckEnv : CompositionCheckEnv = {
   langToSems = mapEmpty cmpString
 }
 
+let mergeCompositionCheckEnv : CompositionCheckEnv -> CompositionCheckEnv -> CompositionCheckEnv = lam l. lam r. {
+  r with
+  baseMap = mapUnion l.baseMap r.baseMap,
+  paramMap = mapUnion l.paramMap r.paramMap,
+  semPatMap = mapUnion l.semPatMap r.semPatMap,
+  semArgsMap = mapUnion l.semArgsMap r.semArgsMap,
+  semTyVarMap = mapUnion l.semTyVarMap r.semTyVarMap,
+  semSymMap = mapUnion l.semSymMap r.semSymMap,
+  semBaseToTyAnnot = mapUnion l.semBaseToTyAnnot r.semBaseToTyAnnot,
+  symToPair = mapUnion l.symToPair r.symToPair,
+  langToSems = mapUnion l.langToSems r.langToSems
+}
+
 let insertBaseMap : CompositionCheckEnv -> (String, String) -> Unknown -> CompositionCheckEnv = 
   lam env. lam k. lam v. 
     {env with baseMap = mapInsert k v env.baseMap}

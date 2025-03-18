@@ -108,7 +108,7 @@ prod Params : RtpplTopParams =
 prod Input : RtpplPort = "input" id:LIdent ":" ty:RtpplType
 prod Output : RtpplPort = "output" id:LIdent ":" ty:RtpplType
 
-prod Binding : RtpplStmt = "var" id:LNameSym (":" ty:RtpplType)? "=" e:RtpplExpr
+prod Binding : RtpplStmt = "var" id:LNameSym ((":" ty:RtpplType)? "=" e:RtpplExpr)?
 prod Observe : RtpplStmt = "observe" e:RtpplExpr "~" d:RtpplExpr
 prod Assume : RtpplStmt = "sample" id:LName "~" d:RtpplExpr
 prod Infer : RtpplStmt = "infer" model:RtpplExpr "to" id:LName ("particles" p:RtpplExpr)?
@@ -122,7 +122,7 @@ prod Delay : RtpplStmt = "delay" ns:RtpplExpr
 prod ForLoop : RtpplStmt = "for" id:LNameSym "in" e:RtpplExpr ("update" upd:LName)? "{" body:RtpplStmt* "}"
 prod WhileLoop : RtpplStmt = "while" cond:RtpplExpr ("update" upd:LName)? "{" body:RtpplStmt* "}"
 
-prod IdentPlusStmt : RtpplStmt = id:LName next:RtpplStmtNoIdent
+prod IdentPlusStmt : RtpplStmt = id:LName next:RtpplStmtNoIdent?
 prod Reassign : RtpplStmtNoIdent = ("." proj:LIdent)? "=" e:RtpplExpr
 prod FunctionCallS : RtpplStmtNoIdent = "(" (args:RtpplExpr ("," args:RtpplExpr)*)? ")"
 prod IdentPlusExpr : RtpplExpr = id:LName next:RtpplExprNoIdent

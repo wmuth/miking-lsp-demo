@@ -6,6 +6,7 @@ include "../json-rpc.mc"
 
 include "./symbol-kind.mc"
 include "./completion-kind.mc"
+include "./symbol-to-completion.mc"
 
 type URI = String
 type Diagnostic = (Info, String)
@@ -30,7 +31,7 @@ lang LanguageServerRoot =
   LSPSymbolKind + LSPCompletionKind
   
   type LSPDefinition = {
-    location: Info,
+    location: Option Info,
     kind: SymbolKind,
     documentation: () -> Option String,
     exported: Bool
@@ -170,7 +171,7 @@ lang LanguageServerDefinition = LanguageServerRoot + LSPSymbolToCompletion
     kind: SymbolKind,
     documentation: () -> Option String,
     exported: Bool,
-    location: Info,
+    location: Option Info,
     name: Name
   }
 
@@ -232,7 +233,8 @@ lang LanguageServer =
   LanguageServerDefinition +
   LanguageServerTypeHierarchy +
   LanguageServerDiagnostic +
-  LanguageServerCodeLens
+  LanguageServerCodeLens +
+  LanguageServerAvailability
 
   type LSPCompilationParameters = {
     uri: URI,
@@ -253,7 +255,12 @@ lang LanguageServer =
     extension: String,
     indexWorkspace: Bool,
     printClientMessages: Bool,
-    pruneMessages: Bool
+    pruneMessages: Bool,
+    benchmark: Bool,
+
+    -- If set, hover information will also include the documentation
+    -- of the definition. The lambda function will wrap the documentation.
+    hoverShowDefinitionPrefix: Option (String -> String)
   }
 
   type LSPStartParameters = {
@@ -292,7 +299,10 @@ let defaultLSPOptions: use LanguageServer in LSPOptions = {
   extension = "",
   indexWorkspace = true,
   printClientMessages = false,
-  pruneMessages = true
+  pruneMessages = true,
+  benchmark = false,
+
+  hoverShowDefinitionPrefix = Some identity
 }
 
 lang LSPRoot = LanguageServer

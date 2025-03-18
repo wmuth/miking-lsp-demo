@@ -2,9 +2,13 @@ DSLS := $(wildcard dsls/*)
 LSPS := $(wildcard lsps/*)
 CLIENTS := $(wildcard clients/*)
 
+DSL ?=
+
 .PHONY: all clean $(DSLS) $(LSPS) $(CLIENTS)
 
-all: $(DSLS) $(LSPS) $(CLIENTS)
+# all: $(DSLS) $(LSPS) $(CLIENTS)
+
+all: build-lsp build-client
 
 clean:
 	@for d in $(DSLS); do \
@@ -30,11 +34,29 @@ $(DSLS):
 
 # -- LSPs --
 
+build-lsp:
+ifneq ($(DSL),)
+	@echo "-- [Building LSP $(DSL)] --"
+	make -C lsps/$(DSL)
+else
+	@echo "Error: Specify DSL=<name> to build a specific LSP."
+	exit 1
+endif
+
 $(LSPS):
-	@echo "-- [Building LSP $@] --"
+	@echo "-- [Building DSL $@] --"
 	make -C $@
 
 # -- CLIENTs --
+
+build-client:
+ifneq ($(DSL),)
+	@echo "-- [Building CLIENT $(DSL)] --"
+	make -C clients/$(DSL)
+else
+	@echo "Error: Specify DSL=<name> to build a specific client."
+	exit 1
+endif
 
 $(CLIENTS):
 	@echo "-- [Building CLIENT $@] --"

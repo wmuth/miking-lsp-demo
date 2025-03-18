@@ -29,21 +29,34 @@ lang MCoreCompile =
   PprintTyAnnot + HtmlAnnotator
 end
 
+let typeCheckBuffer: Ref TCEnv = ref typcheckEnvDefault
+
 lang LSPTypeCheck = MCoreCompile
+  syn Expr =
+  | TmBufferTypeCheckForLSP { inexpr: Expr }
+
+  sem removeMetaVarExpr =
+  | TmBufferTypeCheckForLSP { inexpr=inexpr } ->
+    removeMetaVarExpr inexpr
+
   sem typeCheckExpr env =
   | TmUse { inexpr=inexpr } ->
+    typeCheckExpr env inexpr
+  | TmBufferTypeCheckForLSP { inexpr=inexpr } ->
+    modref typeCheckBuffer env;
     typeCheckExpr env inexpr
 end
 
 lang MLangMExprTypeChecker = MLangRoot
   type TypeCheckedMExprLSP = {
     expr: Expr,
+    tcEnv: TCEnv,
     warnings: [Diagnostic],
     errors: [Diagnostic]
   }
 
-  sem lsTypeCheckMExpr : Expr -> TypeCheckedMExprLSP
-  sem lsTypeCheckMExpr =| expr ->
+  sem lsTypeCheckMExpr : TCEnv -> Expr -> TypeCheckedMExprLSP
+  sem lsTypeCheckMExpr env =| expr ->
     -- Ugly hacking to not make typeCheckExpr
     -- crash in the MLang pipeline
     modref __LSP__SOFT_ERROR true;
@@ -51,11 +64,18 @@ lang MLangMExprTypeChecker = MLangRoot
     modref __LSP__BUFFERED_WARNINGS [];
 
     let env = {
-      typcheckEnvDefault with
+      env with
       disableConstructorTypes = true
     } in
 
-    let expr = use LSPTypeCheck in removeMetaVarExpr (typeCheckExpr env expr) in
+    use LSPTypeCheck in
+    let bufferExpr = TmBufferTypeCheckForLSP { inexpr = uunit_ } in
+    let expr = bind_ expr bufferExpr in
+
+    -- let expr = use LSPTypeCheck in removeMetaVarExpr (typeCheckExpr env expr) in
+    modref typeCheckBuffer typcheckEnvDefault;
+    let expr = removeMetaVarExpr (typeCheckExpr env expr) in
+    let tcEnv = deref typeCheckBuffer in
 
     let errors = deref __LSP__BUFFERED_ERRORS in
     let warnings = deref __LSP__BUFFERED_WARNINGS in
@@ -66,6 +86,7 @@ lang MLangMExprTypeChecker = MLangRoot
 
     {
       expr = expr,
+      tcEnv = tcEnv,
       warnings = warnings,
       errors = errors
     }
@@ -76,40 +97,50 @@ lang MLangMExprCompiler = MLangRoot
 	sem lsCompileMLangToMExpr getFile filename includes =
   | None () -> {
     expr = None (),
+    tcEnv = typcheckEnvEmpty,
+    compositionEnv = _emptyCompositionCheckEnv,
     diagnostics = []
   }
   | Some program ->
-    -- let includedFiles: [MLangFile] = filterMap (lam link. getFile link.1) includes in
-    -- let includedProgram: [MLangProgram] = filterMap getProgram includedFiles in
-    -- let includedDecls = map (lam program. program.decls) includedProgram in
-    -- let decls = foldl concat program.decls includedDecls in
-    -- let program = { program with decls = decls } in
+    let includedFiles: [MLangFile] = filterMap (lam link. getFile link.1) includes in
+    
+    let typCheckedPrograms = filterMap (lam file. file.typeChecked) includedFiles in
+    let typCheckedEnvs = map (lam typeChecked. typeChecked.tcEnv) typCheckedPrograms in
+    let tcEnv = foldl mergeTypcheckEnv typcheckEnvDefault typCheckedEnvs in
+
+    let typCheckedCompositionEnvs = map (lam typeChecked. typeChecked.compositionEnv) typCheckedPrograms in
 
     match result.consume (checkComposition program) with (warnings, res) in 
     switch res 
-      case Left errs then 
+      case Left errs then
         {
           expr = None (),
+          tcEnv = typcheckEnvEmpty,
+          compositionEnv = _emptyCompositionCheckEnv,
           diagnostics = map (compose (addSeverity (Error ())) getCompositionErrorDiagnostic) errs
         }
-      case Right env then
-        let ctx = _emptyCompilationContext env in        
+      case Right compositionEnv then
+        -- let compositionEnv = foldl mergeCompositionCheckEnv compositionEnv typCheckedCompositionEnvs in
+        let ctx = _emptyCompilationContext compositionEnv in        
 
         let declCtx = result.foldlM compileDecl ctx program.decls in
         match result.consume declCtx with (_, Right ctx) in
 
         let ctx = withExpr ctx program.expr in
         let expr = bindall_ ctx.exprs in
-        let expr = postprocess env.semSymMap expr in 
+        let expr = postprocess compositionEnv.semSymMap expr in
 
-        match use MLangMExprTypeChecker in lsTypeCheckMExpr expr with {
+        match use MLangMExprTypeChecker in lsTypeCheckMExpr tcEnv expr with {
           expr = expr,
+          tcEnv = tcEnv,
           warnings = warnings,
           errors = errors
         } in
 
         {
           expr = Some expr,
+          tcEnv = tcEnv,
+          compositionEnv = compositionEnv,
           diagnostics = join [
             map (addSeverity (Error ())) errors,
             map (addSeverity (Warning ())) warnings

@@ -15,7 +15,8 @@ lang MExprTypeExtractor = Rtppl + MExprAst + MExpr
   sem extractTypes: Expr -> [(Name, Type)]
   sem extractTypes =
   | expr -> []
-  | TmLet { ident = ident, tyAnnot = tyAnnot, tyBody = tyBody } ->
+  | TmLet { ident = ident, tyAnnot = tyAnnot, tyBody = tyBody }
+  | TmLam { ident = ident, tyAnnot = tyAnnot, tyParam = tyBody } ->
     [(ident, concreteType [tyAnnot, tyBody])]
 
   sem recursiveExtractTypes: Expr -> [(Name, Type)]
@@ -36,6 +37,12 @@ lang ProbTimeCompiler =
 
   type MExprTypeChecked = {
     expr: Expr,
+    diagnostics: [DiagnosticWithSeverity]
+  }
+
+  type RtpplTopResult = {
+    env: RtpplTopEnv,
+    exprs: [Expr],
     diagnostics: [DiagnosticWithSeverity]
   }
 
@@ -90,6 +97,31 @@ lang ProbTimeCompiler =
       ]
     }
 
+  sem lsCompileRtpplTop: [RtpplTop] -> RtpplTopResult
+  sem lsCompileRtpplTop =| tops ->
+    modref __LSP__SOFT_ERROR true;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
+
+    let env = initTopEnv rtpplDefaultOptions in
+    match mapAccumL compileRtpplTop env tops with (topEnv, exprs) in
+
+    let errors = deref __LSP__BUFFERED_ERRORS in
+    let warnings = deref __LSP__BUFFERED_WARNINGS in
+
+    modref __LSP__SOFT_ERROR false;
+    modref __LSP__BUFFERED_ERRORS [];
+    modref __LSP__BUFFERED_WARNINGS [];
+
+    {
+      env = topEnv,
+      exprs = exprs,
+      diagnostics = join [
+        map toError errors,
+        map toWarning warnings
+      ]
+    }
+
   -- In order to properly link according to the native ProbTime
   -- constructs, we remove all identifiers that are not symbolized.
   -- The ProbTime .syn file will use UNameSym for types which are
@@ -116,6 +148,22 @@ lang ProbTimeCompiler =
     let expr = mexprPruneNonSymbolizedIdentifier expr in
     smap_Expr_Expr mexprPruneNonSymbolizedIdentifiers expr
 
+--   sem createStdlib: () -> (RtpplProgram, Expr)
+--   sem createStdlib =| _ ->
+--       let program = "
+-- // Hejsan
+-- def sqrt(v: Float): Float {}
+
+-- system {}
+--       " in
+--       match parseRtppl "stdlib" program
+--       with Right (rootProgram, ProgramRtpplProgram program) then
+--         match lsCompileRtpplTop program.tops
+--         with { exprs = exprs } in
+--         (rootProgram, bindall_ exprs)
+--       else
+--         error "Failed to create stdlib"
+
   sem createChangeHandler: () -> (LSPCompilationParameters -> LSPCompilationResult)
   sem createChangeHandler =| _ ->
     let runtime = readRuntime () in
@@ -126,6 +174,8 @@ lang ProbTimeCompiler =
   sem onChange runtime runtimeSymEnv =| parameters ->
     let filename = stripUriProtocol parameters.uri in
 
+    -- match createStdlib () with (stdlib, stdlibExpr) in
+
     switch parseRtppl filename parameters.content
       case Left errors then
         eprintln (join ["Error parsing ", filename]);
@@ -135,15 +185,21 @@ lang ProbTimeCompiler =
         eprintln (join ["Parsed ", filename]);
         -- validateRtpplProgram program;
 
-        let env = initTopEnv rtpplDefaultOptions in
-        match mapAccumL compileRtpplTop env program.tops with (topEnv, exprs) in
+        match lsCompileRtpplTop program.tops with {
+          exprs = exprs,
+          diagnostics = compileDiagnostics
+        } in
         
         -- let ast = eliminateDuplicateCode (bind_ runtime rtpplExpr) in
         -- match liftLambdasWithSolutions expr with (solutions, expr) in
 
         -- BOUNDED EXPR --
         let boundedExpr = bindall_ exprs in
+        -- let boundedExprStdlib = bind_ stdlibExpr boundedExpr in
+        -- eprintln (expr2str boundedExprStdlib);
+
         let prunedBoundedExpr = mexprPruneNonSymbolizedIdentifiers boundedExpr in
+        -- let prunedBoundedExpr = mexprPruneNonSymbolizedIdentifiers boundedExprStdlib in
         -- eprintln (expr2str expr);
         match lsSymbolizeExpr runtimeSymEnv prunedBoundedExpr with {
           expr = symbolizedBoundedExpr
@@ -161,16 +217,37 @@ lang ProbTimeCompiler =
           expr = typeCheckedFullExpr,
           diagnostics = typeCheckDiagnostics
         } in
+
+        let t1 = wallTimeMs () in
+
         let types = (compose (mapFromSeq nameCmp) recursiveExtractTypes) typeCheckedFullExpr in
+
+        -- eprintln (join [
+        --   "Types: \t",
+        --   strJoin "\n\t" (map (lam typ. match typ with (name, typ) in
+        --     join [
+        --       nameGetStr name,
+        --       ": ", type2str typ,
+        --       "(", getSym name, ")"
+        --     ]
+        --   ) (mapToSeq types))
+        -- ]);
+
         -- END FULL EXPR --
 
         let languageSupport = join [
+          map toDiagnostic compileDiagnostics,
           map toDiagnostic symbolizeDiagnostics,
           map toDiagnostic typeCheckDiagnostics,
-          exprToLanguageSupport typeCheckedFullExpr,
-          exprToLanguageSupportLinker symbolizedBoundedExpr,
+          -- exprToLanguageSupport typeCheckedFullExpr,
+          exprToLanguageSupportLinker types symbolizedBoundedExpr,
+          -- probtimeProgramToLanguageSupport types stdlib,
           probtimeProgramToLanguageSupport types rootProgram
         ] in
+
+        let t2 = wallTimeMs () in
+        let time = subf t2 t1 in
+        eprintln (join ["Time taken (ProbTime onChange): ", float2string time, "ms"]);
 
         eprintln (join ["Compiled ", filename]);
         mapSingleton cmpString filename languageSupport

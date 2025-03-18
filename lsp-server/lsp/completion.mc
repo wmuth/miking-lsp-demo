@@ -45,16 +45,33 @@ lang LSPCompletion = LSPRoot + LSPCompletionKind
     } ->
       let line = addi line 1 in
       let uri = stripUriProtocol uri in
-
       let environment = mapLookup uri context.environment.files in
+
+      let availableDefinitions = optionMap (lam environment. environment.availability) environment in
+      let availableDefinitions = optionGetOr (mapEmpty infoCmp) availableDefinitions in
+      let availableDefinitions = mapFilterWithKey (
+        lam info. lam names.
+          infoCollision info uri line character
+      ) availableDefinitions in
+      let availableDefinitions = (compose flattenMap mapValues) availableDefinitions in
+      let availableDefinitions = setOfSeq nameCmp availableDefinitions in
+
+      -- let info = getFileInfo lookupResult.location in
 
       -- let findAllInfo = lam environment. findAllInfo environment.completions uri line character in
       -- let generateCompletions: (Info, [() -> Completion]) -> [Completion] = lam value. match value with (info, generateCompletions) in
       --   map (lam generateCompletion. generateCompletion ()) generateCompletions
       -- in
       let getAllSymbols: () -> [LSPCompletion] = lam.
-        let definitions = optionMap (lam environment. mapToSeq environment.definitions) environment in
+        let definitions = optionMap (lam environment. environment.definitions) environment in
+        -- Remove definitions that are not available
+        -- let definitions = optionMap (mapFilterWithKey (
+        --   lam name. lam definitions.
+        --     setMem name availableDefinitions
+        -- )) definitions in
+        let definitions = optionMap mapToSeq definitions in
         let definitions = optionGetOr [] definitions in
+
         let mapDefinitions = lam definition.
           match definition with (name, definitions) in
           let definitions = filter (
@@ -65,14 +82,18 @@ lang LSPCompletion = LSPRoot + LSPCompletionKind
               label = nameGetStr name,
               kind = symbolToCompletion definition.kind,
               insertText = None (),
-              documentation = Some (join [
-                "Defined at [`", info2str definition.location, "`]\n\n",
-                "[`", info2str definition.location, "`]: file://", info2link definition.location, "\n\n"
+              documentation = Some ((compose (strJoin "\n") filterOption) [
+                definition.documentation (),
+                optionMap (lam location. join [
+                  "[`", info2str location, "`]: ",
+                  "file://", info2link location, "\n\n"
+                ]) definition.location
               ]),
               deprecated = false
             }
           ) definitions
         in
+
         flatMap mapDefinitions definitions
       in
 

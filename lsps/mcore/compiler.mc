@@ -132,12 +132,12 @@ lang MLangCompiler =
     in
 
     let linked = match (file.linked, file.status)
-      with (Some linked, Linked () | Symbolized ()) then linked
+      with (Some linked, !Changed () & !Parsed ()) then linked
       else lsLinkMLang file.filename parsed.includes parsed.program
     in
 
     let symbolized = match (file.symbolized, file.status)
-      with (Some symbolized, Symbolized ()) then symbolized
+      with (Some symbolized, Symbolized () | TypeChecked ()) then symbolized
       else lsSymbolizeMLang getFile file.filename linked.links linked.program
     in
 

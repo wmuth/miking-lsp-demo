@@ -15,10 +15,11 @@ let findDefinitionLinearly: URI -> Map Name [use LanguageServerRoot in LSPDefini
 
     let foundDefinitions = filterMap (
       lam definition.
-        match definition with (name, info) in
-        if infoCollision info uri line character
-          then Some { location = info, name = name }
-          else None ()
+        match definition with (name, Some info) then
+          if infoCollision info uri line character
+            then Some { location = info, name = name }
+            else None ()
+        else None ()
     ) definitions in
 
     match foundDefinitions with [first] ++ rest then

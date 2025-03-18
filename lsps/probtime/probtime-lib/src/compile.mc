@@ -31,6 +31,12 @@ let rtIdRef = ref (None ())
 lang RtpplCompileBase =
   RtpplAst + MExprAst + MExprFindSym + BootParser + MExprSym + RtpplTaskData
 
+  sem errorExpr: [Info] -> String -> Expr
+  sem errorExpr infos =| msg ->
+    let errs = deref __LSP__BUFFERED_ERRORS in
+    modref __LSP__BUFFERED_ERRORS (concat errs [(head infos, msg)]);
+    TmNever {ty = _tyuk (head infos), info = head infos}
+
   type RuntimeIds = {
     sdelay : Name,
     openFile : Name,
@@ -415,7 +421,11 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
           body = foldl addParamToBody body params, inexpr = uunit_,
           ty = _tyuk info, info = info } )
     else
-      errorSingle inferInfos "Cannot compile task with multiple infers with unknown particle count"
+      -- errorSingle inferInfos "Cannot compile task with multiple infers with unknown particle count"
+      (
+        env,
+        errorExpr inferInfos "Cannot compile task with multiple infers with unknown particle count"
+      )
 
   sem compileRtpplReturnExpr : Info -> Option RtpplExpr -> Expr
   sem compileRtpplReturnExpr info =
@@ -464,7 +474,9 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
 
   sem compileRtpplStmt : RtpplTopEnv -> RtpplStmt -> Expr
   sem compileRtpplStmt env =
-  | BindingRtpplStmt {id = {v = id, i = namePos}, ty = ty, e = e, info = info} ->
+  | BindingRtpplStmt {id = {v = id, i = namePos}, ty = ty, e = None (), info = info} ->
+    errorExpr [info] "Incomplete statement"
+  | BindingRtpplStmt {id = {v = id, i = namePos}, ty = ty, e = Some e, info = info} ->
     let tyAnnot =
       match ty with Some ty then compileRtpplType ty
       else TyUnknown {info = info}
@@ -561,7 +573,8 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
         ident = dst, tyAnnot = readTy, tyBody = _tyuk info,
         body = body, inexpr = uunit_, ty = _tyuk info, info = dstInfo }
     else
-      errorSingle [info] "Reference to undefined port"
+      -- errorSingle [info] "Reference to undefined port"
+      errorExpr [info] "Reference to undefined port"
   | WriteRtpplStmt {src = src, port = {v = portStr}, delay = delay, info = info} ->
     let delayExpr =
       match delay with Some d then compileRtpplExpr d
@@ -575,7 +588,8 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
                        , delay = delayExpr, ty = _tyuk info, info = info },
         inexpr = uunit_, ty = _tyuk info, info = info }
     else
-      errorSingle [info] "Reference to undefined port"
+      -- errorSingle [info] "Reference to undefined port"
+      errorExpr [info] "Reference to undefined port"
   | ForLoopRtpplStmt {id = {v = id, i = namePos}, e = e, upd = loopVar, body = body, info = info} ->
     match
       match loopVar with Some {v = lvid, i = info} then
@@ -659,7 +673,13 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
       body = cond, inexpr = uunit_, ty = _tyuk info, info = info }
   | IdentPlusStmtRtpplStmt {
       id = {v = id},
-      next = ReassignRtpplStmtNoIdent {proj = proj, e = e}, info = info} ->
+      next = None (),
+      info = info
+  } ->
+    errorExpr [info] "Incomplete statement"
+  | IdentPlusStmtRtpplStmt {
+      id = {v = id, i = idInfo},
+      next = Some ReassignRtpplStmtNoIdent {proj = proj, e = e}, info = info} ->
     let body =
       let e = compileRtpplExpr e in
       match proj with Some {v = label} then
@@ -669,11 +689,17 @@ lang RtpplDPPLCompile = RtpplCompileExprExtension + RtpplCompileType + RtpplTask
       else e
     in
     TmLet {
-      ident = id, tyAnnot = _tyuk info, tyBody = _tyuk info, body = body,
-      inexpr = uunit_, ty = _tyuk info, info = info }
+      ident = nameNoSym "", tyAnnot = _tyuk info, tyBody = _tyuk info,
+      ty = _tyuk info, info = info,
+      body = TmVar {ident = id, ty = _tyuk idInfo, info = idInfo, frozen = false},
+      inexpr = TmLet {
+        ident = id, tyAnnot = _tyuk info, tyBody = _tyuk info, body = body,
+        inexpr = uunit_, ty = _tyuk info, info = info
+      }
+    }
   | IdentPlusStmtRtpplStmt {
       id = {v = id},
-      next = FunctionCallSRtpplStmtNoIdent {args = args}, info = info} ->
+      next = Some FunctionCallSRtpplStmtNoIdent {args = args}, info = info} ->
     let appArg = lam fun. lam arg.
       TmApp {
         lhs = fun, rhs = arg,
@@ -927,7 +953,8 @@ lang RtpplCompileGenerated = RtpplCompileType
       let distLimitErrMsg =
         "The ProbTime compiler only supports reading records of (exclusively) integers or floats\n"
       in
-      errorSingle [info] distLimitErrMsg
+      -- errorSingle [info] distLimitErrMsg
+      errorExpr [info] distLimitErrMsg
   | DistRtpplType {ty = FloatRtpplType _, info = info} ->
     let transformExpr = encodingToDistribution info in
     TmApp {
@@ -958,9 +985,11 @@ lang RtpplCompileGenerated = RtpplCompileType
         "The ProbTime compiler only supports reading distributions of records\n",
         "where all fields are floating-point numbers."
       ] in
-      errorSingle [info] distLimitErrMsg
+      -- errorSingle [info] distLimitErrMsg
+      errorExpr [info] distLimitErrMsg
   | ty ->
-    errorSingle [get_RtpplType_info ty] "Reading from ports of this type is not supported"
+    -- errorSingle [get_RtpplType_info ty] "Reading from ports of this type is not supported"
+    errorExpr [get_RtpplType_info ty] "Reading from ports of this type is not supported"
 
   sem rtpplWriteExprType : RuntimeIds -> Expr -> Expr -> RtpplType -> Expr
   sem rtpplWriteExprType rtIds fdExpr msgsExpr =
@@ -1001,7 +1030,8 @@ lang RtpplCompileGenerated = RtpplCompileType
         let distLimitErrMsg =
           "The ProbTime compiler only supports writing records of (exclusively) integers or floats\n"
         in
-        errorSingle [info] distLimitErrMsg
+        -- errorSingle [info] distLimitErrMsg
+        errorExpr [info] distLimitErrMsg
   | DistRtpplType {ty = FloatRtpplType _, info = info} ->
     let transformExpr = distributionToEncoding info in
     TmApp {
@@ -1036,9 +1066,9 @@ lang RtpplCompileGenerated = RtpplCompileType
         "The ProbTime compiler only supports writing distributions of records\n",
         "where all fields are floating-point numbers."
       ] in
-      errorSingle [info] distLimitErrMsg
+      errorExpr [info] distLimitErrMsg
   | ty ->
-    errorSingle [get_RtpplType_info ty] "Writing to ports of this type is not supported"
+    errorExpr [get_RtpplType_info ty] "Writing to ports of this type is not supported"
 
   sem getPortFileDescriptor : Info -> String -> Expr
   sem getPortFileDescriptor info =
@@ -1215,7 +1245,7 @@ lang RtpplCompileGenerated = RtpplCompileType
         generateInputUpdateCode info inputPorts,
         generateOutputFlushCode portMap id info outputPorts ]
     else
-      errorSingle [info] "Compiler error in 'generateTaskSpecificRuntime'"
+      errorExpr [info] "Compiler error in 'generateTaskSpecificRuntime'"
 end
 
 lang RtpplCompile =
@@ -1382,10 +1412,10 @@ lang RtpplCompile =
         in
         mapInsert id (bind_ ast tailExpr) tasks
       else
-        errorSingle [info]
+        errorExpr [info]
           "Task is instantiated from definition with no port declarations"
     else
-      errorSingle [info] "Internal error when compiling task definition"
+      errorExpr [info] "Internal error when compiling task definition"
 
   sem identifiersInExpr : Set Name -> Expr -> Set Name
   sem identifiersInExpr acc =

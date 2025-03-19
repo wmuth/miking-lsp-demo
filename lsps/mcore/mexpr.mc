@@ -106,7 +106,7 @@ lang MLangMExprCompiler = MLangRoot
     
     let typCheckedPrograms = filterMap (lam file. file.typeChecked) includedFiles in
     let typCheckedEnvs = map (lam typeChecked. typeChecked.tcEnv) typCheckedPrograms in
-    let tcEnv = foldl mergeTypcheckEnv typcheckEnvDefault typCheckedEnvs in
+    let tcEnv = foldr mergeTypcheckEnv typcheckEnvDefault typCheckedEnvs in
 
     let typCheckedCompositionEnvs = map (lam typeChecked. typeChecked.compositionEnv) typCheckedPrograms in
 
@@ -120,7 +120,7 @@ lang MLangMExprCompiler = MLangRoot
           diagnostics = map (compose (addSeverity (Error ())) getCompositionErrorDiagnostic) errs
         }
       case Right compositionEnv then
-        -- let compositionEnv = foldl mergeCompositionCheckEnv compositionEnv typCheckedCompositionEnvs in
+        let compositionEnv = foldr mergeCompositionCheckEnv compositionEnv typCheckedCompositionEnvs in
         let ctx = _emptyCompilationContext compositionEnv in        
 
         let declCtx = result.foldlM compileDecl ctx program.decls in

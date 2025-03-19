@@ -94,6 +94,18 @@ let typcheckEnvEmpty = {
   }
 }
 
+let mergeTypcheckEnv: TCEnv -> TCEnv -> TCEnv = lam l. lam r. {
+  r with
+  varEnv = mapUnion l.varEnv r.varEnv,
+  conEnv = mapUnion l.conEnv r.conEnv,
+  tyVarEnv = mapUnion l.tyVarEnv r.tyVarEnv,
+  tyConEnv = mapUnion l.tyConEnv r.tyConEnv,
+  typeDeps = mapUnion l.typeDeps r.typeDeps,
+  conDeps = mapUnion l.conDeps r.conDeps,
+  matches = concat l.matches r.matches,
+  matchVars = mapUnion l.matchVars r.matchVars
+}
+
 let typecheckEnvAddBuiltinTypes : TCEnv -> [(String, [String])] -> TCEnv
   = lam env. lam tys.
     { env with

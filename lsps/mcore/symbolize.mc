@@ -81,7 +81,7 @@ lang MLangSymbolizer = MLangRoot + MLangLinker
 
     let linkerResult = getIncludedFiles getFile includes in
     let symEnvs = map (compose (optionGetOr symEnvEmpty) getSymEnv) linkerResult.files in
-    let symEnv = foldl mergeSymEnv symEnvEmpty symEnvs in
+    let symEnv = foldr mergeSymEnv symEnvEmpty symEnvs in
 
     -- Ugly hacking to not make symbolizeExpr
     -- crash in the MLang pipeline

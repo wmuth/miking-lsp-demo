@@ -1,44 +1,5 @@
 include "./root.mc"
-
-let debugSym = false
-
-let mcoreCode = lam code. join ["```mcore\n", code, "\n```"]
-
-recursive let getAnyType = lam types.
-  use MExprAst in
-  switch types
-    case [] then
-      TyUnknown { info = NoInfo () }
-    case [t] then
-      t
-    case [TyUnknown _] ++ rest then
-      getAnyType rest
-    case [t] ++ rest then
-      t
-  end
-end
-
-
-let getSym = 
-  if debugSym then
-    lam name.
-      join [
-        "\n",
-        optionGetOr "No symbol" (optionMap (compose int2string sym2hash) (nameGetSym name))
-      ]
-    else
-      lam. ""
-
--- Basically do this:
--- let childTypes = sfold_Decl_Type (lam acc. lam ty.
---   join [acc, recursiveTypeLookup file env ty]
--- ) [] decl
--- But with less boilerplate.
-let createAccumulator: all a. all b. all acc. (([acc] -> a -> [acc]) -> [acc] -> b -> [acc]) -> (a -> [acc]) -> b -> [acc] =
-  lam sfold. lam generator. lam item.
-    sfold (lam acc. lam pat.
-      join [acc, generator pat]
-    ) [] item
+include "./util.mc"
 
 lang MLangScope = MLangRoot + LSPRoot
   type AvailableName = {
@@ -66,12 +27,10 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
   sem getTypeNames =
   | _ -> []
   | TyCon { ident=ident, info=info } ->
-    -- eprintln (join ["getTypeNames: ", nameGetStr ident]);
     [ident]
 
   sem getTypeNamesRecursively : Type -> [Name]
   sem getTypeNamesRecursively =| typ ->
-    -- eprintln (join ["getTypeNamesRecursively: ", type2str typ]);
     let myTypes = getTypeNames typ in
     sfold_Type_Type (lam acc. lam ty.
       join [acc, getTypeNamesRecursively ty]
@@ -157,29 +116,6 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
           location = info,
           name = ident
         }
-      ]
-    )
-  | TmRecord { bindings=bindings, info=info } ->
-    (
-      env,
-      join [
-        -- [
-        --   LsHover {
-        --     location = info,
-        --     toString = lam. Some (join ["`record`"])
-        --   }
-        -- ],
-        -- map (
-        --   lam binding. match binding with (sid, expr) in
-        --     let name = sidToString sid in
-        --     let location = infoTm expr in
-        --     LsHover {
-        --       location = location,
-        --       toString = lam. Some (join [
-        --         mcoreCode (join ["{ ", name, " }"])
-        --       ])
-        --     }
-        -- ) (mapToSeq bindings)
       ]
     )
   | TmRecLets { bindings=bindings } ->
@@ -291,7 +227,6 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
       env,
       [
         let super = getTypeNamesRecursively ty in
-        -- eprintln (join ["Supers: ", strJoin ", " (map nameGetStr super)]);
         LsType {
           location = info,
           ident = ident,
@@ -370,7 +305,6 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
       LsHover {
         location = info,
         toString = lam. Some (join [mcoreCode (nameGetStr ident), getSym ident])
-        -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
       }
     ]
   | PatCon { ident=ident, info=info } ->
@@ -383,7 +317,6 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
       LsHover {
         location = info,
         toString = lam. Some (join [mcoreCode (nameGetStr ident), getSym ident])
-        -- match getPatStringCode 0 pprintEnvEmpty pat with (_env,pat) in pat
       }
     ]
 
@@ -534,73 +467,40 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
 
   sem recursiveTypeLookup: MLangFile -> SymEnv -> Type -> [LanguageServerPayload]
   sem recursiveTypeLookup file env =| ty ->
-    let filename = file.filename in
-    let self = typeLookup file env ty in
-
-    let childTypes = sfold_Type_Type (lam acc. lam ty.
-      let types = recursiveTypeLookup file env ty in
-      join [acc, types]
-    ) [] ty in
-
-    join [self, childTypes]
+    createAccumulators [
+      typeLookup file env,
+      createAccumulator sfold_Type_Type (recursiveTypeLookup file env)
+    ] ty
 
   sem recursivePatLookup: MLangFile -> SymEnv -> Pat -> [LanguageServerPayload]
   sem recursivePatLookup file env =| pat ->
-    let filename = file.filename in
-    let self = patLookup file env filename pat in
-
-    let childTypes = sfold_Pat_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup file env ty]
-    ) [] pat in
-
-    let childPatterns = sfold_Pat_Pat (
-      lam acc. lam pat.
-        join [acc, recursivePatLookup file env pat]
-    ) [] pat in
-
-    join [self, childTypes, childPatterns]
+    createAccumulators [
+      patLookup file env file.filename,
+      createAccumulator sfold_Pat_Type (recursiveTypeLookup file env),
+      createAccumulator sfold_Pat_Pat (recursivePatLookup file env)
+    ] pat
 
   sem recursiveExprLookup: MLangFile -> SymEnv -> LSEnv -> Expr -> [LanguageServerPayload]
   sem recursiveExprLookup file symEnv env =| expr ->
-    let filename = file.filename in
     match exprLookup file symEnv env expr with (env, self) in
-
-    let childTypes = sfold_Expr_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup file symEnv ty]
-    ) [] expr in
-
-    let childExprs = sfold_Expr_Expr (lam acc. lam expr.
-      join [acc, recursiveExprLookup file symEnv env expr]
-    ) [] expr in
-
-    let childPatterns = sfold_Expr_Pat (lam acc. lam pat.
-      join [acc, recursivePatLookup file symEnv pat]
-    ) [] expr in
-
-    join [self, childExprs, childPatterns, childTypes]
+    join [
+      self,
+      createAccumulators [
+          createAccumulator sfold_Expr_Type (recursiveTypeLookup file symEnv),
+          createAccumulator sfold_Expr_Expr (recursiveExprLookup file symEnv env),
+          createAccumulator sfold_Expr_Pat (recursivePatLookup file symEnv)
+      ] expr
+    ]
 
   sem recursiveDeclLookup: MLangFile -> SymEnv -> Decl -> [LanguageServerPayload]
   sem recursiveDeclLookup file env =| decl ->
-    let filename = file.filename in
-    let self = declLookup file env decl in
-
-    let childPatterns = sfold_Decl_Pat (lam acc. lam pat.
-      join [acc, recursivePatLookup file env pat]
-    ) [] decl in
-
-    let childTypes = sfold_Decl_Type (lam acc. lam ty.
-      join [acc, recursiveTypeLookup file env ty]
-    ) [] decl in
-
-    let childExprs = sfold_Decl_Expr (lam acc. lam expr.
-      join [acc, recursiveExprLookup file env emptyLSEnv expr]
-    ) [] decl in
-
-    let childDecls = sfold_Decl_Decl (lam acc. lam decl.
-      join [acc, recursiveDeclLookup file env decl]
-    ) [] decl in
-
-    join [self, childExprs, childDecls, childTypes, childPatterns]
+    createAccumulators [
+      declLookup file env,
+      createAccumulator sfold_Decl_Pat (recursivePatLookup file env),
+      createAccumulator sfold_Decl_Type (recursiveTypeLookup file env),
+      createAccumulator sfold_Decl_Expr (recursiveExprLookup file env emptyLSEnv),
+      createAccumulator sfold_Decl_Decl (recursiveDeclLookup file env)
+    ] decl
 
   sem programToLanguageSupport: MLangFile -> [LanguageServerPayload]
   sem programToLanguageSupport =| file ->

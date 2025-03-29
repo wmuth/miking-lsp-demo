@@ -18,6 +18,6 @@ client/out/extension.js: $(JS_FILES) $(TS_FILES) $(JSON_FILES) clean
 
 	rm -rf stdlib
 	mkdir -p stdlib
-	cp -r ../../../miking/stdlib .
+	cp -r ../../miking/stdlib .
 
 	npm install && npm run compile

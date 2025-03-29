@@ -1,0 +1,67 @@
+language Expr
+
+
+-- Basic tokens
+token String {
+  repr = StringRepr {},
+  constructor = StringTok,
+  fragment = StringTokenParser,
+}
+token LIdent {
+  repr = LIdentRepr {},
+  constructor = LIdentTok,
+  fragment = LIdentTokenParser,
+  ty = String,
+}
+token UIdent {
+  repr = UIdentRepr {},
+  constructor = UIdentTok,
+  fragment = UIdentTokenParser,
+  ty = String,
+}
+token Integer {
+  repr = UIntRepr {},
+  constructor = UIntTok,
+  fragment = UIntTokenParser,
+  ty = Int,
+}
+
+-- Wrapping tokens that just change the type in the AST
+token UName {
+  base = UIdent,
+  wrap = nameNoSym,
+  ty = Name,
+}
+token LName {
+  base = LIdent,
+  wrap = nameNoSym,
+  ty = Name,
+}
+
+type File
+type Expr
+type Decl
+
+start File
+
+prod File: File = decl:Decl+
+
+prod Function: Decl =
+  "function" name:LName
+  "(" (args:LName ("," args:LName)*)? ")"
+  "=" body:Expr
+
+prod Int: Expr = val:Integer
+prod String: Expr = val:String
+prod Variable: Expr = ident:LName
+prod left Add: Expr = left:Expr "+" right:Expr
+prod left Sub: Expr = left:Expr "-" right:Expr
+prod left Mul: Expr = left:Expr "*" right:Expr
+prod left Div: Expr = left:Expr "/" right:Expr
+prod FunctionCall: Expr = f:Expr "(" (args:Expr ("," args:Expr)*)? ")"
+
+precedence {
+  FunctionCall;
+  Mul Div;
+  Add Sub;
+}

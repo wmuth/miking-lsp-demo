@@ -102,6 +102,11 @@ lang LSPHover = LSPRoot
             let contentToJsonString = lam content. JsonString content in
             let info = getFileInfo hoverResult.location in
             let contents = filterMap (lam toString. toString ()) hoverResult.toString in
+            let contents = if context.parameters.options.filterHoverDuplicates then
+              (compose setToSeq (setOfSeq cmpString)) contents
+            else
+              contents
+            in
             let contents = JsonArray (map contentToJsonString contents) in
 
             jsonKeyObject [

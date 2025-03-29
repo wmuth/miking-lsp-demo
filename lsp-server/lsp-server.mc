@@ -9,11 +9,13 @@ include "./prune.mc"
 -- How long to wait before executing a batch of requests
 let debounceTimeMs = 10
 
-let sendNotification: JsonValue -> () =
-  lam notification.
-    eprintln "Sending notification\n";
-    eprintln (pprintjson2string notification);
-    eprintln "";
+let sendNotification: Bool -> JsonValue -> () =
+  lam debugPrint. lam notification.
+    (if debugPrint then
+      eprintln "Sending notification\n";
+      eprintln (pprintjson2string notification);
+      eprintln ""
+    else ());
     rpcprint (json2string notification)
 
 let executeRequest: use LSPRoot in LSPStartParameters -> LSPEnvironment -> use LSP in Message -> LSPEnvironment =
@@ -22,7 +24,7 @@ let executeRequest: use LSPRoot in LSPStartParameters -> LSPEnvironment -> use L
     let executionContext: use LSPRoot in LSPExecutionContext = {
       parameters = parameters,
       environment = environment,
-      sendNotification = sendNotification
+      sendNotification = sendNotification parameters.options.printClientMessages
     } in
     
     let t1 = wallTimeMs () in

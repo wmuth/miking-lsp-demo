@@ -16,7 +16,8 @@ let options = {
   extension = "mc",
   indexWorkspace = false,
   pruneMessages = true,
-  printClientMessages = true
+  printClientMessages = false,
+  benchmark = true
 } in
 
 let onOpen = use MLangCompiler in createFileLoader (Open ()) in

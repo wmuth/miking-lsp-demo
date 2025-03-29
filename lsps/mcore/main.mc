@@ -1,6 +1,8 @@
 include "./root.mc"
 include "./util.mc"
 
+include "mexpr/constant-fold.mc"
+
 lang MLangScope = MLangRoot + LSPRoot
   type AvailableName = {
     location: Info,
@@ -287,6 +289,25 @@ lang MLangLanguageServerCompiler = MLangRoot + MLangScope + MLangPrettyPrint
         }
       ]
     )
+  | TmMatch {
+    pat = PatBool { val = pat },
+    target = TmConst { val = CBool { val = target }, info = info },
+    thn = thn, els = els
+  } -> (
+    env,
+    [
+      LsDiagnostic (
+        infoTm (if eqBool pat target then els else thn),
+        join ["Dead code"],
+        Warning ()
+      ),
+      LsDiagnostic (
+        info,
+        join ["This pattern is always ", bool2string target],
+        Warning ()
+      )
+    ]
+  )
 
   sem patLookup: MLangFile -> SymEnv -> Path -> Pat -> [LanguageServerPayload]
   sem patLookup file env filename =

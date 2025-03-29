@@ -260,7 +260,10 @@ lang LanguageServer =
 
     -- If set, hover information will also include the documentation
     -- of the definition. The lambda function will wrap the documentation.
-    hoverShowDefinitionPrefix: Option (String -> String)
+    hoverShowDefinitionPrefix: Option (String -> String),
+
+    -- If set, hover information will not include duplicates.
+    filterHoverDuplicates: Bool
   }
 
   type LSPStartParameters = {
@@ -302,7 +305,8 @@ let defaultLSPOptions: use LanguageServer in LSPOptions = {
   pruneMessages = true,
   benchmark = false,
 
-  hoverShowDefinitionPrefix = Some identity
+  hoverShowDefinitionPrefix = Some identity,
+  filterHoverDuplicates = false
 }
 
 lang LSPRoot = LanguageServer

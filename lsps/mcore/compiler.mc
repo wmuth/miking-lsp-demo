@@ -56,7 +56,16 @@ lang MLangCompiler =
           let path = file.filename in
           let content = file.content in
           let file = compileMLangLSP getFile file path content in
+
+          let t1 = wallTimeMs () in
           let languageSupport = fileToLanguageSupport file in
+
+          (if true then
+            let time = subf (wallTimeMs ()) t1 in
+            eprintln (join [
+              "Time taken (MCore onChange '", path, "'): ", float2string time, "ms"
+            ])
+          else ());
   
           let dirtyFiles = mapLookupOr (setEmpty cmpString) path (deref reversedDependencies) in
           -- eprintln (join ["Dirty files: ", strJoin ", " (setToSeq dirtyFiles)]);

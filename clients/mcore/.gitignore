@@ -1,6 +1,7 @@
 out
 dist
 node_modules
+stdlib
 client/server
 .vscode-test
 .DS_Store

@@ -3,7 +3,7 @@
 MC_FILES := $(shell find . -name "*.mc")
 LSP_SERVER_FILES = $(shell find ../../lsp-server -name "*.mc")
 LIB_SERVER_FILES = $(shell find ../../lib -name "*.mc")
-STDLIB_FILES = $(shell find ../../../miking/stdlib -name "*.mc")
+STDLIB_FILES = $(shell find ../../miking/stdlib -name "*.mc")
 PROBTIME_FILES = $(shell find ./probtime-lib -type f \( -name "*.mc" -o -name "*.syn" \))
 
 all: lsp-server

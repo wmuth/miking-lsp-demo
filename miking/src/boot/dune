@@ -1,0 +1,4 @@
+(executable
+ (name boot)
+ (public_name boot)
+ (libraries boot))

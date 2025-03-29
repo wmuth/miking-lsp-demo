@@ -18,7 +18,7 @@ client/out/extension.js: $(JS_FILES) $(TS_FILES) $(JSON_FILES) clean
 	mkdir -p probtime/lsps/probtime
 	cp -r ../../lsps/probtime probtime/lsps
 
-	rm -rf stdlib && cp -r ../../../miking/stdlib .
-	rm -rf coreppl-lib && cp -r ../../../miking-dppl/coreppl/src ./coreppl-lib
+	rm -rf stdlib && cp -r ../../miking/stdlib .
+	rm -rf coreppl-lib && cp -r ../../miking-dppl/coreppl/src ./coreppl-lib
 
 	npm install && npm run compile

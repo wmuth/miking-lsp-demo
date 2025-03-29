@@ -1,5 +1,4 @@
 include "../../lsp-server/lsp-server.mc"
-
 include "./compiler.mc"
 
 let onClose: String -> () =
@@ -17,7 +16,8 @@ let options = {
   pruneMessages = true,
   printClientMessages = false,
   benchmark = true,
-
+  
+  filterHoverDuplicates = true,
   hoverShowDefinitionPrefix = Some identity
 } in
 

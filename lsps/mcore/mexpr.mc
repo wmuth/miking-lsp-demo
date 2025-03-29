@@ -110,7 +110,10 @@ lang MLangMExprCompiler = MLangRoot
 
     let typCheckedCompositionEnvs = map (lam typeChecked. typeChecked.compositionEnv) typCheckedPrograms in
 
-    match result.consume (checkComposition program) with (warnings, res) in 
+    let compositionEnv = foldr mergeCompositionCheckEnv _emptyCompositionCheckEnv typCheckedCompositionEnvs in
+    let composition = result.foldlM validateTopLevelComposition compositionEnv program.decls in
+
+    match result.consume composition with (warnings, res) in 
     switch res 
       case Left errs then
         {
@@ -120,14 +123,14 @@ lang MLangMExprCompiler = MLangRoot
           diagnostics = map (compose (addSeverity (Error ())) getCompositionErrorDiagnostic) errs
         }
       case Right compositionEnv then
-        let compositionEnv = foldr mergeCompositionCheckEnv compositionEnv typCheckedCompositionEnvs in
-        let ctx = _emptyCompilationContext compositionEnv in        
+        let ctx = _emptyCompilationContext compositionEnv in
 
         let declCtx = result.foldlM compileDecl ctx program.decls in
         match result.consume declCtx with (_, Right ctx) in
 
         let ctx = withExpr ctx program.expr in
         let expr = bindall_ ctx.exprs in
+
         let expr = postprocess compositionEnv.semSymMap expr in
 
         match use MLangMExprTypeChecker in lsTypeCheckMExpr tcEnv expr with {

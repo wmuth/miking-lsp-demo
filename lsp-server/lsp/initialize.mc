@@ -20,6 +20,7 @@ lang LSPInitialize =
   syn Message =
   | Initialized {}
   | Initialize {
+    id: Int,
     rootUri: Option String
   }
 
@@ -27,11 +28,13 @@ lang LSPInitialize =
   | "initialized" ->
     Initialized {}
   | "initialize" ->
+    match request.id with Some id in
     let rootUri = optionMap
       (lam rootUri. match rootUri with JsonString rootUri in rootUri)
       (mapLookup "rootUri" request.params) in
 
     Initialize {
+      id = id,
       rootUri = optionMap stripUriProtocol rootUri
     }
 
@@ -79,6 +82,7 @@ lang LSPInitialize =
       response = None ()
     }
   | Initialize {
+    id = id,
     rootUri = rootUri
   } ->
     {
@@ -89,7 +93,7 @@ lang LSPInitialize =
       response = Some (
         jsonKeyObject [
           ("jsonrpc", JsonString "2.0"),
-          ("id", JsonInt 0),
+          ("id", JsonInt id),
           ("result", jsonKeyObject [
             ("capabilities", jsonKeyObject [
               ("diagnosticProvider", jsonKeyObject [

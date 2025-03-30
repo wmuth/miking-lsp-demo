@@ -56,16 +56,15 @@ let getDiagnosticsObject: String -> use LSPDiagnosticSeverity in DiagnosticWithS
 
 let getDiagnostic: String -> String -> [use LSPDiagnosticSeverity in DiagnosticWithSeverity] -> JsonValue =
   lam source. lam uri. lam diagnostics.
-    let diagnostics = map (getDiagnosticsObject source) diagnostics in
-
-    jsonKeyObject [
-      ("jsonrpc", JsonString "2.0"),
-      ("method", JsonString "textDocument/publishDiagnostics"),
-      ("params", jsonKeyObject [
-        ("uri", JsonString uri),
-        ("diagnostics", JsonArray diagnostics)
-      ])
-    ]
+      let diagnostics = map (getDiagnosticsObject source) diagnostics in
+      let uri = strJoin "" ["file://", uri] in
+      jsonKeyObject [
+        ("jsonrpc", JsonString "2.0"),
+        ("method", JsonString "textDocument/publishDiagnostics"),
+        ("params", jsonKeyObject [
+          ("uri", JsonString uri),
+          ("diagnostics", JsonArray diagnostics)
+        ])]
 
 let getDiagnostics: String -> Map URI [use LSPDiagnosticSeverity in DiagnosticWithSeverity] -> [JsonValue] =
   lam source. lam diagnosticsGroupedByFile.
